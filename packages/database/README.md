@@ -1,19 +1,24 @@
 # @st-manager/database
 
 Single source of truth for the data layer: Prisma schema, migrations, and a typed client export.
-Maintains two independent Prisma datasources (see `docs/meeting-notes/M2-planning-report.md` and
-`docs/meeting-notes/M2-implementation-report.md` for the rationale):
+Maintains two independent Prisma datasources (see `docs/meeting-notes/M2-planning-report.md`,
+`docs/meeting-notes/M2-implementation-report.md`, and `docs/meeting-notes/M3-implementation-report.md`
+for the rationale):
 
-- **PostgreSQL** — primary/production datasource, consumed by `apps/api`.
-- **SQLite** — local-development / future-desktop preparation datasource (ADR 0001 defers real
-  desktop-embedded usage to milestone M11; not consumed by any app yet).
+- **PostgreSQL** — production-provider datasource, consumed by `apps/api` when `NODE_ENV=production`.
+- **SQLite** — development/test-provider datasource (ADR 0001), consumed by `apps/api` when
+  `NODE_ENV` is not `production`.
 
 ## Structure
 
 - `prisma/postgresql/schema.prisma` + `prisma.config.postgresql.ts` — PostgreSQL schema, config, and migrations.
 - `prisma/sqlite/schema.prisma` + `prisma.config.sqlite.ts` — SQLite schema, config, and migrations.
-- `src/client.ts` — PostgreSQL Prisma Client singleton (`prisma`), the one consumed by `apps/api`.
-- `src/sqlite.ts` — SQLite Prisma Client factory (`createSqlitePrismaClient`), prepared but unused by any app yet.
+- `src/client.ts` — PostgreSQL Prisma Client, lazily constructed and memoized via `getPrisma()`.
+  A function rather than an eagerly-evaluated constant, so importing this package never requires
+  `DATABASE_URL` to be set (needed once `apps/api` conditionally selects providers at runtime).
+- `src/sqlite.ts` — SQLite Prisma Client factory (`createSqlitePrismaClient`). Relative `SQLITE_URL`
+  paths are resolved against this package's own directory, so the same value works regardless of
+  which app's working directory the client is created from.
 - `src/index.ts` — public package exports.
 
 ## Usage

@@ -10,6 +10,10 @@ export default [
     rules: {
       "@typescript-eslint/no-extraneous-class": "off",
       "@typescript-eslint/no-empty-object-type": "off",
+      // Nest's DI resolves constructor-injected providers via
+      // emitDecoratorMetadata, which needs a value import (not `import
+      // type`) to emit a real `design:paramtypes` reference at runtime.
+      "@typescript-eslint/consistent-type-imports": "off",
     },
   },
 ];
