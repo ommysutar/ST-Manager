@@ -15,4 +15,4 @@ await studios.createStudio({ name: "Downtown Studio" });
 await studios.listStudios({ page: 1, pageSize: 20 });
 ```
 
-Status: initialized (M4). The `/studios` endpoint it calls doesn't exist until M5 — these calls will fail with a network error (`ApiError`, `code: "NETWORK_ERROR"`) until then, by design.
+Status: implemented (M5). `createStudio`/`listStudios` call the real `apps/api` endpoints and unwrap the server's `{ success, data, meta }` response envelope — callers get back plain `StudioResponseDto`/`ListStudiosResponseDto` values, never the raw envelope.

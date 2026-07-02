@@ -35,9 +35,18 @@ importers:
       '@nestjs/platform-express':
         specifier: ^11.1.27
         version: 11.1.27(@nestjs/common@11.1.27(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)
+      '@st-manager/constants':
+        specifier: workspace:^
+        version: link:../../packages/constants
+      '@st-manager/contracts':
+        specifier: workspace:^
+        version: link:../../packages/contracts
       '@st-manager/database':
         specifier: workspace:^
         version: link:../../packages/database
+      '@st-manager/types':
+        specifier: workspace:^
+        version: link:../../packages/types
       '@st-manager/validation':
         specifier: workspace:^
         version: link:../../packages/validation
@@ -47,6 +56,9 @@ importers:
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@nestjs/cli':
         specifier: ^11.0.23

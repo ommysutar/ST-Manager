@@ -1,6 +1,7 @@
 import { ROUTES } from "@st-manager/constants";
 import type {
   CreateStudioDto,
+  CreateStudioResponseDto,
   ListStudiosQueryDto,
   ListStudiosResponseDto,
   StudioResponseDto,
@@ -15,9 +16,14 @@ export interface StudiosApi {
 }
 
 /**
- * Typed methods for the Studio resource. The actual `POST`/`GET /studios`
- * endpoints don't exist until M5 — these calls will fail with a network
- * error until then, by design (see the M4 planning report).
+ * Typed methods for the Studio resource, calling the real `POST`/`GET
+ * /studios` endpoints implemented in `apps/api` (M5).
+ *
+ * `listStudios` returns `ListStudiosResponseDto` as-is (the `{ success,
+ * data, meta }` envelope — `meta` is genuinely useful to SDK callers, not
+ * just transport plumbing). `createStudio` unwraps the server's `{ success,
+ * data }` envelope (`CreateStudioResponseDto`) down to a plain
+ * `StudioResponseDto`, so the wire-level envelope never leaks past this SDK.
  */
 export function createStudiosApi(client: HttpClient): StudiosApi {
   return {
@@ -27,12 +33,12 @@ export function createStudiosApi(client: HttpClient): StudiosApi {
         pageSize: query.pageSize,
       }),
 
-    createStudio: (input) => {
-      // Fail fast client-side with the same rules the server (M5) will
-      // enforce. Never a trust boundary on its own — the server always
-      // re-validates.
+    createStudio: async (input) => {
+      // Fail fast client-side with the same rules the server enforces.
+      // Never a trust boundary on its own — the server always re-validates.
       const validated = createStudioSchema.parse(input);
-      return client.post<StudioResponseDto>(ROUTES.STUDIOS, validated);
+      const response = await client.post<CreateStudioResponseDto>(ROUTES.STUDIOS, validated);
+      return response.data;
     },
   };
 }

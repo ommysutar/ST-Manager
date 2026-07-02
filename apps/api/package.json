@@ -20,9 +20,13 @@
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.1.27",
     "@nestjs/platform-express": "^11.1.27",
+    "@st-manager/constants": "workspace:^",
+    "@st-manager/contracts": "workspace:^",
     "@st-manager/database": "workspace:^",
+    "@st-manager/types": "workspace:^",
     "@st-manager/validation": "workspace:^",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "zod": "^4.4.3"
   }
 }

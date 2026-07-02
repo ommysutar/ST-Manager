@@ -23,6 +23,7 @@ export class ApiError extends Error {
   /** The request never reached the server (offline, DNS failure, refused connection, ...). */
   static networkError(cause: unknown): ApiError {
     return new ApiError({
+      success: false,
       statusCode: 0,
       error: API_ERROR_CODES.NETWORK_ERROR,
       message: cause instanceof Error ? cause.message : "Network request failed",
@@ -34,6 +35,7 @@ export class ApiError extends Error {
   /** The server responded with a non-2xx status, but the body didn't match ApiErrorResponseDto. */
   static unknownError(response: Response): ApiError {
     return new ApiError({
+      success: false,
       statusCode: response.status,
       error: API_ERROR_CODES.UNKNOWN_ERROR,
       message: response.statusText || "Request failed",

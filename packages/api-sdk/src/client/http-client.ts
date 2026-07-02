@@ -33,6 +33,7 @@ async function parseErrorResponse(response: Response): Promise<ApiError> {
   }
 
   return new ApiError({
+    success: false,
     statusCode: body.statusCode ?? response.status,
     error: body.error,
     message: body.message,

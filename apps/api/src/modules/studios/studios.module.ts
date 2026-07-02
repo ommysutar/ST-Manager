@@ -1,0 +1,16 @@
+import { Module } from "@nestjs/common";
+
+import { StudiosController } from "./studios.controller";
+import { StudiosRepository } from "./studios.repository";
+import { StudiosService } from "./studios.service";
+
+/**
+ * No explicit `imports` — `PrismaModule` is `@Global()` (M3), so
+ * `PrismaService` is already available to `StudiosRepository` without
+ * re-importing it here.
+ */
+@Module({
+  controllers: [StudiosController],
+  providers: [StudiosService, StudiosRepository],
+})
+export class StudiosModule {}
