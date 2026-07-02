@@ -1,0 +1,62 @@
+/**
+ * Shared Tailwind CSS v4 entry point. Every app imports this single file
+ * (`@import "@st-manager/config-tailwind/preset.css";`) instead of hand-
+ * rolling its own `@theme` block — this is the one place a Tailwind
+ * utility name (`bg-primary`, `rounded-lg`, `font-sans`, ...) is wired to
+ * an actual design token, so no app can drift from another.
+ *
+ * All color/radius/font values below are CSS variables, not literals —
+ * @st-manager/theme owns the actual values (light in `:root`, dark in
+ * `.dark`) and this file only maps them into Tailwind's `--color-*`,
+ * `--radius-*`, and `--font-*` theme namespaces. `@theme inline` (rather
+ * than `@theme`) is required here specifically because it keeps these as
+ * live `var(--background)` references instead of inlining the resolved
+ * value at build time — that's what lets `.dark` on the document element
+ * actually re-theme already-generated utility classes at runtime.
+ *
+ * Monorepo note: Tailwind v4's automatic content detection does not
+ * reliably cross package boundaries. Each consuming app (wired in M7/M8)
+ * must add its own `@source` directive(s) pointing at `packages/ui/src`
+ * (and any other package contributing class names) alongside this import,
+ * or utility classes used only inside shared components will be purged.
+ */
+@import "tailwindcss";
+@import "@st-manager/theme/css/tokens.css";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+/**
+ * Dark mode is class-based (toggle `.dark` on <html>/<body>), not the
+ * `prefers-color-scheme` media-query strategy — required so a future
+ * user-controlled theme switch (not built in M6) can override the OS
+ * setting.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
