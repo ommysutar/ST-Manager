@@ -2,5 +2,11 @@
   "name": "@st-manager/events",
   "version": "0.0.0",
   "private": true,
-  "description": "Domain event definitions and handler contracts for ST Manager"
+  "description": "Domain event definitions and handler contracts for ST Manager",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
 }

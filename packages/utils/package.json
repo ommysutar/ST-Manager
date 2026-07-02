@@ -2,5 +2,14 @@
   "name": "@st-manager/utils",
   "version": "0.0.0",
   "private": true,
-  "description": "Pure, framework-agnostic utility functions for ST Manager"
+  "description": "Pure, framework-agnostic utility functions for ST Manager",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
 }

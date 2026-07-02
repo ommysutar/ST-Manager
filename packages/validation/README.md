@@ -4,4 +4,4 @@ Runtime validation schemas (e.g. Zod) used at API boundaries, form submissions, 
 
 - `src/auth/`, `src/studio/`, `src/session/` — schemas grouped per domain
 
-Status: scaffolding only, no application code yet.
+Status: M1 foundation implemented (`createStudioSchema` for the Studio resource, via Zod). `auth/` and `session/` remain empty placeholders until milestone M10 (see ADR 0002).

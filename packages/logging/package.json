@@ -2,5 +2,11 @@
   "name": "@st-manager/logging",
   "version": "0.0.0",
   "private": true,
-  "description": "Structured logging abstraction shared across ST Manager apps"
+  "description": "Structured logging abstraction shared across ST Manager apps",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
 }

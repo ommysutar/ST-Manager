@@ -2,5 +2,11 @@
   "name": "@st-manager/web",
   "version": "0.0.0",
   "private": true,
-  "description": "Next.js Studio Web Portal for ST Manager (V1 scope)"
+  "description": "Next.js Studio Web Portal for ST Manager (V1 scope)",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
 }

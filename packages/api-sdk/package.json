@@ -2,5 +2,11 @@
   "name": "@st-manager/api-sdk",
   "version": "0.0.0",
   "private": true,
-  "description": "Typed HTTP client for the ST Manager NestJS API"
+  "description": "Typed HTTP client for the ST Manager NestJS API",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
 }

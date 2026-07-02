@@ -2,5 +2,11 @@
   "name": "@st-manager/desktop",
   "version": "0.0.0",
   "private": true,
-  "description": "Tauri 2 desktop application for ST Manager"
+  "description": "Tauri 2 desktop application for ST Manager",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
 }

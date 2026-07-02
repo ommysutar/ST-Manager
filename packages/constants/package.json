@@ -2,5 +2,14 @@
   "name": "@st-manager/constants",
   "version": "0.0.0",
   "private": true,
-  "description": "Application-wide constants and enums for ST Manager"
+  "description": "Application-wide constants and enums for ST Manager",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
 }

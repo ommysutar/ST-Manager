@@ -2,5 +2,11 @@
   "name": "@st-manager/api",
   "version": "0.0.0",
   "private": true,
-  "description": "NestJS backend API for ST Manager"
+  "description": "NestJS backend API for ST Manager",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
 }

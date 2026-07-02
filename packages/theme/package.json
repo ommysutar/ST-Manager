@@ -2,5 +2,11 @@
   "name": "@st-manager/theme",
   "version": "0.0.0",
   "private": true,
-  "description": "Design tokens and themes shared across ST Manager UI"
+  "description": "Design tokens and themes shared across ST Manager UI",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
 }

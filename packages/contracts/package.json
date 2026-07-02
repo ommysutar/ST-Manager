@@ -2,5 +2,11 @@
   "name": "@st-manager/contracts",
   "version": "0.0.0",
   "private": true,
-  "description": "API request/response type definitions shared between the API and its clients"
+  "description": "API request/response type definitions shared between the API and its clients",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
 }
