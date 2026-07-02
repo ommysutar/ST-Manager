@@ -3,10 +3,36 @@
   "version": "0.0.0",
   "private": true,
   "description": "Tauri 2 desktop application for ST Manager",
+  "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@st-manager/api-sdk": "workspace:*",
+    "@st-manager/constants": "workspace:*",
+    "@st-manager/contracts": "workspace:*",
+    "@st-manager/theme": "workspace:*",
+    "@st-manager/types": "workspace:*",
+    "@st-manager/ui": "workspace:*",
+    "@st-manager/validation": "workspace:*",
+    "@tauri-apps/api": "^2.11.1",
+    "lucide-react": "^0.545.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router": "^7.6.3"
   },
   "devDependencies": {
-    "typescript": "^6.0.3"
+    "@st-manager/config-tailwind": "workspace:*",
+    "@tailwindcss/vite": "^4.1.16",
+    "@tauri-apps/cli": "^2.11.4",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.5.2",
+    "typescript": "^6.0.3",
+    "vite": "^6.3.5"
   }
 }

@@ -13,11 +13,14 @@ export default [
       "@typescript-eslint/consistent-type-imports": "off",
     },
   },
-  // React component code (currently just packages/ui; apps/web and
-  // apps/desktop get this glob added in M7/M8 when they gain real source
-  // of their own). Each config object from the shared react preset is
-  // scoped to this glob rather than applied repo-wide.
-  ...react.map((config) => ({ ...config, files: ["packages/ui/**/*.{ts,tsx}"] })),
+  // React component code in shared UI and desktop app (apps/web gets this
+  // glob in M8 when it gains real source of its own). Each config object from
+  // the shared react preset is scoped to these globs rather than applied
+  // repo-wide.
+  ...react.map((config) => ({
+    ...config,
+    files: ["packages/ui/**/*.{ts,tsx}", "apps/desktop/**/*.{ts,tsx}"],
+  })),
   {
     ignores: [
       "**/dist/**",
