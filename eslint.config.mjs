@@ -10,6 +10,7 @@ export default [
       "**/.next/**",
       "**/build/**",
       "**/src-tauri/target/**",
+      "**/src/generated/**",
       "pnpm-lock.yaml",
     ],
   },

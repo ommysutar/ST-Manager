@@ -1,0 +1,24 @@
+// PostgreSQL schema — primary/production datasource for @st-manager/database.
+// Consumed by apps/api (per ADR 0001: desktop is online-only through M7 and
+// does not touch this schema directly). See
+// docs/meeting-notes/M2-planning-report.md for the dual-provider rationale.
+//
+// Learn more about the Prisma schema: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../../src/generated/postgresql"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Studio {
+  id        String   @id @default(cuid())
+  name      String   @db.VarChar(120)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("studios")
+}

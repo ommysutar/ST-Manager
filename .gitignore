@@ -31,8 +31,9 @@ logs/
 .turbo/
 
 # Prisma
-packages/database/prisma/*.db
-packages/database/prisma/*.db-journal
+packages/database/prisma/**/*.db
+packages/database/prisma/**/*.db-journal
+packages/database/src/generated/
 
 # Tauri
 apps/desktop/src-tauri/target/

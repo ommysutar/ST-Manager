@@ -1,0 +1,23 @@
+// SQLite schema — local-development / future-desktop preparation datasource.
+// Not consumed by any app yet (ADR 0001 defers real desktop-embedded SQLite
+// usage to milestone M11). Kept model-identical to the PostgreSQL schema,
+// minus PostgreSQL-only native type attributes that SQLite does not support.
+// See docs/meeting-notes/M2-planning-report.md for the dual-provider rationale.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../../src/generated/sqlite"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Studio {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("studios")
+}

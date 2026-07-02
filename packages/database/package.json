@@ -3,10 +3,30 @@
   "version": "0.0.0",
   "private": true,
   "description": "Prisma schema, migrations, and database client for ST Manager",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "db:generate:postgresql": "prisma generate --config prisma.config.postgresql.ts",
+    "db:generate:sqlite": "prisma generate --config prisma.config.sqlite.ts",
+    "db:generate": "pnpm run db:generate:postgresql && pnpm run db:generate:sqlite",
+    "db:migrate:postgresql:diff": "prisma migrate diff --config prisma.config.postgresql.ts --from-empty --to-schema=prisma/postgresql/schema.prisma --script",
+    "db:migrate:postgresql:deploy": "prisma migrate deploy --config prisma.config.postgresql.ts",
+    "db:migrate:sqlite:dev": "prisma migrate dev --config prisma.config.sqlite.ts",
+    "build": "pnpm run db:generate && tsc -p tsconfig.json",
+    "typecheck": "pnpm run db:generate && tsc --noEmit"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/pg": "^8.20.0",
+    "dotenv": "^17.4.2",
+    "prisma": "^7.8.0",
     "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@prisma/adapter-better-sqlite3": "^7.8.0",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "better-sqlite3": "^12.11.1",
+    "pg": "^8.22.0"
   }
 }
