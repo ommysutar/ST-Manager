@@ -3,8 +3,16 @@
   "version": "0.0.0",
   "private": true,
   "description": "Typed HTTP client for the ST Manager NestJS API",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
+    "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@st-manager/constants": "workspace:*",
+    "@st-manager/contracts": "workspace:*",
+    "@st-manager/validation": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^6.0.3"

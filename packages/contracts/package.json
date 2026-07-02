@@ -3,8 +3,14 @@
   "version": "0.0.0",
   "private": true,
   "description": "API request/response type definitions shared between the API and its clients",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
+    "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@st-manager/types": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^6.0.3"
