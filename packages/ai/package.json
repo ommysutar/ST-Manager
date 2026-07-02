@@ -1,0 +1,6 @@
+{
+  "name": "@st-manager/ai",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AI prompt templates, provider adapters, and pipelines shared across ST Manager"
+}

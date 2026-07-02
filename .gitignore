@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+target/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Turbo
+.turbo/
+
+# Prisma
+packages/database/prisma/*.db
+packages/database/prisma/*.db-journal
+
+# Tauri
+apps/desktop/src-tauri/target/
+
+# Test coverage
+coverage/
+
+# Misc
+*.tsbuildinfo

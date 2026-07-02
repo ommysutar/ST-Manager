@@ -1,0 +1,6 @@
+{
+  "name": "@st-manager/api",
+  "version": "0.0.0",
+  "private": true,
+  "description": "NestJS backend API for ST Manager"
+}

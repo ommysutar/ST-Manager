@@ -1,0 +1,6 @@
+{
+  "name": "@st-manager/constants",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Application-wide constants and enums for ST Manager"
+}

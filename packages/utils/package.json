@@ -1,0 +1,6 @@
+{
+  "name": "@st-manager/utils",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Pure, framework-agnostic utility functions for ST Manager"
+}

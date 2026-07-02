@@ -1,0 +1,6 @@
+{
+  "name": "@st-manager/storage",
+  "version": "0.0.0",
+  "private": true,
+  "description": "File and blob storage abstraction shared across ST Manager apps"
+}
