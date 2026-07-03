@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BookingsRepository } from "../bookings/bookings.repository";
 import { ClientsRepository } from "../clients/clients.repository";
 import { InvoicesRepository } from "../invoices/invoices.repository";
+import { ReportsService } from "../reports/reports.service";
 import { SessionsRepository } from "../sessions/sessions.repository";
 import { StudiosRepository } from "../studios/studios.repository";
 import { DashboardService } from "./dashboard.service";
@@ -28,6 +29,10 @@ describe("DashboardService", () => {
     findOutstanding: ReturnType<typeof vi.fn>;
     findPaidThisMonth: ReturnType<typeof vi.fn>;
   };
+  let reportsService: {
+    getCurrentMonthUtilizationPercent: ReturnType<typeof vi.fn>;
+    getRecentRevenueTrend: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     studiosRepository = {
@@ -49,6 +54,10 @@ describe("DashboardService", () => {
       findOutstanding: vi.fn(),
       findPaidThisMonth: vi.fn(),
     };
+    reportsService = {
+      getCurrentMonthUtilizationPercent: vi.fn(),
+      getRecentRevenueTrend: vi.fn(),
+    };
 
     service = new DashboardService(
       studiosRepository as unknown as StudiosRepository,
@@ -56,6 +65,7 @@ describe("DashboardService", () => {
       bookingsRepository as unknown as BookingsRepository,
       sessionsRepository as unknown as SessionsRepository,
       invoicesRepository as unknown as InvoicesRepository,
+      reportsService as unknown as ReportsService,
     );
   });
 
@@ -148,6 +158,11 @@ describe("DashboardService", () => {
     sessionsRepository.findCompletedToday.mockResolvedValue([]);
     invoicesRepository.findOutstanding.mockResolvedValue([outstandingInvoice]);
     invoicesRepository.findPaidThisMonth.mockResolvedValue([paidInvoice]);
+    reportsService.getCurrentMonthUtilizationPercent.mockResolvedValue(12.5);
+    reportsService.getRecentRevenueTrend.mockResolvedValue([
+      { date: "2026-07-01", revenue: 0 },
+      { date: "2026-07-02", revenue: 150 },
+    ]);
 
     await expect(service.getSummary()).resolves.toEqual({
       studioCount: 3,
@@ -214,7 +229,11 @@ describe("DashboardService", () => {
           paidAt: "2026-07-03T12:00:00.000Z",
         },
       ],
-      utilizationPercent: 0,
+      utilizationPercent: 12.5,
+      revenueTrend: [
+        { date: "2026-07-01", revenue: 0 },
+        { date: "2026-07-02", revenue: 150 },
+      ],
     });
   });
 
@@ -228,6 +247,8 @@ describe("DashboardService", () => {
     sessionsRepository.findCompletedToday.mockResolvedValue([]);
     invoicesRepository.findOutstanding.mockResolvedValue([]);
     invoicesRepository.findPaidThisMonth.mockResolvedValue([]);
+    reportsService.getCurrentMonthUtilizationPercent.mockResolvedValue(0);
+    reportsService.getRecentRevenueTrend.mockResolvedValue([]);
 
     const summary = await service.getSummary();
 

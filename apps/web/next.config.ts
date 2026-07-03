@@ -108,6 +108,14 @@ const nextConfig: NextConfig = {
         source: "/api/invoices/:path*",
         destination: "http://localhost:4000/invoices/:path*",
       },
+      {
+        source: "/api/reports",
+        destination: "http://localhost:4000/reports",
+      },
+      {
+        source: "/api/reports/:path*",
+        destination: "http://localhost:4000/reports/:path*",
+      },
     ];
   },
   turbopack: {

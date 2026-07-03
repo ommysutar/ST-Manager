@@ -28,3 +28,6 @@ export type { SessionsApi } from "./sessions/sessions.api";
 
 export { createInvoicesApi } from "./invoices/invoices.api";
 export type { InvoicesApi } from "./invoices/invoices.api";
+
+export { createReportsApi } from "./reports/reports.api";
+export type { ReportsApi } from "./reports/reports.api";

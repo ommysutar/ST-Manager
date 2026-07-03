@@ -64,3 +64,6 @@ export type {
   UpdateInvoiceInput,
   ListInvoicesQueryInput,
 } from "./invoice/invoice.schema";
+
+export { reportsDateRangeQuerySchema } from "./reports/reports.schema";
+export type { ReportsDateRangeQueryInput } from "./reports/reports.schema";

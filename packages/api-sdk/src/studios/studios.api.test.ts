@@ -18,6 +18,7 @@ describe("createStudiosApi", () => {
 
     const client: HttpClient = {
       get: vi.fn(),
+      getText: vi.fn(),
       post,
       patch: vi.fn(),
       delete: vi.fn(),
@@ -40,6 +41,7 @@ describe("createStudiosApi", () => {
     const get = vi.fn().mockResolvedValue(listResponse);
     const client: HttpClient = {
       get,
+      getText: vi.fn(),
       post: vi.fn(),
       patch: vi.fn(),
       delete: vi.fn(),

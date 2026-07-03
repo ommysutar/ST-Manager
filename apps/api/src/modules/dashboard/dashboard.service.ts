@@ -7,6 +7,7 @@ import { toDashboardClientSummaryDto } from "../clients/clients.mapper";
 import { ClientsRepository } from "../clients/clients.repository";
 import { toDashboardInvoiceSummaryDto } from "../invoices/invoices.mapper";
 import { InvoicesRepository } from "../invoices/invoices.repository";
+import { ReportsService } from "../reports/reports.service";
 import { toDashboardSessionSummaryDto } from "../sessions/sessions.mapper";
 import { SessionsRepository } from "../sessions/sessions.repository";
 import { toStudioResponseDto } from "../studios/studios.mapper";
@@ -23,6 +24,7 @@ export class DashboardService {
     private readonly bookingsRepository: BookingsRepository,
     private readonly sessionsRepository: SessionsRepository,
     private readonly invoicesRepository: InvoicesRepository,
+    private readonly reportsService: ReportsService,
   ) {}
 
   async getSummary(): Promise<DashboardSummaryDataDto> {
@@ -36,6 +38,8 @@ export class DashboardService {
       completedTodaySessions,
       outstandingInvoices,
       paidThisMonthInvoices,
+      utilizationPercent,
+      revenueTrend,
     ] = await Promise.all([
       this.studiosRepository.count(),
       this.studiosRepository.findMany({ skip: 0, take: RECENT_STUDIOS_LIMIT }),
@@ -46,6 +50,8 @@ export class DashboardService {
       this.sessionsRepository.findCompletedToday(),
       this.invoicesRepository.findOutstanding(),
       this.invoicesRepository.findPaidThisMonth(),
+      this.reportsService.getCurrentMonthUtilizationPercent(),
+      this.reportsService.getRecentRevenueTrend(),
     ]);
 
     const monthRevenue = paidThisMonthInvoices.reduce((sum, invoice) => sum + invoice.total, 0);
@@ -63,7 +69,8 @@ export class DashboardService {
       outstandingBalance,
       outstandingInvoices: outstandingInvoices.map(toDashboardInvoiceSummaryDto),
       paidThisMonthInvoices: paidThisMonthInvoices.map(toDashboardInvoiceSummaryDto),
-      utilizationPercent: 0,
+      utilizationPercent,
+      revenueTrend,
     };
   }
 }

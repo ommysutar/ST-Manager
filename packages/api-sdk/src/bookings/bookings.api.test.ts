@@ -27,6 +27,7 @@ describe("createBookingsApi", () => {
 
     const client: HttpClient = {
       get: vi.fn(),
+      getText: vi.fn(),
       post,
       patch: vi.fn(),
       delete: vi.fn(),
@@ -61,6 +62,7 @@ describe("createBookingsApi", () => {
 
     const client: HttpClient = {
       get,
+      getText: vi.fn(),
       post: vi.fn(),
       patch: vi.fn(),
       delete: vi.fn(),

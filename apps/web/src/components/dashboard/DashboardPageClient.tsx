@@ -34,20 +34,6 @@ function KpiCard({ label, value, hint }: { label: string; value: string; hint?: 
   );
 }
 
-function EmptyModulePanel({ title, description }: { title: string; description: string }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">Coming in a future milestone.</p>
-      </CardContent>
-    </Card>
-  );
-}
-
 export function DashboardPageClient() {
   const { isAuthenticated } = useAuth();
   const [summary, setSummary] = useState<DashboardSummaryDataDto | null>(null);
@@ -151,7 +137,7 @@ export function DashboardPageClient() {
             <KpiCard
               label="Utilization"
               value={formatPercent(summary?.utilizationPercent ?? 0)}
-              hint="Available after booking calendar (M16)"
+              hint="Completed session time this month"
             />
           </div>
 
@@ -392,10 +378,53 @@ export function DashboardPageClient() {
                 </div>
               </CardContent>
             </Card>
-            <EmptyModulePanel
-              title="Reports"
-              description="Revenue, utilization, and client activity reports."
-            />
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Reports</CardTitle>
+                <CardDescription>
+                  Revenue trend and links to full analytics.{" "}
+                  <Link href="/reports" className="text-primary underline-offset-4 hover:underline">
+                    Open reports
+                  </Link>
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {summary && summary.revenueTrend.length > 0 ? (
+                  <div className="flex h-24 items-end gap-1">
+                    {summary.revenueTrend.map((point) => {
+                      const maxRevenue = Math.max(
+                        ...summary.revenueTrend.map((row) => row.revenue),
+                        1,
+                      );
+                      return (
+                        <div
+                          key={point.date}
+                          className="flex min-w-0 flex-1 flex-col items-center gap-1"
+                        >
+                          <div
+                            className="w-full rounded-sm bg-primary/70"
+                            style={{
+                              height: `${Math.max((point.revenue / maxRevenue) * 100, point.revenue > 0 ? 8 : 0)}%`,
+                            }}
+                            title={`${point.date}: ${formatCurrency(point.revenue)}`}
+                          />
+                          <span className="truncate text-[10px] text-muted-foreground">
+                            {point.date.slice(5)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No paid revenue in the last 7 days.
+                  </p>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  Run revenue, utilization, and client activity reports for any date range.
+                </p>
+              </CardContent>
+            </Card>
           </div>
         </>
       )}

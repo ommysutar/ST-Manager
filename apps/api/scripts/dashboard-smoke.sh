@@ -5,7 +5,7 @@ BASE_URL="${API_BASE_URL:-http://localhost:4000}"
 EMAIL="${DEV_AUTH_EMAIL:-dev@st-manager.local}"
 PASSWORD="${DEV_AUTH_PASSWORD:-devpassword}"
 
-echo "M18 dashboard smoke against ${BASE_URL}"
+echo "M19 dashboard smoke against ${BASE_URL}"
 
 UNAUTH=$(curl -s -o /tmp/m16-dashboard-unauth.json -w "%{http_code}" "${BASE_URL}/dashboard/summary")
 
@@ -46,10 +46,14 @@ if (typeof d.data.monthRevenue !== 'number' || typeof d.data.outstandingBalance 
   console.error('Missing billing dashboard totals', d);
   process.exit(1);
 }
-if (d.data.utilizationPercent !== 0) {
-  console.error('Expected placeholder zero for utilization KPI', d.data);
+if (typeof d.data.utilizationPercent !== 'number') {
+  console.error('Missing utilizationPercent on dashboard summary', d.data);
+  process.exit(1);
+}
+if (!Array.isArray(d.data.revenueTrend)) {
+  console.error('Missing revenueTrend on dashboard summary', d.data);
   process.exit(1);
 }
 " "${SUMMARY}"
 
-echo "M18 dashboard smoke: auth guard and summary KPI shape passed"
+echo "M19 dashboard smoke: auth guard and summary KPI shape passed"

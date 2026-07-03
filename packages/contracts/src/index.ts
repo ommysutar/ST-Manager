@@ -68,6 +68,7 @@ export type {
   UpdateSessionResponseDto,
 } from "./session/list-sessions.dto";
 
+export type { DashboardRevenueTrendPointDto } from "./dashboard/dashboard-revenue-trend.dto";
 export type { DashboardBookingSummaryDto } from "./dashboard/dashboard-booking-summary.dto";
 export type { DashboardClientSummaryDto } from "./dashboard/dashboard-client-summary.dto";
 export type { DashboardSessionSummaryDto } from "./dashboard/dashboard-session-summary.dto";
@@ -89,3 +90,20 @@ export type {
   UpdateInvoiceResponseDto,
   VoidInvoiceResponseDto,
 } from "./invoice/list-invoices.dto";
+
+export type { ReportsDateRangeQueryDto } from "./reports/reports-query.dto";
+export type {
+  RevenueDailyBreakdownDto,
+  RevenueReportDataDto,
+  RevenueReportResponseDto,
+} from "./reports/revenue-report.dto";
+export type {
+  UtilizationReportDataDto,
+  UtilizationReportResponseDto,
+  UtilizationStudioBreakdownDto,
+} from "./reports/utilization-report.dto";
+export type {
+  ClientActivityReportDataDto,
+  ClientActivityReportResponseDto,
+  ClientActivityRowDto,
+} from "./reports/client-activity-report.dto";

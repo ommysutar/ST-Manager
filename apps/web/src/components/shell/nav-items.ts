@@ -52,7 +52,5 @@ export const navItems: NavItem[] = [
     label: "Reports",
     href: "/reports",
     icon: BarChart3,
-    disabled: true,
-    comingSoon: true,
   },
 ];

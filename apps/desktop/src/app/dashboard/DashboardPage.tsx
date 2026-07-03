@@ -149,7 +149,7 @@ export function DashboardPage() {
             <KpiCard
               label="Utilization"
               value={formatPercent(summary?.utilizationPercent ?? 0)}
-              hint="Available after booking calendar (M16)"
+              hint="Completed session time this month"
             />
           </div>
 
@@ -363,7 +363,7 @@ export function DashboardPage() {
             </Card>
             <EmptyModulePanel
               title="Reports"
-              description="Revenue, utilization, and client activity reports."
+              description="Revenue, utilization, and client activity reports are available on the web portal."
             />
           </div>
         </>

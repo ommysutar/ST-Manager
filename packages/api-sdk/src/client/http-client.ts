@@ -103,8 +103,51 @@ export function createHttpClient(config: ApiClientConfig): HttpClient {
     return (await response.json()) as T;
   }
 
+  async function requestText(
+    path: string,
+    options: { query?: QueryParams; allowRetry?: boolean } = {},
+  ): Promise<string> {
+    const url = buildUrl(config.baseUrl, path, options.query);
+    const headers: Record<string, string> = {
+      Accept: "text/csv",
+      ...(config.getAuthHeaders?.() ?? {}),
+    };
+
+    let response: Response;
+
+    try {
+      response = await fetchImpl(url, {
+        method: "GET",
+        headers,
+      });
+    } catch (cause) {
+      throw ApiError.networkError(cause);
+    }
+
+    if (!response.ok) {
+      const error = await parseErrorResponse(response);
+
+      if (
+        options.allowRetry !== false &&
+        response.status === 401 &&
+        error.code === API_ERROR_CODES.UNAUTHORIZED &&
+        config.onUnauthorized
+      ) {
+        const shouldRetry = await config.onUnauthorized();
+        if (shouldRetry) {
+          return requestText(path, { ...options, allowRetry: false });
+        }
+      }
+
+      throw error;
+    }
+
+    return response.text();
+  }
+
   return {
     get: (path, query) => request("GET", path, { query }),
+    getText: (path, query) => requestText(path, { query }),
     post: (path, body) => request("POST", path, { body }),
     patch: (path, body) => request("PATCH", path, { body }),
     delete: (path) => request("DELETE", path),
