@@ -4,9 +4,31 @@
   "private": true,
   "description": "Next.js Studio Web Portal for ST Manager (V1 scope)",
   "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@st-manager/api-sdk": "workspace:*",
+    "@st-manager/constants": "workspace:*",
+    "@st-manager/contracts": "workspace:*",
+    "@st-manager/theme": "workspace:*",
+    "@st-manager/types": "workspace:*",
+    "@st-manager/ui": "workspace:*",
+    "@st-manager/validation": "workspace:*",
+    "lucide-react": "^0.545.0",
+    "next": "^15.5.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
   "devDependencies": {
+    "@st-manager/config-tailwind": "workspace:*",
+    "@tailwindcss/postcss": "^4.1.16",
+    "@types/node": "^22.15.3",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "postcss": "^8.5.6",
     "typescript": "^6.0.3"
   }
 }

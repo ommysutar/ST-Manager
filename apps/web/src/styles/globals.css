@@ -1,0 +1,16 @@
+@import "@st-manager/config-tailwind/preset.css";
+
+@source "../../../../packages/ui/src/**/*.{ts,tsx}";
+@source "../**/*.{ts,tsx}";
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: var(--background);
+  color: var(--foreground);
+}

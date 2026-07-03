@@ -19,7 +19,7 @@ export default [
   // repo-wide.
   ...react.map((config) => ({
     ...config,
-    files: ["packages/ui/**/*.{ts,tsx}", "apps/desktop/**/*.{ts,tsx}"],
+    files: ["packages/ui/**/*.{ts,tsx}", "apps/desktop/**/*.{ts,tsx}", "apps/web/**/*.{ts,tsx}"],
   })),
   {
     ignores: [
@@ -30,6 +30,7 @@ export default [
       "**/build/**",
       "**/src-tauri/target/**",
       "**/src/generated/**",
+      "apps/web/next-env.d.ts",
       "pnpm-lock.yaml",
     ],
   },

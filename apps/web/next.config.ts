@@ -1,0 +1,61 @@
+import path from "node:path";
+import type { NextConfig } from "next";
+
+const packagesDir = path.resolve(__dirname, "../../packages");
+
+const workspaceSourceAliasesRelative = {
+  "@st-manager/api-sdk": "../../packages/api-sdk/src/index.ts",
+  "@st-manager/constants": "../../packages/constants/src/index.ts",
+  "@st-manager/contracts": "../../packages/contracts/src/index.ts",
+  "@st-manager/types": "../../packages/types/src/index.ts",
+  "@st-manager/validation": "../../packages/validation/src/index.ts",
+};
+
+const workspaceSourceAliasesAbsolute = {
+  "@st-manager/api-sdk": path.join(packagesDir, "api-sdk/src/index.ts"),
+  "@st-manager/constants": path.join(packagesDir, "constants/src/index.ts"),
+  "@st-manager/contracts": path.join(packagesDir, "contracts/src/index.ts"),
+  "@st-manager/types": path.join(packagesDir, "types/src/index.ts"),
+  "@st-manager/validation": path.join(packagesDir, "validation/src/index.ts"),
+};
+
+const nextConfig: NextConfig = {
+  transpilePackages: [
+    "@st-manager/ui",
+    "@st-manager/theme",
+    "@st-manager/api-sdk",
+    "@st-manager/contracts",
+    "@st-manager/types",
+    "@st-manager/constants",
+    "@st-manager/validation",
+  ],
+  async rewrites() {
+    // Proxy under `/api/*` so App Router page `/studios` does not collide with API paths.
+    return [
+      {
+        source: "/api/studios",
+        destination: "http://localhost:4000/studios",
+      },
+      {
+        source: "/api/studios/:path*",
+        destination: "http://localhost:4000/studios/:path*",
+      },
+      {
+        source: "/api/health",
+        destination: "http://localhost:4000/health",
+      },
+    ];
+  },
+  turbopack: {
+    resolveAlias: workspaceSourceAliasesRelative,
+  },
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      ...workspaceSourceAliasesAbsolute,
+    };
+    return config;
+  },
+};
+
+export default nextConfig;
