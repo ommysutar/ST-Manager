@@ -98,6 +98,24 @@ export class SessionsRepository {
     return session ? mapSession(session) : null;
   }
 
+  async findAnyByBookingId(bookingId: string): Promise<SessionWithRelations | null> {
+    const client = asSessionClient(this.prismaService.getClient());
+    const session = await client.session.findFirst({
+      where: { bookingId },
+      include: sessionInclude,
+    });
+
+    return session ? mapSession(session) : null;
+  }
+
+  async releaseBookingLink(id: string): Promise<void> {
+    const client = asSessionClient(this.prismaService.getClient());
+    await client.session.update({
+      where: { id },
+      data: { bookingId: null },
+    });
+  }
+
   async findMany(query: ListSessionsQueryInput): Promise<{
     items: SessionWithRelations[];
     total: number;
@@ -221,7 +239,10 @@ export class SessionsRepository {
     const client = asSessionClient(this.prismaService.getClient());
     const session = await client.session.update({
       where: { id },
-      data: { status: "cancelled" },
+      data: {
+        status: "cancelled",
+        bookingId: null,
+      },
       include: sessionInclude,
     });
 

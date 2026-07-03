@@ -13,6 +13,8 @@ describe("SessionsService", () => {
     create: ReturnType<typeof vi.fn>;
     findById: ReturnType<typeof vi.fn>;
     findByBookingId: ReturnType<typeof vi.fn>;
+    findAnyByBookingId: ReturnType<typeof vi.fn>;
+    releaseBookingLink: ReturnType<typeof vi.fn>;
     findMany: ReturnType<typeof vi.fn>;
     start: ReturnType<typeof vi.fn>;
     complete: ReturnType<typeof vi.fn>;
@@ -52,6 +54,8 @@ describe("SessionsService", () => {
       create: vi.fn(),
       findById: vi.fn(),
       findByBookingId: vi.fn(),
+      findAnyByBookingId: vi.fn(),
+      releaseBookingLink: vi.fn(),
       findMany: vi.fn(),
       start: vi.fn(),
       complete: vi.fn(),
@@ -101,7 +105,7 @@ describe("SessionsService", () => {
       startAt: new Date("2026-07-03T14:00:00.000Z"),
       notes: null,
     });
-    sessionsRepository.findByBookingId.mockResolvedValue(null);
+    sessionsRepository.findAnyByBookingId.mockResolvedValue(null);
     studiosRepository.findById.mockResolvedValue({ id: "studio-1", name: "Downtown" });
     sessionsRepository.create.mockResolvedValue({ ...session, bookingId: "booking-1" });
 
@@ -119,11 +123,36 @@ describe("SessionsService", () => {
       startAt: new Date("2026-07-03T14:00:00.000Z"),
       notes: null,
     });
-    sessionsRepository.findByBookingId.mockResolvedValue(session);
+    sessionsRepository.findAnyByBookingId.mockResolvedValue(session);
 
     await expect(
       service.create({ bookingId: "booking-1", clientId: null, notes: null }),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it("creates a new session when the prior booking session was cancelled", async () => {
+    bookingsRepository.findById.mockResolvedValue({
+      id: "booking-1",
+      studioId: "studio-1",
+      clientId: null,
+      title: "Mix session",
+      startAt: new Date("2026-07-03T14:00:00.000Z"),
+      notes: null,
+    });
+    sessionsRepository.findAnyByBookingId.mockResolvedValue({
+      ...session,
+      bookingId: "booking-1",
+      status: "cancelled",
+    });
+    sessionsRepository.releaseBookingLink.mockResolvedValue(undefined);
+    studiosRepository.findById.mockResolvedValue({ id: "studio-1", name: "Downtown" });
+    sessionsRepository.create.mockResolvedValue({ ...session, bookingId: "booking-1" });
+
+    await expect(service.create({ bookingId: "booking-1", clientId: null, notes: null })).resolves.toMatchObject({
+      bookingId: "booking-1",
+    });
+
+    expect(sessionsRepository.releaseBookingLink).toHaveBeenCalledWith("session-1");
   });
 
   it("starts a scheduled session", async () => {

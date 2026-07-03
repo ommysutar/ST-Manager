@@ -131,12 +131,16 @@ export class SessionsService {
       throw new NotFoundException(`Booking ${bookingId} not found`);
     }
 
-    const existingSession = await this.sessionsRepository.findByBookingId(bookingId);
-    if (existingSession) {
-      throw new ConflictException({
-        message: "A session already exists for this booking",
-        details: { code: API_ERROR_CODES.SESSION_BOOKING_ALREADY_LINKED },
-      });
+    const linkedSession = await this.sessionsRepository.findAnyByBookingId(bookingId);
+    if (linkedSession) {
+      if (linkedSession.status !== "cancelled") {
+        throw new ConflictException({
+          message: "A session already exists for this booking",
+          details: { code: API_ERROR_CODES.SESSION_BOOKING_ALREADY_LINKED },
+        });
+      }
+
+      await this.sessionsRepository.releaseBookingLink(linkedSession.id);
     }
 
     const studioId = input.studioId ?? booking.studioId;
