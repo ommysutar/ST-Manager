@@ -4,6 +4,7 @@ Typed HTTP client consumed by `@st-manager/web` and `@st-manager/desktop` to cal
 
 - `src/client/` — `createHttpClient(config)` (fetch wrapper), `ApiError` (error normalization). M10: `getAuthHeaders` + `onUnauthorized` refresh retry.
 - `src/auth/` — `createAuthApi(client)`: `login`, `refresh`.
+- `src/sync/` — `createSyncApi(client)`: `pushStudios`, `pullStudios` (M11, JWT required).
 - `src/studios/` — `createStudiosApi(client)`: `listStudios`, `createStudio`.
 
 ```ts

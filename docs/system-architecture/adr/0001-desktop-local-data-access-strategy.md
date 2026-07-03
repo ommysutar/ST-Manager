@@ -1,7 +1,7 @@
 # ADR 0001: Desktop Local Data Access Strategy
 
-- Status: Accepted (for Phase 2, M0–M7); to be revisited before M11
-- Date: 2026-07-02
+- Status: **Accepted — Rust-native SQLite (rusqlite) for desktop local store; HTTP sync to apps/api**
+- Date: 2026-07-02 (online-only for M7–M10); updated 2026-07-03 (M11 decision)
 
 ## Context
 
@@ -15,13 +15,25 @@ Three implementation options were considered for how the desktop app reads/write
 
 ## Decision
 
-Adopt **Option 3 (online-only)** for the first working desktop app (Phase 2, milestone M7). The desktop app will use `packages/api-sdk` to call `apps/api` over HTTP, with no local SQLite involved yet.
+**M11 adopts Option 1 (Rust-native SQLite)** via `rusqlite` in `apps/desktop/src-tauri`, with Tauri commands exposing local Studio CRUD to the React frontend.
 
-The choice between **Option 1 (Rust-native SQLite)** and **Option 2 (Node sidecar)** for true offline support is deferred to milestone M11 ("Embedded SQLite and Background Sync"), to be decided in a follow-up ADR once a working online desktop app exists to build offline support on top of. At that time, `rusqlite`/`sqlx` (Option 1) is the current lead candidate, since it avoids bundling a full Node runtime per platform and keeps the Rust shell self-contained, but this will be confirmed with a short spike before committing.
+| Aspect | Choice |
+|---|---|
+| Local persistence | SQLite file at `{app_data_dir}/st-manager.db` |
+| Rust access | `rusqlite` + versioned SQL migrations in `src-tauri/src/db/migrations.rs` |
+| Schema source of truth (field shapes) | `packages/database/prisma/sqlite/schema.prisma` — mirrored manually in Rust |
+| Network sync | TypeScript sync engine in `apps/desktop` calling `POST /sync/studios/push` and `GET /sync/studios` via `packages/api-sdk` (reuses M10 JWT auth) |
+| Client-generated IDs | `cuid2` in Rust at local create time; idempotent upsert on sync push |
+| Prisma in desktop | **Not used** — `packages/database` SQLite client remains for `apps/api` dev/test only |
+
+Option 2 (Node sidecar) was evaluated and rejected for M11 — packaging cost outweighs benefit for a single-entity sync slice.
+
+M7–M10 used Option 3 (online-only) intentionally to deliver the walking skeleton first.
 
 ## Consequences
 
-- Milestone M7 (first running desktop app) is reachable without solving the offline/local-database problem, keeping the initial vertical slice small.
-- `packages/database`'s Prisma schema is, for now, only consumed by `apps/api` against PostgreSQL (and SQLite for local API development). It is not yet consumed directly by `apps/desktop`.
-- The desktop app will require network connectivity to be useful until M11 ships. This is acceptable for Phase 2's early milestones and matches how `apps/web` already works.
-- When M11 is implemented, if Option 1 is confirmed, `packages/database` will need a maintained SQLite schema mirror (or schema-generation step) usable from Rust; if Option 2 is chosen instead, a sidecar packaging and IPC strategy will need to be designed and documented in a follow-up ADR.
+- Desktop Studio list/create is **local-first** — reads and writes hit embedded SQLite; sync reconciles with the server when online and authenticated.
+- `POST /studios` (M5) remains unchanged (server-generated IDs on direct create). Offline sync uses dedicated `/sync/studios/*` endpoints with client-supplied IDs — no loosening of the public create contract.
+- Schema changes to `Studio` must be applied in both `packages/database/prisma/sqlite/schema.prisma` and the Rust migration layer until an automated codegen bridge is justified.
+- Web portal (`apps/web`) stays online-only — M11 offline scope is desktop-only per roadmap Definition of Done.
+- Managed-provider auth (Clerk/Auth0) remains unrelated; sync uses M10 custom JWT Bearer tokens.

@@ -15,6 +15,7 @@
     "@st-manager/api-sdk": "workspace:*",
     "@st-manager/constants": "workspace:*",
     "@st-manager/contracts": "workspace:*",
+    "@st-manager/events": "workspace:*",
     "@st-manager/theme": "workspace:*",
     "@st-manager/types": "workspace:*",
     "@st-manager/ui": "workspace:*",

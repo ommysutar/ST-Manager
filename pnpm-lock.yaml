@@ -105,6 +105,9 @@ importers:
       '@st-manager/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@st-manager/events':
+        specifier: workspace:*
+        version: link:../../packages/events
       '@st-manager/theme':
         specifier: workspace:*
         version: link:../../packages/theme

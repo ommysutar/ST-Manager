@@ -20,6 +20,7 @@ export default defineConfig({
       "@st-manager/api-sdk": path.join(packagesDir, "api-sdk/src/index.ts"),
       "@st-manager/constants": path.join(packagesDir, "constants/src/index.ts"),
       "@st-manager/contracts": path.join(packagesDir, "contracts/src/index.ts"),
+      "@st-manager/events": path.join(packagesDir, "events/src/index.ts"),
       "@st-manager/types": path.join(packagesDir, "types/src/index.ts"),
       "@st-manager/validation": path.join(packagesDir, "validation/src/index.ts"),
     },
@@ -37,6 +38,10 @@ export default defineConfig({
         changeOrigin: true,
       },
       "/health": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+      },
+      "/sync": {
         target: "http://localhost:4000",
         changeOrigin: true,
       },

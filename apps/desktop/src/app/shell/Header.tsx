@@ -1,6 +1,7 @@
 import { layout } from "@st-manager/theme";
 
 import { LoginActions } from "../../components/auth/LoginActions";
+import { SyncStatusIndicator } from "../../components/sync/SyncStatusIndicator";
 
 export function Header() {
   return (
@@ -11,6 +12,7 @@ export function Header() {
       <span className="text-sm font-semibold">ST Manager</span>
       <div className="flex-1" />
       <div data-slot="header-actions" className="flex items-center gap-2">
+        <SyncStatusIndicator />
         <LoginActions />
       </div>
     </header>

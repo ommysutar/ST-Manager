@@ -7,3 +7,6 @@ export type { StudiosApi } from "./studios/studios.api";
 
 export { createAuthApi } from "./auth/auth.api";
 export type { AuthApi } from "./auth/auth.api";
+
+export { createSyncApi } from "./sync/sync.api";
+export type { SyncApi } from "./sync/sync.api";

@@ -2,9 +2,10 @@
   "extends": "../config-typescript/base.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "ignoreDeprecations": "6.0"
   },
-  "include": [
-    "src"
-  ]
+  "include": ["src"]
 }

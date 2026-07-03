@@ -10,3 +10,17 @@ export type { ListStudiosQueryDto, ListStudiosResponseDto } from "./studio/list-
 export type { AuthUserDto } from "./auth/auth-user.dto";
 export type { LoginRequestDto, LoginResponseDataDto, LoginResponseDto } from "./auth/login.dto";
 export type { RefreshRequestDto, RefreshResponseDataDto, RefreshResponseDto } from "./auth/refresh.dto";
+
+export type {
+  SyncStudiosPushItemDto,
+  SyncStudiosPushRequestDto,
+  SyncStudiosPushResultDto,
+  SyncStudiosPushResultStatus,
+  SyncStudiosPushResponseDataDto,
+  SyncStudiosPushResponseDto,
+} from "./sync/sync-studios-push.dto";
+export type {
+  SyncStudiosPullQueryDto,
+  SyncStudiosPullResponseDataDto,
+  SyncStudiosPullResponseDto,
+} from "./sync/sync-studios-pull.dto";

@@ -12,3 +12,9 @@ export type { LoginInput } from "./auth/login.schema";
 
 export { refreshSchema } from "./auth/refresh.schema";
 export type { RefreshInput } from "./auth/refresh.schema";
+
+export { syncStudiosPushSchema } from "./sync/sync-studios-push.schema";
+export type { SyncStudiosPushInput } from "./sync/sync-studios-push.schema";
+
+export { syncStudiosPullQuerySchema } from "./sync/sync-studios-pull.schema";
+export type { SyncStudiosPullQueryInput } from "./sync/sync-studios-pull.schema";

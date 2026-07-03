@@ -1,20 +1,28 @@
-import { ApiError } from "@st-manager/api-sdk";
-import type { StudioResponseDto } from "@st-manager/contracts";
 import { layout } from "@st-manager/theme";
 import type { Studio } from "@st-manager/types";
 import { StudioForm, StudioList } from "@st-manager/ui";
 import { useCallback, useEffect, useState } from "react";
 
-import { studiosApi } from "../../lib/api-client";
 import { useAuth } from "../../hooks/useAuth";
+import { emitStudioCreatedLocally, requestSync, subscribeSyncEngineState } from "../../lib/sync-engine";
+import {
+  createLocalStudio,
+  listLocalStudios,
+  type LocalStudioDto,
+} from "../../lib/tauri/studios";
 
-function toStudio(dto: StudioResponseDto): Studio {
+function toStudio(dto: LocalStudioDto): Studio {
   return {
     id: dto.id,
     name: dto.name,
     createdAt: new Date(dto.createdAt),
     updatedAt: new Date(dto.updatedAt),
   };
+}
+
+async function fetchLocalStudios(): Promise<Studio[]> {
+  const response = await listLocalStudios();
+  return response.map(toStudio);
 }
 
 export function StudiosPage() {
@@ -25,15 +33,13 @@ export function StudiosPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | undefined>();
 
-  const loadStudios = useCallback(async () => {
-    setIsLoading(true);
-    setListError(null);
-
+  const reloadStudios = useCallback(async () => {
     try {
-      const response = await studiosApi.listStudios();
-      setStudios(response.data.map(toStudio));
+      const next = await fetchLocalStudios();
+      setStudios(next);
+      setListError(null);
     } catch (error) {
-      const message = error instanceof ApiError ? error.message : "Failed to load studios";
+      const message = error instanceof Error ? error.message : "Failed to load studios";
       setListError(message);
     } finally {
       setIsLoading(false);
@@ -43,17 +49,16 @@ export function StudiosPage() {
   useEffect(() => {
     let cancelled = false;
 
-    studiosApi
-      .listStudios()
-      .then((response) => {
+    fetchLocalStudios()
+      .then((next) => {
         if (!cancelled) {
-          setStudios(response.data.map(toStudio));
+          setStudios(next);
           setListError(null);
         }
       })
       .catch((error) => {
         if (!cancelled) {
-          const message = error instanceof ApiError ? error.message : "Failed to load studios";
+          const message = error instanceof Error ? error.message : "Failed to load studios";
           setListError(message);
         }
       })
@@ -68,15 +73,31 @@ export function StudiosPage() {
     };
   }, []);
 
+  useEffect(() => {
+    return subscribeSyncEngineState(() => {
+      void reloadStudios();
+    });
+  }, [reloadStudios]);
+
   async function handleCreate(values: { name: string }) {
     setIsSubmitting(true);
     setFormError(undefined);
 
     try {
-      await studiosApi.createStudio(values);
-      await loadStudios();
+      const created = await createLocalStudio(values.name);
+      emitStudioCreatedLocally({
+        id: created.id,
+        name: created.name,
+        createdAt: created.createdAt,
+        updatedAt: created.updatedAt,
+      });
+      await reloadStudios();
+
+      if (isAuthenticated && navigator.onLine) {
+        requestSync();
+      }
     } catch (error) {
-      const message = error instanceof ApiError ? error.message : "Failed to create studio";
+      const message = error instanceof Error ? error.message : "Failed to create studio";
       setFormError(message);
     } finally {
       setIsSubmitting(false);

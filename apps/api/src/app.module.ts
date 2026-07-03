@@ -9,6 +9,7 @@ import { validateEnv } from "./config/env.validation";
 import { HealthModule } from "./modules/health/health.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { StudiosModule } from "./modules/studios/studios.module";
+import { SyncModule } from "./modules/sync/sync.module";
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { StudiosModule } from "./modules/studios/studios.module";
     AuthModule,
     HealthModule,
     StudiosModule,
+    SyncModule,
   ],
   providers: [StManagerNestLoggerService, { provide: APP_FILTER, useClass: HttpExceptionFilter }],
 })

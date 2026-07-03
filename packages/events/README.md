@@ -5,4 +5,4 @@ Domain event names, payload types, and handler interface contracts used for deco
 - `src/domain/` — event name constants and typed payloads
 - `src/handlers/` — handler interface contracts (implementations live in consuming apps)
 
-Status: scaffolding only, no application code yet.
+Status: implemented (M11) — Studio sync event names and payload types for the desktop sync engine.

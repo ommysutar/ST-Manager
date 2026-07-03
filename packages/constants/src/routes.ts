@@ -5,6 +5,7 @@
 export const ROUTES = {
   AUTH: "auth",
   STUDIOS: "studios",
+  SYNC: "sync",
 } as const;
 
 export type RouteKey = (typeof ROUTES)[keyof typeof ROUTES];

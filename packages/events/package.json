@@ -3,7 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "description": "Domain event definitions and handler contracts for ST Manager",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
+    "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
