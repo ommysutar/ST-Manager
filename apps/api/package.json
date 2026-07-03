@@ -8,14 +8,17 @@
     "dev": "nest start --watch",
     "start": "nest start",
     "start:prod": "node dist/main.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.23",
     "@nestjs/schematics": "^11.1.0",
+    "@nestjs/testing": "^11.1.27",
     "@types/bcrypt": "^6.0.0",
     "@types/passport-jwt": "^4.0.1",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^3.2.4"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.27",

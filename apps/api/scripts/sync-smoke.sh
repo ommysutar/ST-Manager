@@ -4,7 +4,7 @@ set -euo pipefail
 BASE_URL="${API_BASE_URL:-http://localhost:4000}"
 EMAIL="${DEV_AUTH_EMAIL:-dev@st-manager.local}"
 PASSWORD="${DEV_AUTH_PASSWORD:-devpassword}"
-CLIENT_ID="${SYNC_SMOKE_STUDIO_ID:-cmr4syncsmoke000000000001}"
+CLIENT_ID="${SYNC_SMOKE_STUDIO_ID:-$(node -e "process.stdout.write('cmr4syncsmoke' + Date.now().toString(36))")}"
 NOW="$(node -e "process.stdout.write(new Date().toISOString())")"
 
 echo "M11 sync smoke against ${BASE_URL}"

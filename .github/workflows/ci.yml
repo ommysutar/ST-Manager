@@ -1,0 +1,153 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_ENV: development
+  AUTH_SECRET: ci-only-auth-secret-minimum-32-characters-long
+  AI_PROVIDER: mock
+  AI_MODEL: gpt-4o-mini
+  API_PORT: "4000"
+  SQLITE_URL: file:./prisma/sqlite/ci.db
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Unit tests
+        run: pnpm test
+
+  api-integration:
+    runs-on: ubuntu-latest
+    needs: [quality, test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace
+        run: pnpm build
+
+      - name: Prepare SQLite database
+        working-directory: packages/database
+        run: |
+          pnpm exec prisma migrate deploy --config prisma.config.sqlite.ts
+          pnpm run db:seed:dev
+
+      - name: Start API
+        run: |
+          pnpm --filter @st-manager/api start:prod > /tmp/st-manager-api.log 2>&1 &
+          echo $! > /tmp/st-manager-api.pid
+          for attempt in $(seq 1 30); do
+            if curl -sf "http://localhost:${API_PORT}/health" > /dev/null; then
+              echo "API ready after ${attempt}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API failed to start"
+          cat /tmp/st-manager-api.log
+          exit 1
+
+      - name: API smoke tests
+        run: bash apps/api/scripts/ci-smoke.sh
+
+      - name: Stop API
+        if: always()
+        run: |
+          if [[ -f /tmp/st-manager-api.pid ]]; then
+            kill "$(cat /tmp/st-manager-api.pid)" || true
+          fi
+
+  desktop-build:
+    runs-on: ubuntu-latest
+    needs: [quality]
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Tauri system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build desktop frontend
+        run: pnpm --filter @st-manager/desktop build
+
+      - name: Build Tauri bundle (unsigned)
+        run: pnpm --filter @st-manager/desktop exec tauri build
