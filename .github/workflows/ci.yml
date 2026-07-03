@@ -179,6 +179,7 @@ jobs:
         run: |
           bash apps/api/scripts/dashboard-smoke.sh
           bash apps/api/scripts/clients-smoke.sh
+          bash apps/api/scripts/bookings-smoke.sh
 
       - name: Stop API
         if: always()

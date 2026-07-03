@@ -225,13 +225,43 @@ export function DashboardPage() {
           </Card>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <EmptyModulePanel
-              title="Today's bookings"
-              description="Schedule overview for the current day."
-            />
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Today&apos;s bookings</CardTitle>
+                <CardDescription>Live schedule overview for the current day.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {canFetch && summary && summary.todayBookings.length > 0 ? (
+                  <ul className="flex flex-col gap-2">
+                    {summary.todayBookings.map((booking) => (
+                      <li key={booking.id} className="text-sm">
+                        <span className="font-medium">{booking.title}</span>
+                        <span className="text-muted-foreground">
+                          {" "}
+                          — {booking.studioName} ·{" "}
+                          {new Date(booking.startAt).toLocaleTimeString([], {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                          –
+                          {new Date(booking.endAt).toLocaleTimeString([], {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No bookings today. Use the web portal to manage the booking calendar.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
             <EmptyModulePanel
               title="Calendar"
-              description="Studio booking calendar and availability."
+              description="Booking calendar management is available on the web portal in M16."
             />
             <EmptyModulePanel
               title="Sessions"

@@ -13,6 +13,7 @@ import { SyncModule } from "./modules/sync/sync.module";
 import { AiModule } from "./modules/ai/ai.module";
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
 import { ClientsModule } from "./modules/clients/clients.module";
+import { BookingsModule } from "./modules/bookings/bookings.module";
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ClientsModule } from "./modules/clients/clients.module";
     AiModule,
     DashboardModule,
     ClientsModule,
+    BookingsModule,
   ],
   providers: [StManagerNestLoggerService, { provide: APP_FILTER, useClass: HttpExceptionFilter }],
 })

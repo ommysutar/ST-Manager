@@ -12,10 +12,11 @@ datasource db {
 }
 
 model Studio {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  bookings  Booking[]
 
   @@map("studios")
 }
@@ -41,6 +42,27 @@ model Client {
   deletedAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  bookings  Booking[]
 
   @@map("clients")
+}
+
+model Booking {
+  id        String    @id @default(cuid())
+  studioId  String
+  clientId  String?
+  title     String
+  startAt   DateTime
+  endAt     DateTime
+  status    String    @default("confirmed")
+  notes     String?
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  studio Studio  @relation(fields: [studioId], references: [id])
+  client Client? @relation(fields: [clientId], references: [id])
+
+  @@index([studioId, startAt, endAt])
+  @@map("bookings")
 }

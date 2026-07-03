@@ -30,3 +30,14 @@ export type { CreateClientInput, UpdateClientInput } from "./client/client.schem
 
 export { listClientsQuerySchema } from "./client/list-clients-query.schema";
 export type { ListClientsQueryInput } from "./client/list-clients-query.schema";
+
+export {
+  createBookingSchema,
+  updateBookingSchema,
+  listBookingsQuerySchema,
+} from "./booking/booking.schema";
+export type {
+  CreateBookingInput,
+  UpdateBookingInput,
+  ListBookingsQueryInput,
+} from "./booking/booking.schema";

@@ -37,8 +37,6 @@ export const navItems: NavItem[] = [
     label: "Calendar",
     href: "/calendar",
     icon: Calendar,
-    disabled: true,
-    comingSoon: true,
   },
   {
     label: "Sessions",

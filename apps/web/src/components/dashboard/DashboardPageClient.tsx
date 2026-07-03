@@ -227,14 +227,54 @@ export function DashboardPageClient() {
           </Card>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <EmptyModulePanel
-              title="Today's bookings"
-              description="Schedule overview for the current day."
-            />
-            <EmptyModulePanel
-              title="Calendar"
-              description="Studio booking calendar and availability."
-            />
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Today&apos;s bookings</CardTitle>
+                <CardDescription>
+                  Schedule overview for the current day.{" "}
+                  <Link href="/calendar" className="text-primary underline-offset-4 hover:underline">
+                    Open calendar
+                  </Link>
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {canFetch && summary && summary.todayBookings.length > 0 ? (
+                  <ul className="flex flex-col gap-2">
+                    {summary.todayBookings.map((booking) => (
+                      <li key={booking.id} className="text-sm">
+                        <Link
+                          href={`/calendar/${booking.id}`}
+                          className="font-medium text-primary underline-offset-4 hover:underline"
+                        >
+                          {booking.title}
+                        </Link>
+                        <span className="text-muted-foreground">
+                          {" "}
+                          — {booking.studioName} ·{" "}
+                          {new Date(booking.startAt).toLocaleTimeString([], {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                          –
+                          {new Date(booking.endAt).toLocaleTimeString([], {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No bookings today.{" "}
+                    <Link href="/calendar/new" className="text-primary underline-offset-4 hover:underline">
+                      Schedule a booking
+                    </Link>
+                    .
+                  </p>
+                )}
+              </CardContent>
+            </Card>
             <EmptyModulePanel
               title="Sessions"
               description="Sessions in progress and completed today."

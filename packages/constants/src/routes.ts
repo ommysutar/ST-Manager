@@ -4,6 +4,7 @@
  */
 export const ROUTES = {
   AUTH: "auth",
+  BOOKINGS: "bookings",
   CLIENTS: "clients",
   DASHBOARD: "dashboard",
   STUDIOS: "studios",

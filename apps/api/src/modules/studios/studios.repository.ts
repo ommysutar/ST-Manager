@@ -68,4 +68,9 @@ export class StudiosRepository {
     const client = asStudioClient(this.prismaService.getClient());
     return client.studio.count();
   }
+
+  async findById(id: string): Promise<Studio | null> {
+    const client = asStudioClient(this.prismaService.getClient());
+    return client.studio.findUnique({ where: { id } });
+  }
 }

@@ -19,3 +19,6 @@ export type { DashboardApi } from "./dashboard/dashboard.api";
 
 export { createClientsApi } from "./clients/clients.api";
 export type { ClientsApi } from "./clients/clients.api";
+
+export { createBookingsApi } from "./bookings/bookings.api";
+export type { BookingsApi } from "./bookings/bookings.api";
