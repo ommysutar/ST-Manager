@@ -1,13 +1,15 @@
 import bcrypt from "bcrypt";
 import "dotenv/config";
 
-import { createSqlitePrismaClient } from "../src/sqlite";
+import { createSqlitePrismaClient, getPrisma } from "../src/index";
 
 const DEV_EMAIL = "dev@st-manager.local";
 const DEV_PASSWORD = "devpassword";
 
 async function main(): Promise<void> {
-  const client = createSqlitePrismaClient();
+  const usePostgres =
+    process.env["NODE_ENV"] === "production" && Boolean(process.env["DATABASE_URL"]);
+  const client = usePostgres ? getPrisma() : createSqlitePrismaClient();
   const passwordHash = await bcrypt.hash(DEV_PASSWORD, 10);
 
   await client.user.upsert({

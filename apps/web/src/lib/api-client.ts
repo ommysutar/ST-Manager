@@ -1,6 +1,6 @@
 "use client";
 
-import { createAuthApi, createAiApi, createHttpClient, createStudiosApi, type AuthApi } from "@st-manager/api-sdk";
+import { createAuthApi, createAiApi, createDashboardApi, createHttpClient, createStudiosApi, type AuthApi } from "@st-manager/api-sdk";
 
 import { tokenStore } from "./token-store";
 
@@ -44,3 +44,4 @@ export const authApi = authApiRef.current;
 export { httpClient };
 export const studiosApi = createStudiosApi(httpClient);
 export const aiApi = createAiApi(httpClient);
+export const dashboardApi = createDashboardApi(httpClient);

@@ -11,6 +11,7 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { StudiosModule } from "./modules/studios/studios.module";
 import { SyncModule } from "./modules/sync/sync.module";
 import { AiModule } from "./modules/ai/ai.module";
+import { DashboardModule } from "./modules/dashboard/dashboard.module";
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { AiModule } from "./modules/ai/ai.module";
     StudiosModule,
     SyncModule,
     AiModule,
+    DashboardModule,
   ],
   providers: [StManagerNestLoggerService, { provide: APP_FILTER, useClass: HttpExceptionFilter }],
 })

@@ -116,6 +116,75 @@ jobs:
             kill "$(cat /tmp/st-manager-api.pid)" || true
           fi
 
+  postgres-integration:
+    runs-on: ubuntu-latest
+    needs: [quality, test]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: st_manager
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d st_manager"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/st_manager?schema=public
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace
+        run: pnpm build
+
+      - name: Prepare PostgreSQL database
+        working-directory: packages/database
+        run: |
+          pnpm run db:migrate:postgresql:deploy
+          pnpm run db:seed:dev
+
+      - name: Start API (PostgreSQL)
+        run: |
+          pnpm --filter @st-manager/api start:prod > /tmp/st-manager-api-pg.log 2>&1 &
+          echo $! > /tmp/st-manager-api-pg.pid
+          for attempt in $(seq 1 30); do
+            if curl -sf "http://localhost:${API_PORT}/health" > /dev/null; then
+              echo "API ready after ${attempt}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API failed to start"
+          cat /tmp/st-manager-api-pg.log
+          exit 1
+
+      - name: Dashboard smoke (PostgreSQL)
+        run: bash apps/api/scripts/dashboard-smoke.sh
+
+      - name: Stop API
+        if: always()
+        run: |
+          if [[ -f /tmp/st-manager-api-pg.pid ]]; then
+            kill "$(cat /tmp/st-manager-api-pg.pid)" || true
+          fi
+
   desktop-build:
     runs-on: ubuntu-latest
     needs: [quality]

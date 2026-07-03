@@ -7,6 +7,14 @@ import { usePathname } from "next/navigation";
 
 import { navItems } from "./nav-items";
 
+function isNavActive(pathname: string, href: string): boolean {
+  if (href === "/") {
+    return pathname === "/";
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function Sidebar() {
   const pathname = usePathname();
 
@@ -17,7 +25,25 @@ export function Sidebar() {
     >
       <nav className="flex flex-col gap-1 p-3">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = !item.disabled && isNavActive(pathname, item.href);
+
+          if (item.disabled) {
+            return (
+              <span
+                key={item.href}
+                aria-disabled="true"
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground/60"
+              >
+                <item.icon className="size-4" />
+                <span className="flex-1">{item.label}</span>
+                {item.comingSoon ? (
+                  <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide">
+                    Soon
+                  </span>
+                ) : null}
+              </span>
+            );
+          }
 
           return (
             <Link

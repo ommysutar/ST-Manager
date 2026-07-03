@@ -14,5 +14,6 @@ import { StudiosService } from "./studios.service";
   imports: [AuthModule],
   controllers: [StudiosController],
   providers: [StudiosService, StudiosRepository],
+  exports: [StudiosRepository],
 })
 export class StudiosModule {}

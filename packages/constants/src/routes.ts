@@ -4,6 +4,7 @@
  */
 export const ROUTES = {
   AUTH: "auth",
+  DASHBOARD: "dashboard",
   STUDIOS: "studios",
   SYNC: "sync",
   AI: "ai",

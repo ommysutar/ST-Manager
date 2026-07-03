@@ -1,0 +1,13 @@
+import { Module } from "@nestjs/common";
+
+import { AuthModule } from "../auth/auth.module";
+import { StudiosModule } from "../studios/studios.module";
+import { DashboardController } from "./dashboard.controller";
+import { DashboardService } from "./dashboard.service";
+
+@Module({
+  imports: [AuthModule, StudiosModule],
+  controllers: [DashboardController],
+  providers: [DashboardService],
+})
+export class DashboardModule {}

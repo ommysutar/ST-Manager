@@ -30,3 +30,9 @@ export type {
   GenerateStudioSummaryResponseDataDto,
   GenerateStudioSummaryResponseDto,
 } from "./ai/studio-summary.dto";
+
+export type { DashboardBookingSummaryDto } from "./dashboard/dashboard-booking-summary.dto";
+export type {
+  DashboardSummaryDataDto,
+  DashboardSummaryResponseDto,
+} from "./dashboard/dashboard-summary.dto";

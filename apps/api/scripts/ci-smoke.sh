@@ -3,10 +3,11 @@ set -euo pipefail
 
 BASE_URL="${API_BASE_URL:-http://localhost:4000}"
 
-echo "M13 CI smoke suite against ${BASE_URL}"
+echo "M14 CI smoke suite against ${BASE_URL}"
 
 bash "$(dirname "$0")/auth-smoke.sh"
 bash "$(dirname "$0")/sync-smoke.sh"
 bash "$(dirname "$0")/ai-smoke.sh"
+bash "$(dirname "$0")/dashboard-smoke.sh"
 
-echo "M13 CI smoke suite passed"
+echo "M14 CI smoke suite passed"
