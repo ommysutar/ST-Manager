@@ -10,3 +10,6 @@ export type { AuthApi } from "./auth/auth.api";
 
 export { createSyncApi } from "./sync/sync.api";
 export type { SyncApi } from "./sync/sync.api";
+
+export { createAiApi } from "./ai/ai.api";
+export type { AiApi } from "./ai/ai.api";

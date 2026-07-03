@@ -32,6 +32,9 @@ function mapStatusToErrorCode(statusCode: number): ApiErrorCode {
   if (statusCode === 401) {
     return API_ERROR_CODES.UNAUTHORIZED;
   }
+  if (statusCode === 503) {
+    return API_ERROR_CODES.AI_PROVIDER_ERROR;
+  }
   return API_ERROR_CODES.INTERNAL_ERROR;
 }
 

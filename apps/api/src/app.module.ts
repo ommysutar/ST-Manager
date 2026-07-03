@@ -10,6 +10,7 @@ import { HealthModule } from "./modules/health/health.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { StudiosModule } from "./modules/studios/studios.module";
 import { SyncModule } from "./modules/sync/sync.module";
+import { AiModule } from "./modules/ai/ai.module";
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { SyncModule } from "./modules/sync/sync.module";
     HealthModule,
     StudiosModule,
     SyncModule,
+    AiModule,
   ],
   providers: [StManagerNestLoggerService, { provide: APP_FILTER, useClass: HttpExceptionFilter }],
 })

@@ -18,3 +18,6 @@ export type { SyncStudiosPushInput } from "./sync/sync-studios-push.schema";
 
 export { syncStudiosPullQuerySchema } from "./sync/sync-studios-pull.schema";
 export type { SyncStudiosPullQueryInput } from "./sync/sync-studios-pull.schema";
+
+export { generateStudioSummarySchema } from "./ai/studio-summary.schema";
+export type { GenerateStudioSummaryInput } from "./ai/studio-summary.schema";

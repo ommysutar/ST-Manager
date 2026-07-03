@@ -1,8 +1,9 @@
 import { layout } from "@st-manager/theme";
 import type { Studio } from "@st-manager/types";
-import { StudioForm, StudioList } from "@st-manager/ui";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, StudioForm } from "@st-manager/ui";
 import { useCallback, useEffect, useState } from "react";
 
+import { StudioSummaryActions } from "../../components/ai/StudioSummaryActions";
 import { useAuth } from "../../hooks/useAuth";
 import { emitStudioCreatedLocally, requestSync, subscribeSyncEngineState } from "../../lib/sync-engine";
 import {
@@ -20,6 +21,10 @@ function toStudio(dto: LocalStudioDto): Studio {
   };
 }
 
+function formatDate(date: Date): string {
+  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(date);
+}
+
 async function fetchLocalStudios(): Promise<Studio[]> {
   const response = await listLocalStudios();
   return response.map(toStudio);
@@ -32,6 +37,11 @@ export function StudiosPage() {
   const [listError, setListError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | undefined>();
+  const [isOnline, setIsOnline] = useState(
+    typeof window !== "undefined" ? navigator.onLine : true,
+  );
+
+  const aiDisabled = !isAuthenticated || !isOnline;
 
   const reloadStudios = useCallback(async () => {
     try {
@@ -79,6 +89,20 @@ export function StudiosPage() {
     });
   }, [reloadStudios]);
 
+  useEffect(() => {
+    function handleOnlineChange() {
+      setIsOnline(navigator.onLine);
+    }
+
+    window.addEventListener("online", handleOnlineChange);
+    window.addEventListener("offline", handleOnlineChange);
+
+    return () => {
+      window.removeEventListener("online", handleOnlineChange);
+      window.removeEventListener("offline", handleOnlineChange);
+    };
+  }, []);
+
   async function handleCreate(values: { name: string }) {
     setIsSubmitting(true);
     setFormError(undefined);
@@ -118,15 +142,47 @@ export function StudiosPage() {
         <p className="text-sm text-muted-foreground">Loading studios...</p>
       ) : listError ? (
         <p className="text-sm text-destructive">{listError}</p>
+      ) : studios.length === 0 ? (
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">
+              No studios yet. Create the first one to get started.
+            </p>
+          </CardContent>
+        </Card>
       ) : (
-        <StudioList studios={studios} />
+        <div data-slot="studio-list" className="flex flex-col gap-3">
+          {studios.map((studio) => (
+            <Card key={studio.id}>
+              <CardHeader>
+                <CardTitle>{studio.name}</CardTitle>
+                <CardDescription>Created {formatDate(studio.createdAt)}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <StudioSummaryActions
+                  studioId={studio.id}
+                  name={studio.name}
+                  disabled={aiDisabled}
+                />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
+
+      {aiDisabled && isAuthenticated ? (
+        <p className="text-sm text-muted-foreground">
+          AI summaries require an internet connection.
+        </p>
+      ) : null}
+
+      {!isAuthenticated ? (
+        <p className="text-sm text-muted-foreground">Sign in to create studios and generate summaries.</p>
+      ) : null}
 
       {isAuthenticated ? (
         <StudioForm onSubmit={handleCreate} isSubmitting={isSubmitting} error={formError} />
-      ) : (
-        <p className="text-sm text-muted-foreground">Sign in to create studios.</p>
-      )}
+      ) : null}
     </div>
   );
 }

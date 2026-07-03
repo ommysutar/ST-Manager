@@ -17,6 +17,9 @@ export const apiEnvSchema = z
     AUTH_SECRET: z.string().trim().min(32),
     JWT_ACCESS_EXPIRES_IN: z.string().trim().min(1).default("15m"),
     JWT_REFRESH_EXPIRES_IN: z.string().trim().min(1).default("7d"),
+    AI_PROVIDER: z.enum(["openai", "mock"]).default("mock"),
+    AI_API_KEY: z.string().trim().optional(),
+    AI_MODEL: z.string().trim().min(1).default("gpt-4o-mini"),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === "production" && !env.DATABASE_URL) {
@@ -32,6 +35,14 @@ export const apiEnvSchema = z
         code: z.ZodIssueCode.custom,
         path: ["SQLITE_URL"],
         message: "SQLITE_URL is required when NODE_ENV is not production (SQLite is the development/test provider).",
+      });
+    }
+
+    if (env.AI_PROVIDER === "openai" && !env.AI_API_KEY) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["AI_API_KEY"],
+        message: "AI_API_KEY is required when AI_PROVIDER=openai.",
       });
     }
   });

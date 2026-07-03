@@ -24,3 +24,9 @@ export type {
   SyncStudiosPullResponseDataDto,
   SyncStudiosPullResponseDto,
 } from "./sync/sync-studios-pull.dto";
+
+export type {
+  GenerateStudioSummaryRequestDto,
+  GenerateStudioSummaryResponseDataDto,
+  GenerateStudioSummaryResponseDto,
+} from "./ai/studio-summary.dto";

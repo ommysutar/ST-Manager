@@ -52,6 +52,22 @@ const nextConfig: NextConfig = {
         source: "/api/health",
         destination: "http://localhost:4000/health",
       },
+      {
+        source: "/api/sync",
+        destination: "http://localhost:4000/sync",
+      },
+      {
+        source: "/api/sync/:path*",
+        destination: "http://localhost:4000/sync/:path*",
+      },
+      {
+        source: "/api/ai",
+        destination: "http://localhost:4000/ai",
+      },
+      {
+        source: "/api/ai/:path*",
+        destination: "http://localhost:4000/ai/:path*",
+      },
     ];
   },
   turbopack: {
