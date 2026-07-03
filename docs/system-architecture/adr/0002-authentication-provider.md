@@ -1,7 +1,7 @@
 # ADR 0002: Authentication Provider
 
-- Status: Deferred (open decision)
-- Date: 2026-07-02
+- Status: **Accepted — Custom JWT (access + refresh tokens)**
+- Date: 2026-07-02 (deferred); updated 2026-07-03 (M10 decision)
 
 ## Context
 
@@ -14,17 +14,28 @@ The frozen v3 architecture explicitly leaves the authentication provider as "TBD
 | `packages/contracts/auth/` | Login, refresh, session DTO shapes |
 | `packages/validation/auth/` | Request/response parsers |
 
-Candidate options for the eventual decision include a custom JWT implementation (full control, no external dependency, more implementation work), and managed providers such as Clerk or Auth0 (faster to implement, external dependency and cost, potential vendor lock-in).
+Candidate options for the eventual decision included a custom JWT implementation (full control, no external dependency, more implementation work), and managed providers such as Clerk or Auth0 (faster to implement, external dependency and cost, potential vendor lock-in).
 
 ## Decision
 
-**No decision is made in this ADR.** Authentication is not required for milestones M0–M9 (repository hygiene, foundation packages, database, API bootstrap, first Studio feature vertical slice, UI foundation, desktop shell, web portal, logging/storage). The decision is scheduled for milestone M10 ("Auth Decision and Minimal Implementation"), once there are real endpoints and clients that need protecting.
+**M10 adopts custom JWT authentication** implemented in `apps/api` using `@nestjs/jwt` and `passport-jwt`, with bcrypt password verification against a `User` row in the database.
 
-This ADR exists to formally record that the gap is known and intentional, not an oversight, and to document the reserved touchpoints above so that M1–M9 code does not need to work around auth prematurely (for example, `packages/contracts/src/auth/` and `packages/validation/src/auth/` remain empty placeholders until M10).
+| Aspect | Choice |
+|---|---|
+| Transport | `Authorization: Bearer <accessToken>` on protected routes |
+| Access token | JWT, default `15m` (`JWT_ACCESS_EXPIRES_IN`) |
+| Refresh token | JWT, default `7d` (`JWT_REFRESH_EXPIRES_IN`), exchanged via `POST /auth/refresh` |
+| Password hashing | bcrypt (cost factor 10) |
+| Dev user | Seeded `dev@st-manager.local` / `devpassword` (see `packages/database/scripts/seed-dev-user.ts`) |
+| Protected routes (M10) | `POST /studios` only; `GET /studios` remains public |
+| Client token storage | `localStorage` in desktop/web app layers; `packages/api-sdk` injects headers only |
+
+Managed providers (Clerk, Auth0) are deferred — they can replace the `apps/api/src/modules/auth/` adapter later without changing client DTO contracts if the same login/refresh response shapes are preserved.
 
 ## Consequences
 
-- No auth middleware, guards, tokens, or user/session models are implemented before M10.
-- Endpoints built in M5 (`POST/GET /studios`) will be unauthenticated until M10 lands.
-- `packages/contracts/src/auth/` and `packages/validation/src/auth/` remain empty (only `.gitkeep`) until M10.
-- This ADR should be updated (or superseded by ADR 0003) once the provider decision is actually made at M10.
+- ADR 0002 is no longer deferred; M10 implements the first real auth slice.
+- `packages/contracts/src/auth/` and `packages/validation/src/auth/` are populated with login/refresh DTOs and schemas.
+- `packages/api-sdk` implements `createAuthApi`, `getAuthHeaders`, and a single automatic retry on `401 UNAUTHORIZED` via `onUnauthorized`.
+- Refresh tokens are **stateless** in M10 — no server-side revocation table. Acceptable for the minimal milestone; session revocation is a future hardening item (M11+).
+- `AUTH_SECRET` is required in all API environments (`packages/validation` `apiEnvSchema`).

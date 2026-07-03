@@ -8,6 +8,7 @@ import { StudioForm, StudioList } from "@st-manager/ui";
 import { useCallback, useEffect, useState } from "react";
 
 import { studiosApi } from "@/lib/api-client";
+import { useAuth } from "@/hooks/useAuth";
 
 function toStudio(dto: StudioResponseDto): Studio {
   return {
@@ -19,6 +20,7 @@ function toStudio(dto: StudioResponseDto): Studio {
 }
 
 export function StudiosPageClient() {
+  const { isAuthenticated } = useAuth();
   const [studios, setStudios] = useState<Studio[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
@@ -101,7 +103,11 @@ export function StudiosPageClient() {
         <StudioList studios={studios} />
       )}
 
-      <StudioForm onSubmit={handleCreate} isSubmitting={isSubmitting} error={formError} />
+      {isAuthenticated ? (
+        <StudioForm onSubmit={handleCreate} isSubmitting={isSubmitting} error={formError} />
+      ) : (
+        <p className="text-sm text-muted-foreground">Sign in to create studios.</p>
+      )}
     </div>
   );
 }

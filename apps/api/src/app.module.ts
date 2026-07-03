@@ -7,6 +7,7 @@ import { HttpExceptionFilter } from "./common/filters/http-exception.filter";
 import { StManagerNestLoggerService } from "./common/logging/st-manager-nest-logger.service";
 import { validateEnv } from "./config/env.validation";
 import { HealthModule } from "./modules/health/health.module";
+import { AuthModule } from "./modules/auth/auth.module";
 import { StudiosModule } from "./modules/studios/studios.module";
 
 @Module({
@@ -16,6 +17,7 @@ import { StudiosModule } from "./modules/studios/studios.module";
       validate: validateEnv,
     }),
     PrismaModule,
+    AuthModule,
     HealthModule,
     StudiosModule,
   ],

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Post, Query, UseGuards } from "@nestjs/common";
 import { ROUTES } from "@st-manager/constants";
 import type { CreateStudioResponseDto, ListStudiosResponseDto } from "@st-manager/contracts";
 import {
@@ -9,6 +9,7 @@ import {
 } from "@st-manager/validation";
 
 import { ZodValidationPipe } from "../../common/pipes/zod-validation.pipe";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { toStudioResponseDto } from "./studios.mapper";
 import { StudiosService } from "./studios.service";
 
@@ -22,6 +23,7 @@ export class StudiosController {
   constructor(private readonly studiosService: StudiosService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   @HttpCode(201)
   async create(
     @Body(new ZodValidationPipe(createStudioSchema)) dto: CreateStudioInput,

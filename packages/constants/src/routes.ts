@@ -3,6 +3,7 @@
  * api-sdk, and contracts packages referring to the same resource names.
  */
 export const ROUTES = {
+  AUTH: "auth",
   STUDIOS: "studios",
 } as const;
 

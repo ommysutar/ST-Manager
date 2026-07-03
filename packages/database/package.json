@@ -12,14 +12,17 @@
     "db:migrate:postgresql:diff": "prisma migrate diff --config prisma.config.postgresql.ts --from-empty --to-schema=prisma/postgresql/schema.prisma --script",
     "db:migrate:postgresql:deploy": "prisma migrate deploy --config prisma.config.postgresql.ts",
     "db:migrate:sqlite:dev": "prisma migrate dev --config prisma.config.sqlite.ts",
+    "db:seed:dev": "tsx scripts/seed-dev-user.ts",
     "build": "pnpm run db:generate && tsc -p tsconfig.json",
     "typecheck": "pnpm run db:generate && tsc --noEmit"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/pg": "^8.20.0",
+    "bcrypt": "^6.0.0",
     "dotenv": "^17.4.2",
     "prisma": "^7.8.0",
+    "tsx": "^4.19.2",
     "typescript": "^6.0.3"
   },
   "dependencies": {

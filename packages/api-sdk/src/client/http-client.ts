@@ -1,3 +1,4 @@
+import { API_ERROR_CODES } from "@st-manager/constants";
 import type { ApiErrorResponseDto } from "@st-manager/contracts";
 
 import { ApiError } from "./api-error";
@@ -55,7 +56,7 @@ export function createHttpClient(config: ApiClientConfig): HttpClient {
   async function request<T>(
     method: "GET" | "POST",
     path: string,
-    options: { query?: QueryParams; body?: unknown } = {},
+    options: { query?: QueryParams; body?: unknown; allowRetry?: boolean } = {},
   ): Promise<T> {
     const url = buildUrl(config.baseUrl, path, options.query);
     const hasBody = options.body !== undefined;
@@ -78,7 +79,21 @@ export function createHttpClient(config: ApiClientConfig): HttpClient {
     }
 
     if (!response.ok) {
-      throw await parseErrorResponse(response);
+      const error = await parseErrorResponse(response);
+
+      if (
+        options.allowRetry !== false &&
+        response.status === 401 &&
+        error.code === API_ERROR_CODES.UNAUTHORIZED &&
+        config.onUnauthorized
+      ) {
+        const shouldRetry = await config.onUnauthorized();
+        if (shouldRetry) {
+          return request<T>(method, path, { ...options, allowRetry: false });
+        }
+      }
+
+      throw error;
     }
 
     if (response.status === 204) {

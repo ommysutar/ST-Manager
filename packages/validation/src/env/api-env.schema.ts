@@ -14,6 +14,9 @@ export const apiEnvSchema = z
     API_PORT: z.coerce.number().int().positive().default(4000),
     DATABASE_URL: z.string().trim().min(1).optional(),
     SQLITE_URL: z.string().trim().min(1).optional(),
+    AUTH_SECRET: z.string().trim().min(32),
+    JWT_ACCESS_EXPIRES_IN: z.string().trim().min(1).default("15m"),
+    JWT_REFRESH_EXPIRES_IN: z.string().trim().min(1).default("7d"),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === "production" && !env.DATABASE_URL) {

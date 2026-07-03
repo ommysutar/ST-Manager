@@ -28,6 +28,10 @@ export default defineConfig({
     port: 1420,
     strictPort: true,
     proxy: {
+      "/auth": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+      },
       "/studios": {
         target: "http://localhost:4000",
         changeOrigin: true,

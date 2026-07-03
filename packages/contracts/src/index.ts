@@ -6,3 +6,7 @@ export type { CreateStudioDto } from "./studio/create-studio.dto";
 export type { CreateStudioResponseDto } from "./studio/create-studio-response.dto";
 export type { StudioResponseDto } from "./studio/studio-response.dto";
 export type { ListStudiosQueryDto, ListStudiosResponseDto } from "./studio/list-studios.dto";
+
+export type { AuthUserDto } from "./auth/auth-user.dto";
+export type { LoginRequestDto, LoginResponseDataDto, LoginResponseDto } from "./auth/login.dto";
+export type { RefreshRequestDto, RefreshResponseDataDto, RefreshResponseDto } from "./auth/refresh.dto";

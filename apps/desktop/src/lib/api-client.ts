@@ -1,15 +1,39 @@
-import { createHttpClient, createStudiosApi } from "@st-manager/api-sdk";
+import { createAuthApi, createHttpClient, createStudiosApi, type AuthApi } from "@st-manager/api-sdk";
 
-/**
- * In dev (`pnpm dev` / `tauri dev`), route API calls through the Vite dev
- * server origin so `/studios` is proxied to NestJS — avoiding browser CORS
- * without modifying `apps/api` (M7 scope). Production builds must set
- * `VITE_API_BASE_URL`.
- */
+import { tokenStore } from "./token-store";
+
 const baseUrl =
   import.meta.env.VITE_API_BASE_URL ??
   (import.meta.env.DEV ? window.location.origin : "http://localhost:4000");
 
-const httpClient = createHttpClient({ baseUrl });
+const authApiRef: { current: AuthApi | null } = { current: null };
 
+const httpClient = createHttpClient({
+  baseUrl,
+  getAuthHeaders: () => {
+    const accessToken = tokenStore.getAccessToken();
+    return accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined;
+  },
+  onUnauthorized: async () => {
+    const refreshToken = tokenStore.getRefreshToken();
+    if (!refreshToken || !authApiRef.current) {
+      tokenStore.clear();
+      return false;
+    }
+
+    try {
+      const tokens = await authApiRef.current.refresh({ refreshToken });
+      tokenStore.updateTokens(tokens.accessToken, tokens.refreshToken);
+      return true;
+    } catch {
+      tokenStore.clear();
+      return false;
+    }
+  },
+});
+
+authApiRef.current = createAuthApi(httpClient);
+
+export const authApi = authApiRef.current;
+export { httpClient };
 export const studiosApi = createStudiosApi(httpClient);

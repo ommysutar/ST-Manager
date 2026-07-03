@@ -33,6 +33,14 @@ const nextConfig: NextConfig = {
     // Proxy under `/api/*` so App Router page `/studios` does not collide with API paths.
     return [
       {
+        source: "/api/auth",
+        destination: "http://localhost:4000/auth",
+      },
+      {
+        source: "/api/auth/:path*",
+        destination: "http://localhost:4000/auth/:path*",
+      },
+      {
         source: "/api/studios",
         destination: "http://localhost:4000/studios",
       },

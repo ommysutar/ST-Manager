@@ -7,6 +7,7 @@
 export const API_ERROR_CODES = {
   VALIDATION_ERROR: "VALIDATION_ERROR",
   NOT_FOUND: "NOT_FOUND",
+  UNAUTHORIZED: "UNAUTHORIZED",
   INTERNAL_ERROR: "INTERNAL_ERROR",
   /** Thrown by packages/api-sdk when a request never reaches the server. */
   NETWORK_ERROR: "NETWORK_ERROR",

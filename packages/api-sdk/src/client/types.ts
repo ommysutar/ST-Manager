@@ -9,10 +9,13 @@ export interface ApiClientConfig {
   /** Override for testing; defaults to the global `fetch`. */
   fetch?: typeof fetch;
   /**
-   * Reserved for M10 (auth). Not called with anything meaningful yet — no
-   * login flow or token store exists in M4.
+   * M10: returns Bearer token headers when the user is signed in.
    */
   getAuthHeaders?: () => Record<string, string> | undefined;
+  /**
+   * M10: called on 401 UNAUTHORIZED before giving up; return true to retry once.
+   */
+  onUnauthorized?: () => Promise<boolean>;
 }
 
 export type QueryParams = Record<string, string | number | boolean | undefined>;

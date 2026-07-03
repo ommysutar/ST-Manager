@@ -4,3 +4,6 @@ export type { ApiClientConfig, HttpClient, QueryParams } from "./client/types";
 
 export { createStudiosApi } from "./studios/studios.api";
 export type { StudiosApi } from "./studios/studios.api";
+
+export { createAuthApi } from "./auth/auth.api";
+export type { AuthApi } from "./auth/auth.api";

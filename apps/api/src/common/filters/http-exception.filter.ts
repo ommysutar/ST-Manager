@@ -29,6 +29,9 @@ function mapStatusToErrorCode(statusCode: number): ApiErrorCode {
   if (statusCode === 404) {
     return API_ERROR_CODES.NOT_FOUND;
   }
+  if (statusCode === 401) {
+    return API_ERROR_CODES.UNAUTHORIZED;
+  }
   return API_ERROR_CODES.INTERNAL_ERROR;
 }
 
