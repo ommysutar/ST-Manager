@@ -144,7 +144,7 @@ export function DashboardPage() {
             <KpiCard
               label="Month revenue"
               value={formatCurrency(summary?.monthRevenue ?? 0)}
-              hint="Available after billing (M18)"
+              hint="Paid invoices this month"
             />
             <KpiCard
               label="Utilization"
@@ -307,10 +307,60 @@ export function DashboardPage() {
                 </div>
               </CardContent>
             </Card>
-            <EmptyModulePanel
-              title="Billing"
-              description="Outstanding invoices and payments this month."
-            />
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Billing</CardTitle>
+                <CardDescription>
+                  Outstanding invoices and payments this month. Use the web portal to manage billing.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm">
+                  Outstanding balance:{" "}
+                  <span className="font-medium">
+                    {formatCurrency(summary?.outstandingBalance ?? 0)}
+                  </span>
+                </p>
+                <div>
+                  <p className="mb-2 text-sm font-medium">Outstanding</p>
+                  {canFetch && summary && summary.outstandingInvoices.length > 0 ? (
+                    <ul className="flex flex-col gap-2">
+                      {summary.outstandingInvoices.map((invoice) => (
+                        <li key={invoice.id} className="text-sm">
+                          <span className="font-medium">#{invoice.number}</span>
+                          <span className="text-muted-foreground">
+                            {" "}
+                            — {invoice.clientName} · {formatCurrency(invoice.total)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No outstanding invoices.</p>
+                  )}
+                </div>
+                <div>
+                  <p className="mb-2 text-sm font-medium">Paid this month</p>
+                  {canFetch && summary && summary.paidThisMonthInvoices.length > 0 ? (
+                    <ul className="flex flex-col gap-2">
+                      {summary.paidThisMonthInvoices.map((invoice) => (
+                        <li key={invoice.id} className="text-sm">
+                          <span className="font-medium">#{invoice.number}</span>
+                          <span className="text-muted-foreground">
+                            {" "}
+                            — {invoice.clientName} · {formatCurrency(invoice.total)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No payments recorded this month. Use the web portal to manage billing.
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
             <EmptyModulePanel
               title="Reports"
               description="Revenue, utilization, and client activity reports."

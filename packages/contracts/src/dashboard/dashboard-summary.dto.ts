@@ -1,6 +1,7 @@
 import type { StudioResponseDto } from "../studio/studio-response.dto";
 import type { DashboardBookingSummaryDto } from "./dashboard-booking-summary.dto";
 import type { DashboardClientSummaryDto } from "./dashboard-client-summary.dto";
+import type { DashboardInvoiceSummaryDto } from "./dashboard-invoice-summary.dto";
 import type { DashboardSessionSummaryDto } from "./dashboard-session-summary.dto";
 
 export interface DashboardSummaryDataDto {
@@ -12,6 +13,9 @@ export interface DashboardSummaryDataDto {
   sessionsInProgress: DashboardSessionSummaryDto[];
   completedTodaySessions: DashboardSessionSummaryDto[];
   monthRevenue: number;
+  outstandingBalance: number;
+  outstandingInvoices: DashboardInvoiceSummaryDto[];
+  paidThisMonthInvoices: DashboardInvoiceSummaryDto[];
   utilizationPercent: number;
 }
 

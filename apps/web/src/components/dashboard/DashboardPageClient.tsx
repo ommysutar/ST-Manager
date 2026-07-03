@@ -146,7 +146,7 @@ export function DashboardPageClient() {
             <KpiCard
               label="Month revenue"
               value={formatCurrency(summary?.monthRevenue ?? 0)}
-              hint="Available after billing (M18)"
+              hint="Paid invoices this month"
             />
             <KpiCard
               label="Utilization"
@@ -327,10 +327,71 @@ export function DashboardPageClient() {
                 </div>
               </CardContent>
             </Card>
-            <EmptyModulePanel
-              title="Billing"
-              description="Outstanding invoices and payments this month."
-            />
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Billing</CardTitle>
+                <CardDescription>
+                  Outstanding invoices and payments this month.{" "}
+                  <Link href="/billing" className="text-primary underline-offset-4 hover:underline">
+                    Manage billing
+                  </Link>
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm">
+                  Outstanding balance:{" "}
+                  <span className="font-medium">
+                    {formatCurrency(summary?.outstandingBalance ?? 0)}
+                  </span>
+                </p>
+                <div>
+                  <p className="mb-2 text-sm font-medium">Outstanding</p>
+                  {summary && summary.outstandingInvoices.length > 0 ? (
+                    <ul className="space-y-2 text-sm">
+                      {summary.outstandingInvoices.map((invoice) => (
+                        <li key={invoice.id}>
+                          <Link
+                            href={`/billing/${invoice.id}`}
+                            className="font-medium text-primary underline-offset-4 hover:underline"
+                          >
+                            #{invoice.number}
+                          </Link>
+                          <span className="text-muted-foreground">
+                            {" "}
+                            — {invoice.clientName} · {formatCurrency(invoice.total)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No outstanding invoices.</p>
+                  )}
+                </div>
+                <div>
+                  <p className="mb-2 text-sm font-medium">Paid this month</p>
+                  {summary && summary.paidThisMonthInvoices.length > 0 ? (
+                    <ul className="space-y-2 text-sm">
+                      {summary.paidThisMonthInvoices.map((invoice) => (
+                        <li key={invoice.id}>
+                          <Link
+                            href={`/billing/${invoice.id}`}
+                            className="font-medium text-primary underline-offset-4 hover:underline"
+                          >
+                            #{invoice.number}
+                          </Link>
+                          <span className="text-muted-foreground">
+                            {" "}
+                            — {invoice.clientName} · {formatCurrency(invoice.total)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No payments recorded this month.</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
             <EmptyModulePanel
               title="Reports"
               description="Revenue, utilization, and client activity reports."

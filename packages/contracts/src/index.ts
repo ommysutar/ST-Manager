@@ -71,7 +71,21 @@ export type {
 export type { DashboardBookingSummaryDto } from "./dashboard/dashboard-booking-summary.dto";
 export type { DashboardClientSummaryDto } from "./dashboard/dashboard-client-summary.dto";
 export type { DashboardSessionSummaryDto } from "./dashboard/dashboard-session-summary.dto";
+export type { DashboardInvoiceSummaryDto } from "./dashboard/dashboard-invoice-summary.dto";
 export type {
   DashboardSummaryDataDto,
   DashboardSummaryResponseDto,
 } from "./dashboard/dashboard-summary.dto";
+
+export type { InvoiceResponseDto } from "./invoice/invoice-response.dto";
+export type { CreateInvoiceDto, CreateInvoiceResponseDto } from "./invoice/create-invoice.dto";
+export type { UpdateInvoiceDto } from "./invoice/list-invoices.dto";
+export type {
+  GetInvoiceResponseDto,
+  ListInvoicesQueryDto,
+  ListInvoicesResponseDto,
+  MarkInvoicePaidResponseDto,
+  SendInvoiceResponseDto,
+  UpdateInvoiceResponseDto,
+  VoidInvoiceResponseDto,
+} from "./invoice/list-invoices.dto";

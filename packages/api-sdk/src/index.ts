@@ -25,3 +25,6 @@ export type { BookingsApi } from "./bookings/bookings.api";
 
 export { createSessionsApi } from "./sessions/sessions.api";
 export type { SessionsApi } from "./sessions/sessions.api";
+
+export { createInvoicesApi } from "./invoices/invoices.api";
+export type { InvoicesApi } from "./invoices/invoices.api";

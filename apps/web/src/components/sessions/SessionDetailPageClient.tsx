@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/hooks/useAuth";
-import { sessionsApi } from "@/lib/api-client";
+import { sessionsApi, invoicesApi } from "@/lib/api-client";
 
 function formatStatus(status: SessionResponseDto["status"]): string {
   return status.replace("_", " ");
@@ -19,6 +19,7 @@ export function SessionDetailPageClient({ sessionId }: { sessionId: string }) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const [session, setSession] = useState<SessionResponseDto | null>(null);
+  const [linkedInvoiceId, setLinkedInvoiceId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,11 +29,14 @@ export function SessionDetailPageClient({ sessionId }: { sessionId: string }) {
       return;
     }
 
-    sessionsApi
-      .getSession(sessionId)
-      .then((response: SessionResponseDto) => {
+    Promise.all([
+      sessionsApi.getSession(sessionId),
+      invoicesApi.listInvoices({ sessionId, page: 1, pageSize: 1 }),
+    ])
+      .then(([response, invoiceResponse]) => {
         setSession(response);
         setNotes(response.notes ?? "");
+        setLinkedInvoiceId(invoiceResponse.data[0]?.id ?? null);
       })
       .catch((err: unknown) => {
         const message = err instanceof ApiError ? err.message : "Failed to load session";
@@ -141,6 +145,25 @@ export function SessionDetailPageClient({ sessionId }: { sessionId: string }) {
             {session.endedAt ? (
               <p className="mt-2 text-muted-foreground">
                 Ended: {new Date(session.endedAt).toLocaleString()}
+              </p>
+            ) : null}
+            {session.status === "completed" && session.clientId ? (
+              <p className="mt-2">
+                {linkedInvoiceId ? (
+                  <Link
+                    href={`/billing/${linkedInvoiceId}`}
+                    className="text-primary underline-offset-4 hover:underline"
+                  >
+                    View invoice
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/billing/new?sessionId=${session.id}`}
+                    className="text-primary underline-offset-4 hover:underline"
+                  >
+                    Create invoice from session
+                  </Link>
+                )}
               </p>
             ) : null}
             {session.bookingId ? (

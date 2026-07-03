@@ -45,6 +45,7 @@ model Client {
   updatedAt DateTime  @updatedAt
   bookings  Booking[]
   sessions  Session[]
+  invoices  Invoice[]
 
   @@map("clients")
 }
@@ -87,7 +88,35 @@ model Session {
   studio  Studio   @relation(fields: [studioId], references: [id])
   client  Client?  @relation(fields: [clientId], references: [id])
   booking Booking? @relation(fields: [bookingId], references: [id])
+  invoice Invoice?
 
   @@index([studioId, status, startedAt])
   @@map("sessions")
+}
+
+model Invoice {
+  id        String    @id @default(cuid())
+  clientId  String
+  sessionId String?   @unique
+  number    String    @unique
+  status    String    @default("draft")
+  lineItems Json
+  subtotal  Float
+  taxRate   Float     @default(0)
+  tax       Float
+  total     Float
+  dueDate   DateTime
+  issuedAt  DateTime?
+  paidAt    DateTime?
+  notes     String?
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  client  Client   @relation(fields: [clientId], references: [id])
+  session Session? @relation(fields: [sessionId], references: [id])
+
+  @@index([clientId, status])
+  @@index([status, paidAt])
+  @@map("invoices")
 }

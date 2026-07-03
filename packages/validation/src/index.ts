@@ -52,3 +52,15 @@ export type {
   UpdateSessionInput,
   ListSessionsQueryInput,
 } from "./session/session.schema";
+
+export {
+  createInvoiceSchema,
+  updateInvoiceSchema,
+  listInvoicesQuerySchema,
+  computeInvoiceTotals,
+} from "./invoice/invoice.schema";
+export type {
+  CreateInvoiceInput,
+  UpdateInvoiceInput,
+  ListInvoicesQueryInput,
+} from "./invoice/invoice.schema";

@@ -181,6 +181,7 @@ jobs:
           bash apps/api/scripts/clients-smoke.sh
           bash apps/api/scripts/bookings-smoke.sh
           bash apps/api/scripts/sessions-smoke.sh
+          bash apps/api/scripts/invoices-smoke.sh
 
       - name: Stop API
         if: always()

@@ -5,6 +5,8 @@ import { toDashboardBookingSummaryDto } from "../bookings/bookings.mapper";
 import { BookingsRepository } from "../bookings/bookings.repository";
 import { toDashboardClientSummaryDto } from "../clients/clients.mapper";
 import { ClientsRepository } from "../clients/clients.repository";
+import { toDashboardInvoiceSummaryDto } from "../invoices/invoices.mapper";
+import { InvoicesRepository } from "../invoices/invoices.repository";
 import { toDashboardSessionSummaryDto } from "../sessions/sessions.mapper";
 import { SessionsRepository } from "../sessions/sessions.repository";
 import { toStudioResponseDto } from "../studios/studios.mapper";
@@ -20,6 +22,7 @@ export class DashboardService {
     private readonly clientsRepository: ClientsRepository,
     private readonly bookingsRepository: BookingsRepository,
     private readonly sessionsRepository: SessionsRepository,
+    private readonly invoicesRepository: InvoicesRepository,
   ) {}
 
   async getSummary(): Promise<DashboardSummaryDataDto> {
@@ -31,6 +34,8 @@ export class DashboardService {
       todayBookings,
       sessionsInProgress,
       completedTodaySessions,
+      outstandingInvoices,
+      paidThisMonthInvoices,
     ] = await Promise.all([
       this.studiosRepository.count(),
       this.studiosRepository.findMany({ skip: 0, take: RECENT_STUDIOS_LIMIT }),
@@ -39,7 +44,12 @@ export class DashboardService {
       this.bookingsRepository.findToday(),
       this.sessionsRepository.findInProgress(),
       this.sessionsRepository.findCompletedToday(),
+      this.invoicesRepository.findOutstanding(),
+      this.invoicesRepository.findPaidThisMonth(),
     ]);
+
+    const monthRevenue = paidThisMonthInvoices.reduce((sum, invoice) => sum + invoice.total, 0);
+    const outstandingBalance = outstandingInvoices.reduce((sum, invoice) => sum + invoice.total, 0);
 
     return {
       studioCount,
@@ -49,7 +59,10 @@ export class DashboardService {
       recentClients: recentClients.map(toDashboardClientSummaryDto),
       sessionsInProgress: sessionsInProgress.map(toDashboardSessionSummaryDto),
       completedTodaySessions: completedTodaySessions.map(toDashboardSessionSummaryDto),
-      monthRevenue: 0,
+      monthRevenue,
+      outstandingBalance,
+      outstandingInvoices: outstandingInvoices.map(toDashboardInvoiceSummaryDto),
+      paidThisMonthInvoices: paidThisMonthInvoices.map(toDashboardInvoiceSummaryDto),
       utilizationPercent: 0,
     };
   }

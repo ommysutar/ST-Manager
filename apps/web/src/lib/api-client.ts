@@ -1,6 +1,6 @@
 "use client";
 
-import { createAuthApi, createAiApi, createBookingsApi, createClientsApi, createDashboardApi, createHttpClient, createSessionsApi, createStudiosApi, type AuthApi } from "@st-manager/api-sdk";
+import { createAuthApi, createAiApi, createBookingsApi, createClientsApi, createDashboardApi, createHttpClient, createInvoicesApi, createSessionsApi, createStudiosApi, type AuthApi } from "@st-manager/api-sdk";
 
 import { tokenStore } from "./token-store";
 
@@ -48,3 +48,4 @@ export const dashboardApi = createDashboardApi(httpClient);
 export const clientsApi = createClientsApi(httpClient);
 export const bookingsApi = createBookingsApi(httpClient);
 export const sessionsApi = createSessionsApi(httpClient);
+export const invoicesApi = createInvoicesApi(httpClient);

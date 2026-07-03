@@ -100,6 +100,14 @@ const nextConfig: NextConfig = {
         source: "/api/sessions/:path*",
         destination: "http://localhost:4000/sessions/:path*",
       },
+      {
+        source: "/api/invoices",
+        destination: "http://localhost:4000/invoices",
+      },
+      {
+        source: "/api/invoices/:path*",
+        destination: "http://localhost:4000/invoices/:path*",
+      },
     ];
   },
   turbopack: {

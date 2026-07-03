@@ -47,8 +47,6 @@ export const navItems: NavItem[] = [
     label: "Billing",
     href: "/billing",
     icon: Receipt,
-    disabled: true,
-    comingSoon: true,
   },
   {
     label: "Reports",
