@@ -23,6 +23,7 @@
     "@st-manager/constants": "workspace:^",
     "@st-manager/contracts": "workspace:^",
     "@st-manager/database": "workspace:^",
+    "@st-manager/logging": "workspace:^",
     "@st-manager/types": "workspace:^",
     "@st-manager/validation": "workspace:^",
     "reflect-metadata": "^0.2.2",

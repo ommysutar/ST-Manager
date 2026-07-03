@@ -3,10 +3,14 @@
   "version": "0.0.0",
   "private": true,
   "description": "Structured logging abstraction shared across ST Manager apps",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
+    "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@types/node": "^22.15.3",
     "typescript": "^6.0.3"
   }
 }

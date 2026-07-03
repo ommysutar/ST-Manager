@@ -44,6 +44,9 @@ importers:
       '@st-manager/database':
         specifier: workspace:^
         version: link:../../packages/database
+      '@st-manager/logging':
+        specifier: workspace:^
+        version: link:../../packages/logging
       '@st-manager/types':
         specifier: workspace:^
         version: link:../../packages/types
@@ -301,12 +304,21 @@ importers:
 
   packages/logging:
     devDependencies:
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.20.0
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
 
   packages/storage:
     devDependencies:
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.20.0
+      tsx:
+        specifier: ^4.19.2
+        version: 4.22.5
       typescript:
         specifier: ^6.0.3
         version: 6.0.3

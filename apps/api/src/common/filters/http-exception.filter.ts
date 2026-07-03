@@ -45,9 +45,9 @@ function isStructuredExceptionResponse(value: unknown): value is StructuredExcep
  * rather than only the errors someone thought to handle explicitly.
  *
  * Registered via the `APP_FILTER` DI token in `AppModule` (not
- * `app.useGlobalFilters()` in `main.ts`) so it stays swappable/injectable —
- * e.g. once `packages/logging` (M9) exists, this constructor can take an
- * injected logger instead of the plain `@nestjs/common` `Logger` used here.
+ * `app.useGlobalFilters()` in `main.ts`) so it stays swappable/injectable.
+ * Server-side logging uses `@nestjs/common`'s `Logger`, which is routed
+ * through `StManagerNestLoggerService` via `app.useLogger()` (M9).
  */
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -76,11 +76,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     };
 
     if (statusCode >= 500) {
-      // Full detail server-side only (via Logger, never console.log — M5
-      // decision: "use the logging package instead of console.log()"; the
-      // structured logging package itself, packages/logging, remains
-      // scaffolding-only through M5, so apps/api uses @nestjs/common's
-      // Logger, the same structured-logging tool already established in M3).
+      // Full detail server-side only — emitted as structured JSON via M9 logging.
       this.logger.error(exception instanceof Error ? exception.stack : exception);
       body.message = "Internal server error"; // never leak internals to the client
     }
