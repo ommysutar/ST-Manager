@@ -1,6 +1,5 @@
 "use client";
 
-import { ApiError } from "@st-manager/api-sdk";
 import type { ClientResponseDto } from "@st-manager/contracts";
 import type { StudioResponseDto } from "@st-manager/contracts";
 import { layout } from "@st-manager/theme";
@@ -11,6 +10,7 @@ import { useEffect, useState } from "react";
 import { SessionForm, type SessionFormValues } from "@/components/sessions/SessionForm";
 import { useAuth } from "@/hooks/useAuth";
 import { bookingsApi, clientsApi, sessionsApi, studiosApi } from "@/lib/api-client";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 function toPayload(values: SessionFormValues) {
   return {
@@ -61,8 +61,7 @@ export function SessionCreatePageClient() {
         setIsReady(true);
       })
       .catch((err) => {
-        const message = err instanceof ApiError ? err.message : "Failed to load form data";
-        setError(message);
+        setError(getApiErrorMessage(err, "Failed to load form data"));
         setIsReady(true);
       });
   }, [bookingId, isAuthenticated]);
@@ -77,8 +76,7 @@ export function SessionCreatePageClient() {
       );
       router.push(`/sessions/${session.id}`);
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Failed to create session";
-      setError(message);
+      setError(getApiErrorMessage(err, "Failed to create session"));
     } finally {
       setIsSubmitting(false);
     }

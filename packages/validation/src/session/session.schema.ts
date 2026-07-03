@@ -11,7 +11,7 @@ function optionalNullableNotes() {
     .string()
     .trim()
     .max(2000)
-    .optional()
+    .nullish()
     .transform((value) => (value === undefined || value === "" ? null : value));
 }
 
@@ -27,7 +27,7 @@ function optionalClientId() {
     .string()
     .trim()
     .min(1)
-    .optional()
+    .nullish()
     .transform((value) => (value === undefined || value === "" ? null : value));
 }
 
@@ -43,7 +43,7 @@ function optionalBookingId() {
     .string()
     .trim()
     .min(1)
-    .optional()
+    .nullish()
     .transform((value) => (value === undefined || value === "" ? null : value));
 }
 

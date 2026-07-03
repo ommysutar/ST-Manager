@@ -30,6 +30,20 @@ describe("createSessionSchema", () => {
     expect(result.bookingId).toBe("booking-1");
   });
 
+  it("accepts explicit null optional fields from api-sdk payloads", () => {
+    const result = createSessionSchema.parse({
+      clientId: null,
+      bookingId: "booking-1",
+      notes: null,
+    });
+
+    expect(result).toMatchObject({
+      clientId: null,
+      bookingId: "booking-1",
+      notes: null,
+    });
+  });
+
   it("normalizes empty notes to null", () => {
     const result = createSessionSchema.parse({
       studioId: "studio-1",
