@@ -263,10 +263,50 @@ export function DashboardPage() {
               title="Calendar"
               description="Booking calendar management is available on the web portal in M16."
             />
-            <EmptyModulePanel
-              title="Sessions"
-              description="Sessions in progress and completed today."
-            />
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Sessions</CardTitle>
+                <CardDescription>In progress and completed today.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="mb-2 text-sm font-medium">In progress</p>
+                  {canFetch && summary && summary.sessionsInProgress.length > 0 ? (
+                    <ul className="flex flex-col gap-2">
+                      {summary.sessionsInProgress.map((session) => (
+                        <li key={session.id} className="text-sm">
+                          <span className="font-medium">{session.title}</span>
+                          <span className="text-muted-foreground">
+                            {" "}
+                            — {session.studioName}
+                            {session.clientName ? ` · ${session.clientName}` : ""}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No sessions in progress.</p>
+                  )}
+                </div>
+                <div>
+                  <p className="mb-2 text-sm font-medium">Completed today</p>
+                  {canFetch && summary && summary.completedTodaySessions.length > 0 ? (
+                    <ul className="flex flex-col gap-2">
+                      {summary.completedTodaySessions.map((session) => (
+                        <li key={session.id} className="text-sm">
+                          <span className="font-medium">{session.title}</span>
+                          <span className="text-muted-foreground"> — {session.studioName}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No sessions completed today. Use the web portal to manage sessions.
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
             <EmptyModulePanel
               title="Billing"
               description="Outstanding invoices and payments this month."

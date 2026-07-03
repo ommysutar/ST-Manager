@@ -41,3 +41,14 @@ export type {
   UpdateBookingInput,
   ListBookingsQueryInput,
 } from "./booking/booking.schema";
+
+export {
+  createSessionSchema,
+  updateSessionSchema,
+  listSessionsQuerySchema,
+} from "./session/session.schema";
+export type {
+  CreateSessionInput,
+  UpdateSessionInput,
+  ListSessionsQueryInput,
+} from "./session/session.schema";

@@ -42,8 +42,6 @@ export const navItems: NavItem[] = [
     label: "Sessions",
     href: "/sessions",
     icon: Mic2,
-    disabled: true,
-    comingSoon: true,
   },
   {
     label: "Billing",

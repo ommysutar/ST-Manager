@@ -41,6 +41,23 @@ function mapStatusToErrorCode(statusCode: number): ApiErrorCode {
   return API_ERROR_CODES.INTERNAL_ERROR;
 }
 
+function resolveErrorCode(statusCode: number, structured?: StructuredExceptionResponse): ApiErrorCode {
+  if (
+    structured?.details &&
+    typeof structured.details === "object" &&
+    structured.details !== null &&
+    "code" in structured.details &&
+    typeof (structured.details as { code: unknown }).code === "string"
+  ) {
+    const code = (structured.details as { code: string }).code;
+    if (Object.values(API_ERROR_CODES).includes(code as ApiErrorCode)) {
+      return code as ApiErrorCode;
+    }
+  }
+
+  return mapStatusToErrorCode(statusCode);
+}
+
 function isStructuredExceptionResponse(value: unknown): value is StructuredExceptionResponse {
   return typeof value === "object" && value !== null;
 }
@@ -77,7 +94,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const body: ApiErrorResponseDto = {
       success: false,
       statusCode,
-      error: mapStatusToErrorCode(statusCode),
+      error: resolveErrorCode(statusCode, structured),
       message: this.resolveMessage(exception, structured),
       details: structured?.details,
       path: request.url,

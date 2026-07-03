@@ -55,8 +55,22 @@ export type {
   UpdateBookingResponseDto,
 } from "./booking/list-bookings.dto";
 
+export type { SessionResponseDto } from "./session/session-response.dto";
+export type { CreateSessionDto, CreateSessionResponseDto } from "./session/create-session.dto";
+export type { UpdateSessionDto } from "./session/list-sessions.dto";
+export type {
+  CancelSessionResponseDto,
+  CompleteSessionResponseDto,
+  GetSessionResponseDto,
+  ListSessionsQueryDto,
+  ListSessionsResponseDto,
+  StartSessionResponseDto,
+  UpdateSessionResponseDto,
+} from "./session/list-sessions.dto";
+
 export type { DashboardBookingSummaryDto } from "./dashboard/dashboard-booking-summary.dto";
 export type { DashboardClientSummaryDto } from "./dashboard/dashboard-client-summary.dto";
+export type { DashboardSessionSummaryDto } from "./dashboard/dashboard-session-summary.dto";
 export type {
   DashboardSummaryDataDto,
   DashboardSummaryResponseDto,

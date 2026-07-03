@@ -14,6 +14,7 @@ import { AiModule } from "./modules/ai/ai.module";
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
 import { ClientsModule } from "./modules/clients/clients.module";
 import { BookingsModule } from "./modules/bookings/bookings.module";
+import { SessionsModule } from "./modules/sessions/sessions.module";
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { BookingsModule } from "./modules/bookings/bookings.module";
     DashboardModule,
     ClientsModule,
     BookingsModule,
+    SessionsModule,
   ],
   providers: [StManagerNestLoggerService, { provide: APP_FILTER, useClass: HttpExceptionFilter }],
 })

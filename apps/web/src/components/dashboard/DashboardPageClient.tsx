@@ -275,10 +275,58 @@ export function DashboardPageClient() {
                 )}
               </CardContent>
             </Card>
-            <EmptyModulePanel
-              title="Sessions"
-              description="Sessions in progress and completed today."
-            />
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Sessions</CardTitle>
+                <CardDescription>In progress and completed today.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="mb-2 text-sm font-medium">In progress</p>
+                  {summary && summary.sessionsInProgress.length > 0 ? (
+                    <ul className="space-y-2 text-sm">
+                      {summary.sessionsInProgress.map((session) => (
+                        <li key={session.id}>
+                          <Link
+                            href={`/sessions/${session.id}`}
+                            className="font-medium text-primary underline-offset-4 hover:underline"
+                          >
+                            {session.title}
+                          </Link>
+                          <span className="text-muted-foreground">
+                            {" "}
+                            — {session.studioName}
+                            {session.clientName ? ` · ${session.clientName}` : ""}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No sessions in progress.</p>
+                  )}
+                </div>
+                <div>
+                  <p className="mb-2 text-sm font-medium">Completed today</p>
+                  {summary && summary.completedTodaySessions.length > 0 ? (
+                    <ul className="space-y-2 text-sm">
+                      {summary.completedTodaySessions.map((session) => (
+                        <li key={session.id}>
+                          <Link
+                            href={`/sessions/${session.id}`}
+                            className="font-medium text-primary underline-offset-4 hover:underline"
+                          >
+                            {session.title}
+                          </Link>
+                          <span className="text-muted-foreground"> — {session.studioName}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No sessions completed today.</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
             <EmptyModulePanel
               title="Billing"
               description="Outstanding invoices and payments this month."

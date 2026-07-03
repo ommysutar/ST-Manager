@@ -5,6 +5,7 @@
 export const ROUTES = {
   AUTH: "auth",
   BOOKINGS: "bookings",
+  SESSIONS: "sessions",
   CLIENTS: "clients",
   DASHBOARD: "dashboard",
   STUDIOS: "studios",

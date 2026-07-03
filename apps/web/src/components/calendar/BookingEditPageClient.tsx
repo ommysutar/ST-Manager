@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 
 import { BookingForm, type BookingFormValues } from "@/components/calendar/BookingForm";
 import { useAuth } from "@/hooks/useAuth";
-import { bookingsApi, clientsApi, studiosApi } from "@/lib/api-client";
+import { bookingsApi, clientsApi, sessionsApi, studiosApi } from "@/lib/api-client";
 
 function toPayload(values: BookingFormValues) {
   return {
@@ -28,6 +28,7 @@ export function BookingEditPageClient({ bookingId }: { bookingId: string }) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const [booking, setBooking] = useState<BookingResponseDto | null>(null);
+  const [linkedSessionId, setLinkedSessionId] = useState<string | null>(null);
   const [studios, setStudios] = useState<StudioResponseDto[]>([]);
   const [clients, setClients] = useState<ClientResponseDto[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,11 +43,13 @@ export function BookingEditPageClient({ bookingId }: { bookingId: string }) {
       bookingsApi.getBooking(bookingId),
       studiosApi.listStudios({ page: 1, pageSize: 100 }),
       clientsApi.listClients({ page: 1, pageSize: 100 }),
+      sessionsApi.listSessions({ bookingId, page: 1, pageSize: 1 }),
     ])
-      .then(([bookingResponse, studioResponse, clientResponse]) => {
+      .then(([bookingResponse, studioResponse, clientResponse, sessionResponse]) => {
         setBooking(bookingResponse);
         setStudios(studioResponse.data);
         setClients(clientResponse.data);
+        setLinkedSessionId(sessionResponse.data[0]?.id ?? null);
       })
       .catch((err) => {
         const message = err instanceof ApiError ? err.message : "Failed to load booking";
@@ -101,7 +104,27 @@ export function BookingEditPageClient({ bookingId }: { bookingId: string }) {
       ) : !booking ? (
         <p className="text-sm text-muted-foreground">{error ?? "Loading booking..."}</p>
       ) : (
-        <BookingForm
+        <>
+          {linkedSessionId ? (
+            <p className="text-sm">
+              <Link
+                href={`/sessions/${linkedSessionId}`}
+                className="text-primary underline-offset-4 hover:underline"
+              >
+                View session
+              </Link>
+            </p>
+          ) : (
+            <p className="text-sm">
+              <Link
+                href={`/sessions/new?bookingId=${bookingId}`}
+                className="text-primary underline-offset-4 hover:underline"
+              >
+                Start session from this booking
+              </Link>
+            </p>
+          )}
+          <BookingForm
           studios={studios}
           clients={clients}
           initialValues={{
@@ -119,6 +142,7 @@ export function BookingEditPageClient({ bookingId }: { bookingId: string }) {
           onSubmit={handleSubmit}
           onCancelBooking={handleCancelBooking}
         />
+        </>
       )}
     </div>
   );

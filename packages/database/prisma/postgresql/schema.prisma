@@ -20,6 +20,7 @@ model Studio {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   bookings  Booking[]
+  sessions  Session[]
 
   @@map("studios")
 }
@@ -46,6 +47,7 @@ model Client {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   bookings  Booking[]
+  sessions  Session[]
 
   @@map("clients")
 }
@@ -63,9 +65,32 @@ model Booking {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  studio Studio  @relation(fields: [studioId], references: [id])
-  client Client? @relation(fields: [clientId], references: [id])
+  studio  Studio   @relation(fields: [studioId], references: [id])
+  client  Client?  @relation(fields: [clientId], references: [id])
+  session Session?
 
   @@index([studioId, startAt, endAt])
   @@map("bookings")
+}
+
+model Session {
+  id        String    @id @default(cuid())
+  studioId  String
+  clientId  String?
+  bookingId String?   @unique
+  title     String    @db.VarChar(120)
+  startedAt DateTime
+  endedAt   DateTime?
+  status    String    @default("scheduled") @db.VarChar(32)
+  notes     String?   @db.Text
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  studio  Studio   @relation(fields: [studioId], references: [id])
+  client  Client?  @relation(fields: [clientId], references: [id])
+  booking Booking? @relation(fields: [bookingId], references: [id])
+
+  @@index([studioId, status, startedAt])
+  @@map("sessions")
 }

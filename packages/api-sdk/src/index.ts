@@ -22,3 +22,6 @@ export type { ClientsApi } from "./clients/clients.api";
 
 export { createBookingsApi } from "./bookings/bookings.api";
 export type { BookingsApi } from "./bookings/bookings.api";
+
+export { createSessionsApi } from "./sessions/sessions.api";
+export type { SessionsApi } from "./sessions/sessions.api";

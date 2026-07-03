@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { BookingsRepository } from "../bookings/bookings.repository";
 import { ClientsRepository } from "../clients/clients.repository";
+import { SessionsRepository } from "../sessions/sessions.repository";
 import { StudiosRepository } from "../studios/studios.repository";
 import { DashboardService } from "./dashboard.service";
 
@@ -18,6 +19,10 @@ describe("DashboardService", () => {
   let bookingsRepository: {
     findToday: ReturnType<typeof vi.fn>;
   };
+  let sessionsRepository: {
+    findInProgress: ReturnType<typeof vi.fn>;
+    findCompletedToday: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     studiosRepository = {
@@ -31,11 +36,16 @@ describe("DashboardService", () => {
     bookingsRepository = {
       findToday: vi.fn(),
     };
+    sessionsRepository = {
+      findInProgress: vi.fn(),
+      findCompletedToday: vi.fn(),
+    };
 
     service = new DashboardService(
       studiosRepository as unknown as StudiosRepository,
       clientsRepository as unknown as ClientsRepository,
       bookingsRepository as unknown as BookingsRepository,
+      sessionsRepository as unknown as SessionsRepository,
     );
   });
 
@@ -72,12 +82,31 @@ describe("DashboardService", () => {
       studioName: "Downtown Studio",
       clientName: null,
     };
+    const session = {
+      id: "session-1",
+      studioId: "studio-1",
+      clientId: null,
+      bookingId: null,
+      title: "Tracking session",
+      startedAt: new Date("2026-07-03T14:00:00.000Z"),
+      endedAt: null,
+      status: "in_progress" as const,
+      notes: null,
+      deletedAt: null,
+      createdAt: new Date("2026-07-03T00:00:00.000Z"),
+      updatedAt: new Date("2026-07-03T00:00:00.000Z"),
+      studioName: "Downtown Studio",
+      clientName: null,
+      bookingTitle: null,
+    };
 
     studiosRepository.count.mockResolvedValue(3);
     studiosRepository.findMany.mockResolvedValue([studio]);
     clientsRepository.count.mockResolvedValue(2);
     clientsRepository.findMany.mockResolvedValue([client]);
     bookingsRepository.findToday.mockResolvedValue([booking]);
+    sessionsRepository.findInProgress.mockResolvedValue([session]);
+    sessionsRepository.findCompletedToday.mockResolvedValue([]);
 
     await expect(service.getSummary()).resolves.toEqual({
       studioCount: 3,
@@ -108,6 +137,18 @@ describe("DashboardService", () => {
           createdAt: "2026-07-03T01:00:00.000Z",
         },
       ],
+      sessionsInProgress: [
+        {
+          id: "session-1",
+          title: "Tracking session",
+          studioId: "studio-1",
+          studioName: "Downtown Studio",
+          clientName: null,
+          startedAt: "2026-07-03T14:00:00.000Z",
+          status: "in_progress",
+        },
+      ],
+      completedTodaySessions: [],
       monthRevenue: 0,
       utilizationPercent: 0,
     });
@@ -119,11 +160,15 @@ describe("DashboardService", () => {
     clientsRepository.count.mockResolvedValue(0);
     clientsRepository.findMany.mockResolvedValue([]);
     bookingsRepository.findToday.mockResolvedValue([]);
+    sessionsRepository.findInProgress.mockResolvedValue([]);
+    sessionsRepository.findCompletedToday.mockResolvedValue([]);
 
     const summary = await service.getSummary();
 
     expect(summary.recentStudios).toEqual([]);
     expect(summary.recentClients).toEqual([]);
     expect(summary.todayBookings).toEqual([]);
+    expect(summary.sessionsInProgress).toEqual([]);
+    expect(summary.completedTodaySessions).toEqual([]);
   });
 });
