@@ -30,8 +30,8 @@ if (!d.success || typeof d.data?.studioCount !== 'number') {
   console.error('Missing success envelope or studioCount', d);
   process.exit(1);
 }
-if (!Array.isArray(d.data.recentStudios) || !Array.isArray(d.data.todayBookings)) {
-  console.error('Missing recentStudios or todayBookings arrays', d);
+if (!Array.isArray(d.data.recentStudios) || !Array.isArray(d.data.todayBookings) || !Array.isArray(d.data.recentClients)) {
+  console.error('Missing recentStudios, todayBookings, or recentClients arrays', d);
   process.exit(1);
 }
 if (d.data.clientCount !== 0 || d.data.monthRevenue !== 0 || d.data.utilizationPercent !== 0) {

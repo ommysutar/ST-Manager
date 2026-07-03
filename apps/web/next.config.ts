@@ -76,6 +76,14 @@ const nextConfig: NextConfig = {
         source: "/api/dashboard/:path*",
         destination: "http://localhost:4000/dashboard/:path*",
       },
+      {
+        source: "/api/clients",
+        destination: "http://localhost:4000/clients",
+      },
+      {
+        source: "/api/clients/:path*",
+        destination: "http://localhost:4000/clients/:path*",
+      },
     ];
   },
   turbopack: {

@@ -31,7 +31,20 @@ export type {
   GenerateStudioSummaryResponseDto,
 } from "./ai/studio-summary.dto";
 
+export type { ClientResponseDto } from "./client/client-response.dto";
+export type { CreateClientDto } from "./client/create-client.dto";
+export type { UpdateClientDto } from "./client/update-client.dto";
+export type {
+  CreateClientResponseDto,
+  DeleteClientResponseDto,
+  GetClientResponseDto,
+  ListClientsQueryDto,
+  ListClientsResponseDto,
+  UpdateClientResponseDto,
+} from "./client/list-clients.dto";
+
 export type { DashboardBookingSummaryDto } from "./dashboard/dashboard-booking-summary.dto";
+export type { DashboardClientSummaryDto } from "./dashboard/dashboard-client-summary.dto";
 export type {
   DashboardSummaryDataDto,
   DashboardSummaryResponseDto,

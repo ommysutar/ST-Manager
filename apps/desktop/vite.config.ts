@@ -53,6 +53,10 @@ export default defineConfig({
         target: "http://localhost:4000",
         changeOrigin: true,
       },
+      "/clients": {
+        target: "http://localhost:4000",
+        changeOrigin: true,
+      },
     },
   },
 });

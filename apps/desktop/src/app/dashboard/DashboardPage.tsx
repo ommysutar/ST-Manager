@@ -139,7 +139,7 @@ export function DashboardPage() {
             <KpiCard
               label="Clients"
               value={String(summary?.clientCount ?? 0)}
-              hint="Available after client management (M15)"
+              hint="Live client contacts"
             />
             <KpiCard
               label="Month revenue"
@@ -188,14 +188,46 @@ export function DashboardPage() {
             </CardContent>
           </Card>
 
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Recent clients</CardTitle>
+              <CardDescription>
+                Latest clients in your workspace.{" "}
+                <Link to="/clients" className="text-primary underline-offset-4 hover:underline">
+                  Manage clients
+                </Link>
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {canFetch && summary && summary.recentClients.length > 0 ? (
+                <ul className="flex flex-col gap-2">
+                  {summary.recentClients.map((client) => (
+                    <li key={client.id} className="text-sm">
+                      <span className="font-medium">{client.name}</span>
+                      <span className="text-muted-foreground">
+                        {" "}
+                        — {client.company ?? "No company"} · added{" "}
+                        {new Date(client.createdAt).toLocaleDateString()}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No clients yet.{" "}
+                  <Link to="/clients/new" className="text-primary underline-offset-4 hover:underline">
+                    Add your first client
+                  </Link>
+                  .
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
           <div className="grid gap-4 lg:grid-cols-2">
             <EmptyModulePanel
               title="Today's bookings"
               description="Schedule overview for the current day."
-            />
-            <EmptyModulePanel
-              title="Clients"
-              description="Recent client activity and contact summaries."
             />
             <EmptyModulePanel
               title="Calendar"

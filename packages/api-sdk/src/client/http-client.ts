@@ -54,7 +54,7 @@ export function createHttpClient(config: ApiClientConfig): HttpClient {
   const fetchImpl = config.fetch ?? fetch;
 
   async function request<T>(
-    method: "GET" | "POST",
+    method: "GET" | "POST" | "PATCH" | "DELETE",
     path: string,
     options: { query?: QueryParams; body?: unknown; allowRetry?: boolean } = {},
   ): Promise<T> {
@@ -106,5 +106,7 @@ export function createHttpClient(config: ApiClientConfig): HttpClient {
   return {
     get: (path, query) => request("GET", path, { query }),
     post: (path, body) => request("POST", path, { body }),
+    patch: (path, body) => request("PATCH", path, { body }),
+    delete: (path) => request("DELETE", path),
   };
 }

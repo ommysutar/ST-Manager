@@ -21,3 +21,12 @@ export type { SyncStudiosPullQueryInput } from "./sync/sync-studios-pull.schema"
 
 export { generateStudioSummarySchema } from "./ai/studio-summary.schema";
 export type { GenerateStudioSummaryInput } from "./ai/studio-summary.schema";
+
+export {
+  createClientSchema,
+  updateClientSchema,
+} from "./client/client.schema";
+export type { CreateClientInput, UpdateClientInput } from "./client/client.schema";
+
+export { listClientsQuerySchema } from "./client/list-clients-query.schema";
+export type { ListClientsQueryInput } from "./client/list-clients-query.schema";

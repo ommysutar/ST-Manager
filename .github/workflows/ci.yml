@@ -175,8 +175,10 @@ jobs:
           cat /tmp/st-manager-api-pg.log
           exit 1
 
-      - name: Dashboard smoke (PostgreSQL)
-        run: bash apps/api/scripts/dashboard-smoke.sh
+      - name: PostgreSQL smoke tests
+        run: |
+          bash apps/api/scripts/dashboard-smoke.sh
+          bash apps/api/scripts/clients-smoke.sh
 
       - name: Stop API
         if: always()

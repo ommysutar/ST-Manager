@@ -19,6 +19,8 @@ describe("createStudiosApi", () => {
     const client: HttpClient = {
       get: vi.fn(),
       post,
+      patch: vi.fn(),
+      delete: vi.fn(),
     };
 
     const studiosApi = createStudiosApi(client);
@@ -39,6 +41,8 @@ describe("createStudiosApi", () => {
     const client: HttpClient = {
       get,
       post: vi.fn(),
+      patch: vi.fn(),
+      delete: vi.fn(),
     };
 
     const studiosApi = createStudiosApi(client);

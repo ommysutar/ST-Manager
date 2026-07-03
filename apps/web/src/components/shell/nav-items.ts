@@ -32,8 +32,6 @@ export const navItems: NavItem[] = [
     label: "Clients",
     href: "/clients",
     icon: Users,
-    disabled: true,
-    comingSoon: true,
   },
   {
     label: "Calendar",

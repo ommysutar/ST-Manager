@@ -16,3 +16,6 @@ export type { AiApi } from "./ai/ai.api";
 
 export { createDashboardApi } from "./dashboard/dashboard.api";
 export type { DashboardApi } from "./dashboard/dashboard.api";
+
+export { createClientsApi } from "./clients/clients.api";
+export type { ClientsApi } from "./clients/clients.api";

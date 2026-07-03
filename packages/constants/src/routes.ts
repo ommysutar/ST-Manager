@@ -4,6 +4,7 @@
  */
 export const ROUTES = {
   AUTH: "auth",
+  CLIENTS: "clients",
   DASHBOARD: "dashboard",
   STUDIOS: "studios",
   SYNC: "sync",

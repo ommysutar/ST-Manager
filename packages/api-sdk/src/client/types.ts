@@ -27,4 +27,6 @@ export type QueryParams = Record<string, string | number | boolean | undefined>;
 export interface HttpClient {
   get<T>(path: string, query?: QueryParams): Promise<T>;
   post<T>(path: string, body: unknown): Promise<T>;
+  patch<T>(path: string, body: unknown): Promise<T>;
+  delete<T>(path: string): Promise<T>;
 }
