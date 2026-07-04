@@ -3,16 +3,14 @@
 import { ApiError } from "@st-manager/api-sdk";
 import type { DashboardSummaryDataDto } from "@st-manager/contracts";
 import { layout } from "@st-manager/theme";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@st-manager/ui";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@st-manager/ui";
+import { PlusCircleIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { dashboardApi } from "@/lib/api-client";
+import { formatINR } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
-}
 
 function formatPercent(value: number): string {
   return `${value}%`;
@@ -93,11 +91,21 @@ export function DashboardPageClient() {
       className="mx-auto flex flex-col gap-6"
       style={{ maxWidth: layout.contentMaxWidth }}
     >
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          At-a-glance view of your studio operations.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            At-a-glance view of your studio operations.
+          </p>
+        </div>
+        {isAuthenticated ? (
+          <Button asChild size="lg" className="shadow-lg shadow-primary/10">
+            <Link href="/inquiries/new">
+              <PlusCircleIcon className="size-4" />
+              New Inquiry
+            </Link>
+          </Button>
+        ) : null}
       </div>
 
       {!isAuthenticated ? (
@@ -131,7 +139,7 @@ export function DashboardPageClient() {
             />
             <KpiCard
               label="Month revenue"
-              value={formatCurrency(summary?.monthRevenue ?? 0)}
+              value={formatINR(summary?.monthRevenue ?? 0)}
               hint="Paid invoices this month"
             />
             <KpiCard
@@ -327,7 +335,7 @@ export function DashboardPageClient() {
                 <p className="text-sm">
                   Outstanding balance:{" "}
                   <span className="font-medium">
-                    {formatCurrency(summary?.outstandingBalance ?? 0)}
+                    {formatINR(summary?.outstandingBalance ?? 0)}
                   </span>
                 </p>
                 <div>
@@ -344,7 +352,7 @@ export function DashboardPageClient() {
                           </Link>
                           <span className="text-muted-foreground">
                             {" "}
-                            — {invoice.clientName} · {formatCurrency(invoice.total)}
+                            — {invoice.clientName} · {formatINR(invoice.total)}
                           </span>
                         </li>
                       ))}
@@ -367,7 +375,7 @@ export function DashboardPageClient() {
                           </Link>
                           <span className="text-muted-foreground">
                             {" "}
-                            — {invoice.clientName} · {formatCurrency(invoice.total)}
+                            — {invoice.clientName} · {formatINR(invoice.total)}
                           </span>
                         </li>
                       ))}
@@ -406,7 +414,7 @@ export function DashboardPageClient() {
                             style={{
                               height: `${Math.max((point.revenue / maxRevenue) * 100, point.revenue > 0 ? 8 : 0)}%`,
                             }}
-                            title={`${point.date}: ${formatCurrency(point.revenue)}`}
+                            title={`${point.date}: ${formatINR(point.revenue)}`}
                           />
                           <span className="truncate text-[10px] text-muted-foreground">
                             {point.date.slice(5)}
