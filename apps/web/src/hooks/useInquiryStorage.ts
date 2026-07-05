@@ -6,7 +6,6 @@ import { DEFAULT_PROJECT_PLANS, DEFAULT_STUDIO_SERVICES } from "@/lib/inquiry/co
 import {
   INQUIRIES_UPDATED_EVENT,
   PROJECT_PLANS_UPDATED_EVENT,
-  PROJECTS_UPDATED_EVENT,
   SERVICE_PRICING_UPDATED_EVENT,
 } from "@/lib/inquiry/events";
 import { initializeProjectPlanSnapshots } from "@/lib/inquiry/plans";
@@ -19,8 +18,9 @@ import {
   getInquiriesSnapshot,
   getInquirySnapshot,
 } from "@/lib/inquiry/snapshots";
-import { getProject, initializeInquirySnapshots } from "@/lib/inquiry/storage";
-import type { CreatedProject, ProjectPlan, SavedInquiry, StudioService } from "@/lib/inquiry/types";
+import { initializeInquirySnapshots } from "@/lib/inquiry/storage";
+import { initializeProjectSnapshots } from "@/lib/projects/storage";
+import type { ProjectPlan, SavedInquiry, StudioService } from "@/lib/inquiry/types";
 
 const defaultActiveServices = DEFAULT_STUDIO_SERVICES.filter((service) => service.active);
 const defaultActivePlans = DEFAULT_PROJECT_PLANS.filter((plan) => plan.active);
@@ -35,6 +35,7 @@ function ensureSnapshotsReady(): void {
   initializeInquirySnapshots();
   initializeServiceSnapshots();
   initializeProjectPlanSnapshots();
+  initializeProjectSnapshots();
   snapshotsReady = true;
 }
 
@@ -80,16 +81,8 @@ export function useInquiry(inquiryId: string): SavedInquiry | null {
   );
 }
 
-export function useProject(projectId: string): CreatedProject | null {
-  return useSyncExternalStore(
-    (onStoreChange) => {
-      window.addEventListener(PROJECTS_UPDATED_EVENT, onStoreChange);
-      return () => window.removeEventListener(PROJECTS_UPDATED_EVENT, onStoreChange);
-    },
-    () => getProject(projectId) ?? null,
-    () => null,
-  );
-}
+/** @deprecated Use useProject from @/hooks/useProjects */
+export { useProject } from "@/hooks/useProjects";
 
 /** All services for Owner/Admin management (includes inactive). */
 export function useAllStudioServices(): StudioService[] {

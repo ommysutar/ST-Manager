@@ -46,7 +46,7 @@ export interface SavedInquiry {
 
 export interface CreatedProject {
   id: string;
-  inquiryId: string;
+  inquiryId?: string;
   clientName: string;
   projectName: string;
   advanceReceived: number;
@@ -57,6 +57,7 @@ export interface CreatedProject {
 
 export const WIZARD_DRAFT_STORAGE_KEY = "st-manager-inquiry-wizard-draft";
 export const INQUIRIES_STORAGE_KEY = "st-manager-inquiries";
+/** @deprecated Use PROJECTS_STORAGE_KEY from @/lib/projects/types */
 export const PROJECTS_STORAGE_KEY = "st-manager-projects";
 export const SERVICE_PRICING_STORAGE_KEY = "st-manager-service-pricing";
 export const PROJECT_PLANS_STORAGE_KEY = "st-manager-project-plans";

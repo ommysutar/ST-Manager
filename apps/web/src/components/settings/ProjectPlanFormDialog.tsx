@@ -20,7 +20,6 @@ import {
   defaultProjectPlanFormValues,
   featuresToText,
   projectPlanFormSchema,
-  textToFeatures,
   type ProjectPlanFormValues,
 } from "@/lib/inquiry/plan.schema";
 import type { ProjectPlan } from "@/lib/inquiry/types";

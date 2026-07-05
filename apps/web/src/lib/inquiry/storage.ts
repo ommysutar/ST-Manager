@@ -1,16 +1,14 @@
 import type {
-  CreatedProject,
   InquiryWizardFormValues,
   QuotationBreakdown,
   SavedInquiry,
 } from "./types";
 import {
   INQUIRIES_STORAGE_KEY,
-  PROJECTS_STORAGE_KEY,
   WIZARD_DRAFT_STORAGE_KEY,
 } from "./types";
 import { generateId } from "./services";
-import { notifyInquiriesUpdated, notifyProjectsUpdated } from "./events";
+import { notifyInquiriesUpdated } from "./events";
 import { setInquiriesSnapshot } from "./snapshots";
 
 export interface WizardDraft {
@@ -108,50 +106,16 @@ export function linkInquiryToProject(inquiryId: string, projectId: string): void
   );
 }
 
-function loadProjects(): CreatedProject[] {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
-  try {
-    const raw = localStorage.getItem(PROJECTS_STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as CreatedProject[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function persistProjects(projects: CreatedProject[]): void {
-  localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(projects));
-  notifyProjectsUpdated();
-}
-
-export function getProject(id: string): CreatedProject | undefined {
-  return loadProjects().find((project) => project.id === id);
-}
-
-export function createProjectFromInquiry(input: {
-  inquiryId: string;
-  form: InquiryWizardFormValues;
-  quotation: QuotationBreakdown;
-  advanceAmount: number;
-  remainingBalance: number;
-}): CreatedProject {
-  const project: CreatedProject = {
-    id: generateId("prj"),
-    inquiryId: input.inquiryId,
-    clientName: input.form.clientName,
-    projectName: input.form.projectName,
-    advanceReceived: input.advanceAmount,
-    remainingBalance: input.remainingBalance,
-    grandTotal: input.quotation.grandTotal,
-    createdAt: new Date().toISOString(),
-  };
-
-  persistProjects([project, ...loadProjects()]);
-  return project;
-}
-
 export function initializeInquirySnapshots(): void {
   setInquiriesSnapshot(listInquiries());
 }
+
+// Project CRUD moved to @/lib/projects — re-export for backward compatibility.
+export {
+  createProject,
+  createProjectFromInquiry,
+  getProject,
+  listProjects,
+  updateProject,
+  updateProjectTasks,
+} from "@/lib/projects/storage";

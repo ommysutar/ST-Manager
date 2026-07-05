@@ -1,6 +1,5 @@
 import {
   BarChart3,
-  Building2,
   Calendar,
   ClipboardList,
   FolderKanban,
@@ -27,14 +26,14 @@ export const navItems: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
-    label: "Inquiries",
-    href: "/inquiries",
+    label: "New Inquiry",
+    href: "/inquiries/new",
     icon: ClipboardList,
   },
   {
-    label: "Studios",
-    href: "/studios",
-    icon: Building2,
+    label: "Projects",
+    href: "/projects",
+    icon: FolderKanban,
   },
   {
     label: "Clients",
@@ -62,13 +61,8 @@ export const navItems: NavItem[] = [
     icon: BarChart3,
   },
   {
-    label: "Service Management",
-    href: "/settings/services",
+    label: "Settings",
+    href: "/settings",
     icon: Settings,
-  },
-  {
-    label: "Project Plans",
-    href: "/settings/projects",
-    icon: FolderKanban,
   },
 ];

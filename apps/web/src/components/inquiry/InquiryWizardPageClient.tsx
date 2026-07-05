@@ -30,13 +30,13 @@ import {
 } from "@/lib/inquiry/schema";
 import {
   clearWizardDraft,
-  createProjectFromInquiry,
   linkInquiryToProject,
   loadWizardDraft,
   saveInquiryRecord,
   saveWizardDraft,
 } from "@/lib/inquiry/storage";
-import type { CreatedProject } from "@/lib/inquiry/types";
+import { createProjectFromInquiry } from "@/lib/projects/storage";
+import type { StudioProject } from "@/lib/projects/types";
 
 interface WizardBootstrap {
   step: number;
@@ -57,7 +57,7 @@ function InquiryWizardForm({ initialState }: { initialState: WizardBootstrap }) 
   const router = useRouter();
   const [step, setStep] = useState(initialState.step);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [createdProject, setCreatedProject] = useState<CreatedProject | null>(null);
+  const [createdProject, setCreatedProject] = useState<StudioProject | null>(null);
   const draftToastShown = useRef(false);
 
   const form = useForm<InquiryWizardSchema>({

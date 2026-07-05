@@ -5,10 +5,10 @@ import { CheckCircle2Icon } from "lucide-react";
 import Link from "next/link";
 
 import { formatINR } from "@/lib/currency";
-import type { CreatedProject } from "@/lib/inquiry/types";
+import type { StudioProject } from "@/lib/projects/types";
 
 interface SuccessStepProps {
-  project: CreatedProject;
+  project: StudioProject;
 }
 
 export function SuccessStep({ project }: SuccessStepProps) {
