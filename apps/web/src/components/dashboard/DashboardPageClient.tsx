@@ -4,6 +4,7 @@ import { Button } from "@st-manager/ui";
 import { FolderPlusIcon, PlusCircleIcon } from "lucide-react";
 import Link from "next/link";
 
+import { BookingsWidget } from "@/components/dashboard/BookingsWidget";
 import { PaymentStatusWidget } from "@/components/dashboard/PaymentStatusWidget";
 import { ProjectStatusWidget } from "@/components/dashboard/ProjectStatusWidget";
 import { useAuth } from "@/hooks/useAuth";
@@ -57,6 +58,9 @@ export function DashboardPageClient() {
         <div className="grid gap-6 lg:grid-cols-2">
           <ProjectStatusWidget />
           <PaymentStatusWidget />
+          <div className="lg:col-span-2">
+            <BookingsWidget />
+          </div>
         </div>
       ) : null}
     </div>

@@ -38,37 +38,52 @@ export function ProjectBookingsTab({ projectId }: ProjectBookingsTabProps) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Booking Date</TableHead>
                   <TableHead>Studio</TableHead>
-                  <TableHead>Slot</TableHead>
-                  <TableHead>Booking Purpose</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Time</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Notes</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {bookings.map((booking) => (
-                  <TableRow key={booking.id}>
-                    <TableCell>
-                      {new Date(`${booking.date}T12:00:00`).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      {studios.find((studio) => studio.id === booking.studioId)?.name ?? "—"}
-                    </TableCell>
-                    <TableCell>{getBookingSlotLabel(booking.slotId)}</TableCell>
-                    <TableCell>{booking.bookingFor}</TableCell>
-                    <TableCell>
-                      <Badge variant={booking.status === "confirmed" ? "success" : "secondary"}>
-                        {BOOKING_STATUS_LABELS[booking.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button asChild variant="outline" size="sm">
-                        <Link href={`/bookings/${booking.id}`}>Open Booking</Link>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {bookings.map((booking) => {
+                  const studio = studios.find((entry) => entry.id === booking.studioId);
+
+                  return (
+                    <TableRow key={booking.id}>
+                      <TableCell>
+                        <span className="flex items-center gap-2">
+                          {studio ? (
+                            <span
+                              className="size-2.5 shrink-0 rounded-full"
+                              style={{ backgroundColor: studio.color }}
+                              aria-hidden
+                            />
+                          ) : null}
+                          {studio?.name ?? "—"}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(`${booking.date}T12:00:00`).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>{getBookingSlotLabel(booking.slotId)}</TableCell>
+                      <TableCell>
+                        <Badge variant={booking.status === "cancelled" ? "secondary" : "success"}>
+                          {BOOKING_STATUS_LABELS[booking.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="max-w-[16rem] truncate text-muted-foreground">
+                        {booking.notes || "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={`/bookings/${booking.id}`}>Open Booking</Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}

@@ -1,8 +1,8 @@
-import { BOOKING_SLOTS } from "./constants";
-import type { BookingSlotId } from "./types";
+import { loadAllSlots } from "./slot-storage";
+import type { BookingSlot, BookingSlotId } from "./types";
 
-export function getBookingSlot(slotId: BookingSlotId) {
-  return BOOKING_SLOTS.find((slot) => slot.id === slotId);
+export function getBookingSlot(slotId: BookingSlotId): BookingSlot | undefined {
+  return loadAllSlots().find((slot) => slot.id === slotId);
 }
 
 export function getBookingSlotLabel(slotId: BookingSlotId): string {

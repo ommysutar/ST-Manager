@@ -4,14 +4,38 @@ import { getProject, updateProject } from "@/lib/projects/storage";
 import { notifyBookingsUpdated } from "./events";
 import { setBookingsSnapshot } from "./snapshots";
 import type { BookingSlotId, ProjectBooking, ProjectBookingStatus } from "./types";
-import { BOOKINGS_STORAGE_KEY } from "./types";
+import { BOOKINGS_STORAGE_KEY, OCCUPYING_BOOKING_STATUSES } from "./types";
 
 export interface CreateBookingInput {
   projectId: string;
   studioId: string;
   bookingFor: string;
+  notes?: string;
   date: string;
   slotId: BookingSlotId;
+  status?: ProjectBookingStatus;
+}
+
+export interface UpdateBookingInput {
+  studioId?: string;
+  bookingFor?: string;
+  notes?: string;
+  date?: string;
+  slotId?: BookingSlotId;
+  status?: ProjectBookingStatus;
+}
+
+const DOUBLE_BOOKING_ERROR = "Studio already booked.";
+
+function normalizeStatus(raw: unknown): ProjectBookingStatus {
+  if (raw === "confirmed") {
+    // Legacy Sprint 3 data migrated to the new status model.
+    return "booked";
+  }
+  if (raw === "draft" || raw === "booked" || raw === "completed" || raw === "cancelled") {
+    return raw;
+  }
+  return "booked";
 }
 
 function normalizeBooking(raw: Partial<ProjectBooking> & { id: string }): ProjectBooking {
@@ -21,9 +45,10 @@ function normalizeBooking(raw: Partial<ProjectBooking> & { id: string }): Projec
     projectId: String(raw.projectId),
     studioId: String(raw.studioId),
     bookingFor: raw.bookingFor?.trim() || "Studio Session",
+    notes: raw.notes?.trim() ?? "",
     date: String(raw.date),
     slotId: raw.slotId ?? "slot_1",
-    status: raw.status ?? "confirmed",
+    status: normalizeStatus(raw.status),
     clientName: raw.clientName ?? "",
     projectName: raw.projectName ?? "",
     createdAt: raw.createdAt ?? now,
@@ -99,7 +124,7 @@ export function isSlotAvailable(
 ): boolean {
   return !loadAllBookings().some(
     (booking) =>
-      booking.status === "confirmed" &&
+      OCCUPYING_BOOKING_STATUSES.includes(booking.status) &&
       booking.studioId === studioId &&
       booking.date === date &&
       booking.slotId === slotId &&
@@ -113,8 +138,12 @@ export function createBooking(input: CreateBookingInput): ProjectBooking {
     throw new Error("Project not found.");
   }
 
-  if (!isSlotAvailable(input.studioId, input.date, input.slotId)) {
-    throw new Error("This studio slot is already booked.");
+  const status = input.status ?? "booked";
+  if (
+    OCCUPYING_BOOKING_STATUSES.includes(status) &&
+    !isSlotAvailable(input.studioId, input.date, input.slotId)
+  ) {
+    throw new Error(DOUBLE_BOOKING_ERROR);
   }
 
   const now = new Date().toISOString();
@@ -123,9 +152,10 @@ export function createBooking(input: CreateBookingInput): ProjectBooking {
     projectId: project.id,
     studioId: input.studioId,
     bookingFor: input.bookingFor,
+    notes: input.notes,
     date: input.date,
     slotId: input.slotId,
-    status: "confirmed",
+    status,
     clientName: project.clientName,
     projectName: project.projectName,
     createdAt: now,
@@ -143,16 +173,34 @@ export function createBooking(input: CreateBookingInput): ProjectBooking {
   return booking;
 }
 
-export function cancelBooking(id: string): ProjectBooking | null {
+export function updateBooking(id: string, patch: UpdateBookingInput): ProjectBooking {
   const bookings = loadAllBookings();
   const index = bookings.findIndex((booking) => booking.id === id);
   if (index === -1) {
-    return null;
+    throw new Error("Booking not found.");
+  }
+
+  const current = bookings[index];
+  const nextStudioId = patch.studioId ?? current.studioId;
+  const nextDate = patch.date ?? current.date;
+  const nextSlotId = patch.slotId ?? current.slotId;
+  const nextStatus = patch.status ?? current.status;
+
+  const isMovingSlot =
+    nextStudioId !== current.studioId || nextDate !== current.date || nextSlotId !== current.slotId;
+
+  if (
+    OCCUPYING_BOOKING_STATUSES.includes(nextStatus) &&
+    (isMovingSlot || nextStatus !== current.status) &&
+    !isSlotAvailable(nextStudioId, nextDate, nextSlotId, current.id)
+  ) {
+    throw new Error(DOUBLE_BOOKING_ERROR);
   }
 
   const updated = normalizeBooking({
-    ...bookings[index],
-    status: "cancelled",
+    ...current,
+    ...patch,
+    id: current.id,
     updatedAt: new Date().toISOString(),
   });
 
@@ -161,22 +209,28 @@ export function cancelBooking(id: string): ProjectBooking | null {
   return updated;
 }
 
-export function updateBookingStatus(id: string, status: ProjectBookingStatus): ProjectBooking | null {
-  const bookings = loadAllBookings();
-  const index = bookings.findIndex((booking) => booking.id === id);
-  if (index === -1) {
+export function cancelBooking(id: string): ProjectBooking | null {
+  try {
+    return updateBooking(id, { status: "cancelled" });
+  } catch {
     return null;
   }
+}
 
-  const updated = normalizeBooking({
-    ...bookings[index],
-    status,
-    updatedAt: new Date().toISOString(),
-  });
+export function updateBookingStatus(id: string, status: ProjectBookingStatus): ProjectBooking | null {
+  try {
+    return updateBooking(id, { status });
+  } catch {
+    return null;
+  }
+}
 
-  bookings[index] = updated;
-  persistBookings(bookings);
-  return updated;
+export function rescheduleBooking(
+  id: string,
+  date: string,
+  slotId: BookingSlotId,
+): ProjectBooking {
+  return updateBooking(id, { date, slotId });
 }
 
 export function initializeBookingSnapshots(): void {

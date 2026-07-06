@@ -18,12 +18,12 @@ export function BookingsWidget() {
   const studios = useStudios();
 
   const { todayBookings, upcomingBookings } = useMemo(() => {
-    const confirmed = bookings.filter((booking) => booking.status === "confirmed");
+    const active = bookings.filter((booking) => booking.status !== "cancelled");
     const today = todayIso();
 
     return {
-      todayBookings: confirmed.filter((booking) => booking.date === today),
-      upcomingBookings: confirmed
+      todayBookings: active.filter((booking) => booking.date === today),
+      upcomingBookings: active
         .filter((booking) => booking.date > today)
         .slice(0, 5),
     };
@@ -52,7 +52,9 @@ export function BookingsWidget() {
                     {getBookingSlotLabel(booking.slotId)} · {booking.bookingFor}
                   </p>
                 </div>
-                <Badge variant="success">{BOOKING_STATUS_LABELS[booking.status]}</Badge>
+                <Badge variant={booking.status === "draft" ? "outline" : "success"}>
+                  {BOOKING_STATUS_LABELS[booking.status]}
+                </Badge>
               </div>
             </Link>
           </li>

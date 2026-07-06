@@ -1,15 +1,6 @@
-import type { BookingSlotId } from "./types";
+import type { BookingSlot } from "./types";
 
-export interface BookingSlotDefinition {
-  id: BookingSlotId;
-  label: string;
-  startHour: number;
-  startMinute: number;
-  endHour: number;
-  endMinute: number;
-}
-
-export const BOOKING_SLOTS: BookingSlotDefinition[] = [
+export const DEFAULT_BOOKING_SLOTS: BookingSlot[] = [
   {
     id: "slot_1",
     label: "11:00 AM – 2:00 PM",
@@ -17,6 +8,9 @@ export const BOOKING_SLOTS: BookingSlotDefinition[] = [
     startMinute: 0,
     endHour: 14,
     endMinute: 0,
+    isCustom: false,
+    createdAt: new Date(0).toISOString(),
+    updatedAt: new Date(0).toISOString(),
   },
   {
     id: "slot_2",
@@ -25,6 +19,9 @@ export const BOOKING_SLOTS: BookingSlotDefinition[] = [
     startMinute: 0,
     endHour: 18,
     endMinute: 0,
+    isCustom: false,
+    createdAt: new Date(0).toISOString(),
+    updatedAt: new Date(0).toISOString(),
   },
   {
     id: "slot_3",
@@ -33,10 +30,22 @@ export const BOOKING_SLOTS: BookingSlotDefinition[] = [
     startMinute: 0,
     endHour: 21,
     endMinute: 0,
+    isCustom: false,
+    createdAt: new Date(0).toISOString(),
+    updatedAt: new Date(0).toISOString(),
   },
 ];
 
 export const BOOKING_STATUS_LABELS: Record<string, string> = {
-  confirmed: "Confirmed",
+  draft: "Draft",
+  booked: "Booked",
+  completed: "Completed",
   cancelled: "Cancelled",
 };
+
+export const BOOKING_STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: "draft", label: "Draft" },
+  { value: "booked", label: "Booked" },
+  { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
+];

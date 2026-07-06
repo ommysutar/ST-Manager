@@ -87,7 +87,7 @@ export function GlobalSearch() {
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
-        placeholder="Search clients, projects, inquiries..."
+        placeholder="Search clients, projects, inquiries, bookings..."
         className="h-9 pl-9"
       />
 

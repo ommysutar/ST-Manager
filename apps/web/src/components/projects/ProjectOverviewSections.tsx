@@ -69,7 +69,7 @@ export function ProjectOverviewSections({ project }: ProjectOverviewSectionsProp
   const receivedAmount = Math.max(0, project.grandTotal - project.remainingBalance);
 
   const upcomingBooking = bookings
-    .filter((booking) => booking.status === "confirmed")
+    .filter((booking) => booking.status !== "cancelled")
     .find((booking) => new Date(`${booking.date}T23:59:59`).getTime() >= now);
 
   const recentFiles = [...project.files]

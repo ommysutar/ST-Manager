@@ -37,29 +37,3 @@ export function toDateTimeLocalValue(iso: string): string {
 export function fromDateTimeLocalValue(value: string): string {
   return new Date(value).toISOString();
 }
-
-export function buildNewBookingHref(studioId: string, day: Date): string {
-  const startAt = new Date(day);
-  startAt.setHours(9, 0, 0, 0);
-  const endAt = new Date(startAt);
-  endAt.setHours(10, 0, 0, 0);
-
-  const params = new URLSearchParams({
-    studioId,
-    startAt: startAt.toISOString(),
-    endAt: endAt.toISOString(),
-  });
-
-  return `/calendar/new?${params.toString()}`;
-}
-
-export function formatTimeRange(startAt: string, endAt: string): string {
-  const start = new Date(startAt);
-  const end = new Date(endAt);
-  const time = new Intl.DateTimeFormat(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-
-  return `${time.format(start)} – ${time.format(end)}`;
-}

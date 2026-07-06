@@ -8,49 +8,60 @@ import {
   CardTitle,
   Input,
   Label,
+  Textarea,
 } from "@st-manager/ui";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { useBookingSlots } from "@/hooks/useBookingSlots";
 import { useActiveStudios } from "@/hooks/useStudios";
 import { useProjects } from "@/hooks/useProjects";
 import { layout } from "@st-manager/theme";
-import { BOOKING_SLOTS } from "@/lib/bookings/constants";
+import { BOOKING_STATUS_OPTIONS } from "@/lib/bookings/constants";
 import { createBooking, isSlotAvailable } from "@/lib/bookings/storage";
-import type { BookingSlotId } from "@/lib/bookings/types";
+import type { BookingSlotId, ProjectBookingStatus } from "@/lib/bookings/types";
 import { filterActiveProjects } from "@/lib/projects/filters";
 
 export interface ProjectBookingFormValues {
   projectId: string;
   studioId: string;
   bookingFor: string;
+  notes: string;
   date: string;
   slotId: BookingSlotId;
+  status: ProjectBookingStatus;
 }
 
 interface ProjectBookingFormProps {
-  initialProjectId?: string;
-  initialDate?: string;
+  initialValues?: Partial<ProjectBookingFormValues>;
+  excludeBookingId?: string;
   onSubmit: (values: ProjectBookingFormValues) => Promise<void>;
   isSubmitting?: boolean;
+  submitLabel?: string;
+  lockProject?: boolean;
 }
 
 export function ProjectBookingForm({
-  initialProjectId = "",
-  initialDate,
+  initialValues,
+  excludeBookingId,
   onSubmit,
   isSubmitting = false,
+  submitLabel = "Save Booking",
+  lockProject = false,
 }: ProjectBookingFormProps) {
   const projects = filterActiveProjects(useProjects());
   const studios = useActiveStudios();
+  const slots = useBookingSlots();
   const [values, setValues] = useState<ProjectBookingFormValues>({
-    projectId: initialProjectId,
-    studioId: "",
-    bookingFor: "",
-    date: initialDate ?? new Date().toISOString().slice(0, 10),
-    slotId: "slot_1",
+    projectId: initialValues?.projectId ?? "",
+    studioId: initialValues?.studioId ?? "",
+    bookingFor: initialValues?.bookingFor ?? "",
+    notes: initialValues?.notes ?? "",
+    date: initialValues?.date ?? new Date().toISOString().slice(0, 10),
+    slotId: initialValues?.slotId ?? "slot_1",
+    status: initialValues?.status ?? "booked",
   });
 
   const selectedProject = useMemo(
@@ -60,13 +71,15 @@ export function ProjectBookingForm({
 
   const availableSlots = useMemo(() => {
     if (!values.studioId || !values.date) {
-      return BOOKING_SLOTS;
+      return slots;
     }
 
-    return BOOKING_SLOTS.filter((slot) =>
-      isSlotAvailable(values.studioId, values.date, slot.id),
+    return slots.filter(
+      (slot) =>
+        slot.id === values.slotId ||
+        isSlotAvailable(values.studioId, values.date, slot.id, excludeBookingId),
     );
-  }, [values.studioId, values.date]);
+  }, [slots, values.studioId, values.date, values.slotId, excludeBookingId]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -79,8 +92,9 @@ export function ProjectBookingForm({
         <Label htmlFor="booking-project">Project *</Label>
         <select
           id="booking-project"
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm disabled:opacity-60"
           value={values.projectId}
+          disabled={lockProject}
           onChange={(event) =>
             setValues((current) => ({ ...current, projectId: event.target.value }))
           }
@@ -139,16 +153,53 @@ export function ProjectBookingForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="booking-date">Date *</Label>
-        <Input
-          id="booking-date"
-          type="date"
-          value={values.date}
+        <Label htmlFor="booking-notes">Notes</Label>
+        <Textarea
+          id="booking-notes"
+          value={values.notes}
           onChange={(event) =>
-            setValues((current) => ({ ...current, date: event.target.value }))
+            setValues((current) => ({ ...current, notes: event.target.value }))
           }
-          required
+          placeholder="Optional session notes"
+          rows={3}
         />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="booking-date">Date *</Label>
+          <Input
+            id="booking-date"
+            type="date"
+            value={values.date}
+            onChange={(event) =>
+              setValues((current) => ({ ...current, date: event.target.value }))
+            }
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="booking-status">Status *</Label>
+          <select
+            id="booking-status"
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+            value={values.status}
+            onChange={(event) =>
+              setValues((current) => ({
+                ...current,
+                status: event.target.value as ProjectBookingStatus,
+              }))
+            }
+            required
+          >
+            {BOOKING_STATUS_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -178,7 +229,7 @@ export function ProjectBookingForm({
       </div>
 
       <Button type="submit" disabled={isSubmitting || availableSlots.length === 0}>
-        {isSubmitting ? "Saving..." : "Confirm Booking"}
+        {isSubmitting ? "Saving..." : submitLabel}
       </Button>
     </form>
   );
@@ -195,7 +246,7 @@ export function BookingCreatePageClient() {
     setIsSubmitting(true);
     try {
       const booking = createBooking(values);
-      toast.success("Booking confirmed");
+      toast.success("Booking saved");
       router.push(`/bookings/${booking.id}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not create booking");
@@ -222,10 +273,10 @@ export function BookingCreatePageClient() {
         </CardHeader>
         <CardContent>
           <ProjectBookingForm
-            initialProjectId={initialProjectId}
-            initialDate={initialDate}
+            initialValues={{ projectId: initialProjectId, date: initialDate }}
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
+            submitLabel="Confirm Booking"
           />
         </CardContent>
       </Card>

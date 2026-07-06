@@ -1,8 +1,11 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle, Progress } from "@st-manager/ui";
+import { Badge, Card, CardContent, CardHeader, CardTitle, Progress } from "@st-manager/ui";
+import { CalendarClockIcon } from "lucide-react";
 import Link from "next/link";
+import { useMemo } from "react";
 
+import { useBookings } from "@/hooks/useBookings";
 import { useProjects } from "@/hooks/useProjects";
 import {
   calculateProjectProgress,
@@ -10,8 +13,24 @@ import {
 } from "@/lib/projects/progress";
 import { filterActiveProjects } from "@/lib/projects/filters";
 
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export function ProjectStatusWidget() {
   const projects = useProjects();
+  const bookings = useBookings();
+
+  const projectsWithBookingToday = useMemo(() => {
+    const today = todayIso();
+    const set = new Set<string>();
+    for (const booking of bookings) {
+      if (booking.status !== "cancelled" && booking.date === today) {
+        set.add(booking.projectId);
+      }
+    }
+    return set;
+  }, [bookings]);
 
   const activeProjects = filterActiveProjects(projects).slice(0, 6);
 
@@ -56,7 +75,15 @@ export function ProjectStatusWidget() {
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="font-medium">{project.projectName}</p>
+                  <p className="flex items-center gap-2 font-medium">
+                    {project.projectName}
+                    {projectsWithBookingToday.has(project.id) ? (
+                      <Badge variant="success" className="gap-1">
+                        <CalendarClockIcon className="size-3" />
+                        Booking Today
+                      </Badge>
+                    ) : null}
+                  </p>
                   <p className="text-sm text-muted-foreground">
                     Currently: {currentTask} · {progress.percent}%
                   </p>

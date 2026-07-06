@@ -2,7 +2,7 @@
 
 **Recording Studio Operating System**
 
-> **Document status:** Living architecture reference — last aligned with codebase July 2026 (Sprint 3: Projects Workspace, Task Flow & Project Management).  
+> **Document status:** Living architecture reference — last aligned with codebase July 2026 (Sprint 4: Studios, Bookings & Calendar).  
 > **Rule:** Update this file whenever architecture, data ownership, or module boundaries change.
 
 ---
@@ -117,11 +117,9 @@ Project Completed               ← delivery + payment + files (see Business Rul
 
 **Current implementation:**
 - Primary actions: **+ New Inquiry**, **+ New Project**
-- Widgets: **Project Status** (active projects, current task, progress %), **Payment Status** (pending amounts, links to Payment Overview)
+- Widgets: **Project Status** (active projects, current task, progress %, **Booking Today** badge), **Payment Status** (pending amounts, links to Payment Overview), **Bookings** (today + upcoming project bookings)
 - **Global Search** in header (not a dashboard widget)
 - No KPI charts or analytics cards
-
-**Future target:** Optional **Bookings** widget (component exists at `components/dashboard/BookingsWidget.tsx` but is not mounted on dashboard in current Sprint 2 build).
 
 ---
 
@@ -186,14 +184,16 @@ workspace of ST Manager (Sprint 3).
 **Purpose:** Schedule studio room time against projects.
 
 **Current implementation (V1 — local):**
-- **ProjectBooking**: `projectId` + local **StudioRoom** + date + slot (`slot_1` | `slot_2` | `slot_3`)
-- Slots: 11 AM–2 PM, 3 PM–6 PM, 7 PM–9 PM
-- Conflict detection: one confirmed booking per studio/date/slot
-- Week calendar UI
+- **ProjectBooking**: `projectId` (required) + local **StudioRoom** + date + slot
+- Status: `draft` | `booked` | `completed` | `cancelled` (legacy `confirmed` migrates to `booked`)
+- Default slots: 11 AM–2 PM, 3 PM–6 PM, 7 PM–9 PM; owner can add custom slots in Settings → Studios
+- Conflict detection: one occupying booking per studio/date/slot (`isSlotAvailable()` — error: "Studio already booked.")
+- Week view at `/bookings`: seven-day horizontal layout, prev/next week navigation, drag-and-drop reschedule
+- Booking wizard loads studios dynamically from `st-manager-studios`
 
-**Storage:** `st-manager-project-bookings` (localStorage)
+**Storage:** `st-manager-project-bookings` (bookings), `st-manager-booking-slots` (custom slots)
 
-**Legacy parallel track:** API `/bookings` (datetime range, Prisma `Booking`) — used by `/calendar` routes (redirected to `/bookings`) and desktop. **Not synced** with local project bookings.
+**Legacy parallel track:** API `/bookings` (datetime range, Prisma `Booking`) — `/calendar/*` routes redirect to `/bookings`; API track **not synced** with local project bookings.
 
 **Future target:** Unified booking model on Project, backed by database.
 
@@ -476,7 +476,9 @@ Rules marked **✅ Current** are enforced in code today. **🎯 Target** are arc
 | Rule | Status |
 |------|--------|
 | Every booking belongs to exactly one Project | ✅ Current — `ProjectBooking.projectId` required |
-| One confirmed booking per studio room / date / slot | ✅ Current — `isSlotAvailable()` |
+| One occupying booking per studio room / date / slot (draft, booked, completed) | ✅ Current — `isSlotAvailable()` |
+| Booking statuses: draft, booked, completed, cancelled | ✅ Current (Sprint 4) |
+| Drag-and-drop reschedule updates date + slot | ✅ Current (Sprint 4) |
 | Creating a booking appends ID to `project.bookingIds[]` | ✅ Current |
 
 ## Payments
@@ -548,7 +550,7 @@ The Dashboard stays **lightweight**. It answers: *What should I do next?* and *W
 
 | Element | Status |
 |---------|--------|
-| Bookings widget (upcoming project bookings) | 🎯 Component exists; not on dashboard currently |
+| Bookings widget (today + upcoming project bookings) | ✅ |
 
 ## Must NOT contain
 
@@ -722,6 +724,7 @@ hooks/use{Module}.ts   subscribe to EVENT, return snapshot
 | `st-manager-payments` | Payments |
 | `st-manager-documents` | Documents |
 | `st-manager-project-bookings` | Bookings |
+| `st-manager-booking-slots` | Custom booking slots |
 | `st-manager-studio-profile` | Profile / template |
 | `st-manager-studios` | Studio rooms |
 | `st-manager-service-pricing` | Services |
@@ -739,6 +742,7 @@ hooks/use{Module}.ts   subscribe to EVENT, return snapshot
 | `st-manager-payments-updated` | Payment recorded |
 | `st-manager-documents-updated` | Document created |
 | `st-manager-bookings-updated` | Booking CRUD |
+| `st-manager-booking-slots-updated` | Custom slot CRUD |
 | `st-manager-profile-updated` | Profile saved |
 | `st-manager-studios-updated` | Studio room CRUD |
 | `st-manager-service-pricing-updated` | Service CRUD |
@@ -778,7 +782,7 @@ Quotation and Invoice share one template (`DocumentTemplate.tsx`). Invoice repla
 | Client | API (`fetchAllClients`) | name, email, phone, company |
 | Project | localStorage | project name, number, client name, mobile, email |
 | Inquiry | localStorage | inquiry number, client, project name, mobile, email |
-| Booking | localStorage | client name, project name, booking label, date |
+| Booking | localStorage | project name, client name, studio name, booking label, date |
 | Payment | localStorage (derived) | project name, number, client name |
 
 ## Behavior
@@ -865,10 +869,10 @@ Sprint numbering reflects product increments on top of the committed Phase 3 API
 | Project Expenses (internal-only) + owner-only profit calculation | ✅ |
 | Notes tab | ✅ |
 | Quick navigation shortcuts (Client, Bookings, Payments, Files) from Overview | ✅ |
-| Bookings widget on Dashboard | 🎯 Deferred to Sprint 4 |
-| Unified booking model (merge API + local tracks) | 🎯 Deferred to Sprint 4 |
-| Engineer assignment workflow (structured, not free text) | 🎯 Deferred to Sprint 4 |
-| Timeline tab (aggregate events) | 🎯 Deferred to Sprint 4 |
+| Bookings widget on Dashboard | ✅ Completed in Sprint 4 |
+| Unified booking model (merge API + local tracks) | 🎯 Deferred to Sprint 5 |
+| Engineer assignment workflow (structured, not free text) | 🎯 Deferred to Sprint 5 |
+| Timeline tab (aggregate events) | 🎯 Deferred to Sprint 5 |
 | Client approval step (optional inquiry status) | 🎯 Deferred |
 | Role-based permissions (server-enforced, beyond UI gating) | 🎯 Deferred |
 
@@ -880,12 +884,33 @@ Expenses and cloud-file metadata are embedded on `StudioProject`, following the 
 
 ---
 
-## Sprint 4 — Timeline, Sessions & Operations 🎯 Planned
+## Sprint 4 — Studios, Bookings & Calendar ✅ Completed
+
+| Feature | Status |
+|---------|--------|
+| Rename Calendar module to Bookings (nav, routes, titles; `/calendar/*` → `/bookings/*`) | ✅ |
+| Settings → Studios (unlimited rooms, name, description, color, active/inactive) | ✅ |
+| Booking week view (7 days, horizontal scroll, prev/next week) | ✅ |
+| Default slots (11 AM–2 PM, 3 PM–6 PM, 7 PM–9 PM) + custom slot creation | ✅ |
+| Booking flow: project, client (auto), studio, booking for, notes, date, slot, status | ✅ |
+| Project workspace Bookings tab (studio, date, time, status, notes → detail) | ✅ |
+| Drag-and-drop reschedule (date + slot) | ✅ |
+| Bookings dashboard widget (today + upcoming) | ✅ |
+| Project Status widget — Booking Today indicator | ✅ |
+| Double-booking validation ("Studio already booked.") | ✅ |
+| Global search — bookings by project, client, studio, date | ✅ |
+
+**Architecture outcome:** Bookings confirmed as the project-owned scheduling engine. Studio rooms and booking slots are owner-configurable in Settings. All booking data references `projectId`; `project.bookingIds[]` remains the project-side index.
+
+**Deferred to Sprint 5+:** Timeline tab, unified API/local booking model, structured engineer roster, API session ↔ project linking.
+
+---
+
+## Sprint 5 — Timeline, Operations & Analytics 🎯 Planned
 
 | Feature | Target |
 |---------|--------|
 | Timeline tab (aggregate tasks, bookings, payments, sessions into one feed) | 🎯 |
-| Bookings widget on Dashboard | 🎯 |
 | Unified booking model (merge API + local tracks) | 🎯 |
 | Structured engineer assignment (replace free-text with a roster) | 🎯 |
 | Link API Sessions to Projects (`sessionIds[]`) | 🎯 |
@@ -894,10 +919,11 @@ Expenses and cloud-file metadata are embedded on `StudioProject`, following the 
 | Real cloud provider integration (OAuth picker instead of pasted URL) | 🎯 |
 | Persist local workflow to PostgreSQL (including expenses, files, links) | 🎯 |
 | Project completion confirmation dialog (replace silent auto-completion) | 🎯 |
+| Studio-native reports from payment ledger (INR) | 🎯 |
 
 ---
 
-## Sprint 5 — Reports & Analytics 🎯 Planned
+## Sprint 6 — Reports & Analytics 🎯 Planned
 
 | Feature | Target |
 |---------|--------|

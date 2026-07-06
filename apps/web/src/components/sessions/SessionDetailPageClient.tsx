@@ -167,13 +167,8 @@ export function SessionDetailPageClient({ sessionId }: { sessionId: string }) {
               </p>
             ) : null}
             {session.bookingId ? (
-              <p className="mt-2">
-                <Link
-                  href={`/calendar/${session.bookingId}`}
-                  className="text-primary underline-offset-4 hover:underline"
-                >
-                  View linked booking
-                </Link>
+              <p className="mt-2 text-muted-foreground">
+                Linked to legacy API booking {session.bookingId} (not part of the Bookings module).
               </p>
             ) : null}
           </div>

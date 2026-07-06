@@ -7,6 +7,7 @@ import { filterClientsBySearch } from "@/lib/inquiry/client-search";
 import { listInquiries } from "@/lib/inquiry/storage";
 import { filterActiveProjects } from "@/lib/projects/filters";
 import { listProjects } from "@/lib/projects/storage";
+import { getStudio } from "@/lib/studios/storage";
 import type { SearchResult } from "./types";
 
 export async function fetchAllClients(): Promise<ClientResponseDto[]> {
@@ -69,10 +70,19 @@ export function searchLocalEntities(query: string): SearchResult[] {
   }
 
   for (const booking of listBookings()) {
-    if (booking.status !== "confirmed") {
+    if (booking.status === "cancelled") {
       continue;
     }
-    const haystack = [booking.projectName, booking.clientName, booking.bookingFor]
+    const studioName = getStudio(booking.studioId)?.name ?? "";
+    const formattedDate = new Date(`${booking.date}T12:00:00`).toLocaleDateString();
+    const haystack = [
+      booking.projectName,
+      booking.clientName,
+      booking.bookingFor,
+      studioName,
+      booking.date,
+      formattedDate,
+    ]
       .join(" ")
       .toLowerCase();
     if (haystack.includes(normalized)) {
@@ -80,7 +90,7 @@ export function searchLocalEntities(query: string): SearchResult[] {
         id: booking.id,
         type: "booking",
         title: booking.bookingFor,
-        subtitle: `${booking.projectName} · ${getBookingSlotLabel(booking.slotId)}`,
+        subtitle: `${booking.projectName} · ${studioName} · ${getBookingSlotLabel(booking.slotId)}`,
         href: `/bookings/${booking.id}`,
       });
     }

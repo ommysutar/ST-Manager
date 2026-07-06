@@ -4,7 +4,7 @@ import { DEFAULT_STUDIOS } from "./constants";
 import { notifyStudiosUpdated } from "./events";
 import { getStudiosSnapshot, setStudiosSnapshot } from "./snapshots";
 import type { StudioRoom } from "./types";
-import { STUDIOS_STORAGE_KEY } from "./types";
+import { DEFAULT_STUDIO_COLOR, STUDIOS_STORAGE_KEY } from "./types";
 
 function normalizeStudio(raw: Partial<StudioRoom> & { id: string }): StudioRoom {
   const now = new Date().toISOString();
@@ -12,6 +12,7 @@ function normalizeStudio(raw: Partial<StudioRoom> & { id: string }): StudioRoom 
     id: raw.id,
     name: raw.name?.trim() || "Untitled Studio",
     description: raw.description?.trim() ?? "",
+    color: raw.color?.trim() || DEFAULT_STUDIO_COLOR,
     active: raw.active ?? true,
     createdAt: raw.createdAt ?? now,
     updatedAt: raw.updatedAt ?? now,
