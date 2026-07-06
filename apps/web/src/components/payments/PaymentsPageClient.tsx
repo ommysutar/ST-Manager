@@ -6,6 +6,7 @@ import { SearchIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import { RequireModule } from "@/components/roles/AccessDenied";
 import { useAuth } from "@/hooks/useAuth";
 import { useProjects } from "@/hooks/useProjects";
 import { formatINR } from "@/lib/currency";
@@ -119,6 +120,7 @@ export function PaymentsPageClient() {
   }
 
   return (
+    <RequireModule module="payments">
     <div className="mx-auto flex flex-col gap-6" style={{ maxWidth: layout.contentMaxWidth }}>
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Payments</h1>
@@ -252,5 +254,6 @@ export function PaymentsPageClient() {
         </div>
       ) : null}
     </div>
+    </RequireModule>
   );
 }

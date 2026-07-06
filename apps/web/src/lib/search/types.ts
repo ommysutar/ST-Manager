@@ -1,4 +1,11 @@
-export type SearchResultType = "client" | "project" | "inquiry" | "booking" | "payment";
+export type SearchResultType =
+  | "client"
+  | "project"
+  | "inquiry"
+  | "booking"
+  | "payment"
+  | "file"
+  | "report";
 
 export interface SearchResult {
   id: string;

@@ -19,6 +19,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useProjects } from "@/hooks/useProjects";
 import { layout } from "@st-manager/theme";
 import { PROJECT_STATUS_LABELS } from "@/lib/projects/constants";
@@ -75,11 +76,12 @@ function ProjectRow({ project }: { project: StudioProject }) {
 export function ProjectsPageClient() {
   const { isAuthenticated } = useAuth();
   const projects = useProjects();
+  const { filterProjects, role } = usePermissions();
   const [tab, setTab] = useState<ProjectsTab>("active");
   const [query, setQuery] = useState("");
 
-  const activeProjects = filterActiveProjects(projects);
-  const completedProjects = filterCompletedProjects(projects);
+  const activeProjects = filterProjects(filterActiveProjects(projects));
+  const completedProjects = filterProjects(filterCompletedProjects(projects));
   const tabProjects = tab === "active" ? activeProjects : completedProjects;
   const visibleProjects = useMemo(
     () => filterProjectsBySearch(tabProjects, query),
@@ -102,12 +104,16 @@ export function ProjectsPageClient() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>
           <p className="text-sm text-muted-foreground">
-            Central workspace for all studio production workflows.
+            {role === "engineer"
+              ? "Projects assigned to you."
+              : "Central workspace for all studio production workflows."}
           </p>
         </div>
-        <Button asChild>
-          <Link href="/projects/new">+ New Project</Link>
-        </Button>
+        {role !== "engineer" ? (
+          <Button asChild>
+            <Link href="/projects/new">+ New Project</Link>
+          </Button>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">

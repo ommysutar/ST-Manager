@@ -20,6 +20,8 @@ const TYPE_LABELS: Record<SearchResult["type"], string> = {
   inquiry: "Inquiry",
   booking: "Booking",
   payment: "Payment",
+  file: "File",
+  report: "Report",
 };
 
 export function GlobalSearch() {
@@ -87,7 +89,7 @@ export function GlobalSearch() {
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
-        placeholder="Search clients, projects, inquiries, bookings..."
+        placeholder="Search projects, clients, bookings, payments, files, reports..."
         className="h-9 pl-9"
       />
 
@@ -116,6 +118,8 @@ export function GlobalSearch() {
                           result.type === "inquiry" && "bg-violet-500/10 text-violet-600",
                           result.type === "booking" && "bg-orange-500/10 text-orange-600",
                           result.type === "payment" && "bg-amber-500/10 text-amber-600",
+                          result.type === "file" && "bg-sky-500/10 text-sky-600",
+                          result.type === "report" && "bg-rose-500/10 text-rose-600",
                         )}
                       >
                         {TYPE_LABELS[result.type]}

@@ -3,10 +3,17 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@st-manager/ui";
 import Link from "next/link";
 
+import { AccessDenied } from "@/components/roles/AccessDenied";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { layout } from "@st-manager/theme";
 
 const settingsLinks = [
+  {
+    href: "/settings/files",
+    title: "File Management",
+    description: "Connect Google Drive, Dropbox, and OneDrive for project file storage.",
+  },
   {
     href: "/settings/studios",
     title: "Studios",
@@ -31,6 +38,7 @@ const settingsLinks = [
 
 export function SettingsPageClient() {
   const { isAuthenticated } = useAuth();
+  const { canAccessSettings } = usePermissions();
 
   if (!isAuthenticated) {
     return (
@@ -39,6 +47,12 @@ export function SettingsPageClient() {
           <p className="text-sm text-muted-foreground">Sign in to access settings.</p>
         </CardContent>
       </Card>
+    );
+  }
+
+  if (!canAccessSettings()) {
+    return (
+      <AccessDenied message="Only the studio owner can access settings." />
     );
   }
 

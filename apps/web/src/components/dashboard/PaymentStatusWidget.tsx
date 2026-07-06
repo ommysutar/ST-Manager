@@ -3,6 +3,7 @@
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@st-manager/ui";
 import Link from "next/link";
 
+import { usePermissions } from "@/hooks/usePermissions";
 import { useProjects } from "@/hooks/useProjects";
 import { formatINR } from "@/lib/currency";
 import { PAYMENT_STATUS_LABELS, getPaymentStatus } from "@/lib/payments/status";
@@ -10,8 +11,9 @@ import { filterActiveProjects } from "@/lib/projects/filters";
 
 export function PaymentStatusWidget() {
   const projects = useProjects();
+  const { filterProjects } = usePermissions();
 
-  const pendingProjects = filterActiveProjects(projects)
+  const pendingProjects = filterProjects(filterActiveProjects(projects))
     .filter((project) => project.grandTotal > 0 && project.remainingBalance > 0)
     .slice(0, 5);
 

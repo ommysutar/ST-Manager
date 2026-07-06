@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 
 import { useBookings } from "@/hooks/useBookings";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useProjects } from "@/hooks/useProjects";
 import {
   calculateProjectProgress,
@@ -20,6 +21,7 @@ function todayIso(): string {
 export function ProjectStatusWidget() {
   const projects = useProjects();
   const bookings = useBookings();
+  const { filterProjects } = usePermissions();
 
   const projectsWithBookingToday = useMemo(() => {
     const today = todayIso();
@@ -32,7 +34,7 @@ export function ProjectStatusWidget() {
     return set;
   }, [bookings]);
 
-  const activeProjects = filterActiveProjects(projects).slice(0, 6);
+  const activeProjects = filterProjects(filterActiveProjects(projects)).slice(0, 6);
 
   const incompleteProjects = activeProjects.filter((project) => {
     const progress = calculateProjectProgress(project);

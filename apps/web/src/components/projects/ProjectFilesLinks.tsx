@@ -15,6 +15,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useCloudStorageSettings } from "@/hooks/useCloudStorage";
 import { useProject } from "@/hooks/useProjects";
 import {
   addProjectCloudFile,
@@ -24,8 +25,9 @@ import {
   removeProjectFile,
   removeProjectLink,
 } from "@/lib/projects/assets";
-import { CLOUD_PROVIDER_LABELS } from "@/lib/projects/constants";
+import { CLOUD_PROVIDER_LABELS as PROJECT_CLOUD_LABELS } from "@/lib/projects/constants";
 import type { CloudProvider, ProjectLinkProvider } from "@/lib/projects/types";
+import { CLOUD_PROVIDER_LABELS } from "@/lib/cloud-storage/types";
 
 const CLOUD_PROVIDERS: { value: CloudProvider; label: string }[] = [
   { value: "google_drive", label: "Google Drive" },
@@ -80,6 +82,8 @@ interface ProjectFilesLinksProps {
 export function ProjectFilesLinks({ projectId }: ProjectFilesLinksProps) {
   const { user } = useAuth();
   const project = useProject(projectId);
+  const cloudSettings = useCloudStorageSettings();
+  const connectedProviders = cloudSettings.providers.filter((entry) => entry.connected);
   const [fileForm, setFileForm] = useState(emptyFileForm);
   const [linkLabel, setLinkLabel] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
@@ -139,9 +143,21 @@ export function ProjectFilesLinks({ projectId }: ProjectFilesLinksProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Files are never stored inside ST Manager. Upload the file to Google Drive, Dropbox, or
-            OneDrive first, then paste the shareable link here.
+            Files are never stored inside ST Manager. Upload to your connected cloud provider first,
+            then paste the shareable link here.
           </p>
+          {connectedProviders.length > 0 ? (
+            <p className="text-xs text-muted-foreground">
+              Connected:{" "}
+              {connectedProviders
+                .map((entry) => `${CLOUD_PROVIDER_LABELS[entry.provider]}${entry.folderId ? ` (${entry.folderId})` : ""}`)
+                .join(" · ")}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Configure cloud providers in Settings → File Management.
+            </p>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="file-name">File Name</Label>
@@ -277,7 +293,7 @@ export function ProjectFilesLinks({ projectId }: ProjectFilesLinksProps) {
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium">{file.name}</p>
                       <Badge variant="outline">{file.type}</Badge>
-                      <Badge variant="secondary">{CLOUD_PROVIDER_LABELS[file.provider] ?? file.provider}</Badge>
+                      <Badge variant="secondary">{PROJECT_CLOUD_LABELS[file.provider] ?? file.provider}</Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {formatFileSize(file.size)} · {new Date(file.uploadedAt).toLocaleDateString()}

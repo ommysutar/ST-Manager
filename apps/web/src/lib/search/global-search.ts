@@ -115,6 +115,62 @@ export function searchLocalEntities(query: string): SearchResult[] {
     }
   }
 
+  for (const project of listProjects()) {
+    for (const file of project.files) {
+      const haystack = [file.name, file.type, project.projectName, project.clientName, "file"]
+        .join(" ")
+        .toLowerCase();
+      if (haystack.includes(normalized)) {
+        results.push({
+          id: file.id,
+          type: "file",
+          title: file.name,
+          subtitle: `${project.projectName} · ${file.provider.replace("_", " ")}`,
+          href: `/projects/${project.id}?tab=files`,
+        });
+      }
+    }
+
+    for (const link of project.links) {
+      const haystack = [link.label, link.url, project.projectName, "file", "link"]
+        .join(" ")
+        .toLowerCase();
+      if (haystack.includes(normalized)) {
+        results.push({
+          id: link.id,
+          type: "file",
+          title: link.label || "Project link",
+          subtitle: `${project.projectName} · External link`,
+          href: `/projects/${project.id}?tab=files`,
+        });
+      }
+    }
+  }
+
+  const reportTerms = ["report", "revenue", "profit", "expense", "analytics"];
+  if (reportTerms.some((term) => normalized.includes(term))) {
+    results.push({
+      id: "reports-hub",
+      type: "report",
+      title: "Studio Reports",
+      subtitle: "Revenue, payments, expenses, bookings, and client reports",
+      href: "/reports",
+    });
+  }
+
+  for (const project of listProjects()) {
+    const haystack = [project.projectNumber, project.projectName, "report"].join(" ").toLowerCase();
+    if (haystack.includes(normalized)) {
+      results.push({
+        id: `report-${project.id}`,
+        type: "report",
+        title: `Report — ${project.projectName}`,
+        subtitle: `${project.projectNumber} · ${project.clientName}`,
+        href: `/reports/projects/${project.id}`,
+      });
+    }
+  }
+
   return results;
 }
 
@@ -132,7 +188,15 @@ export function mergeSearchResults(
   clients: SearchResult[],
   local: SearchResult[],
 ): SearchResult[] {
-  const order: SearchResult["type"][] = ["client", "project", "inquiry", "booking", "payment"];
+  const order: SearchResult["type"][] = [
+    "client",
+    "project",
+    "inquiry",
+    "booking",
+    "payment",
+    "file",
+    "report",
+  ];
   const grouped = new Map<SearchResult["type"], SearchResult[]>();
 
   for (const result of [...clients, ...local]) {
