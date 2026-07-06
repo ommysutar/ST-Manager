@@ -5,54 +5,56 @@ import { type FormEvent, useState } from "react";
 
 import { useAuth } from "@/hooks/useAuth";
 
+const LOGIN_ROLES = [
+  { value: "owner", label: "Owner", email: "owner@st-manager.local" },
+  { value: "assistant", label: "Assistant", email: "assistant@st-manager.local" },
+  { value: "engineer", label: "Engineer", email: "engineer@st-manager.local" },
+] as const;
+
 export function LoginActions() {
-  const { user, isAuthenticated, isSubmitting, error, login, logout } = useAuth();
-  const [email, setEmail] = useState("dev@st-manager.local");
+  const { isSubmitting, error, login } = useAuth();
+  const [role, setRole] = useState<(typeof LOGIN_ROLES)[number]["value"]>("owner");
   const [password, setPassword] = useState("");
+
+  const selectedRole = LOGIN_ROLES.find((entry) => entry.value === role) ?? LOGIN_ROLES[0];
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!email.trim() || !password) {
+    if (!password) {
       return;
     }
 
     try {
-      await login(email.trim(), password);
+      await login(selectedRole.email, password);
       setPassword("");
     } catch {
       // Error state is owned by useAuth.
     }
   }
 
-  if (isAuthenticated && user) {
-    return (
-      <div className="flex items-center gap-2">
-        <span className="max-w-[180px] truncate text-xs text-muted-foreground">{user.email}</span>
-        <Button type="button" variant="outline" size="sm" onClick={logout}>
-          Sign out
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <form className="flex items-center gap-2" onSubmit={handleSubmit}>
-      <Input
-        type="email"
-        name="email"
-        placeholder="Email"
-        value={email}
-        onChange={(event) => setEmail(event.target.value)}
-        className="h-8 w-44"
+    <form className="flex flex-wrap items-center gap-2" onSubmit={handleSubmit}>
+      <select
+        className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+        value={role}
+        onChange={(event) =>
+          setRole(event.target.value as (typeof LOGIN_ROLES)[number]["value"])
+        }
         disabled={isSubmitting}
-      />
+      >
+        {LOGIN_ROLES.map((entry) => (
+          <option key={entry.value} value={entry.value}>
+            {entry.label}
+          </option>
+        ))}
+      </select>
       <Input
         type="password"
         name="password"
         placeholder="Password"
         value={password}
         onChange={(event) => setPassword(event.target.value)}
-        className="h-8 w-36"
+        className="h-8 w-32"
         disabled={isSubmitting}
       />
       <Button type="submit" size="sm" disabled={isSubmitting || !password}>

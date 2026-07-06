@@ -70,15 +70,30 @@ export function ServicesPricingPageClient() {
     setDeleteOpen(true);
   }
 
+  function servicePayloadFromForm(values: ServiceFormValues) {
+    const prices = {
+      basic: values.priceBasic,
+      standard: values.priceStandard,
+      premium: values.pricePremium,
+    };
+
+    return {
+      name: values.name,
+      price: prices.standard,
+      prices,
+      category: values.category ?? "",
+      description: values.description ?? "",
+      active: values.active,
+      mandatory: values.isStudioRent ? false : values.mandatory,
+      isStudioRent: values.isStudioRent,
+    };
+  }
+
   function handleFormSubmit(values: ServiceFormValues) {
+    const payload = servicePayloadFromForm(values);
+
     if (formMode === "create") {
-      createStudioService({
-        name: values.name,
-        price: values.price,
-        category: values.category ?? "",
-        description: values.description ?? "",
-        active: values.active,
-      });
+      createStudioService(payload);
       toast.success("Service added", {
         description: `${values.name} is now available in the inquiry wizard.`,
       });
@@ -89,13 +104,7 @@ export function ServicesPricingPageClient() {
       return;
     }
 
-    updateStudioService(editingService.id, {
-      name: values.name,
-      price: values.price,
-      category: values.category ?? "",
-      description: values.description ?? "",
-      active: values.active,
-    });
+    updateStudioService(editingService.id, payload);
     toast.success("Service updated", {
       description: "Changes are reflected immediately in the wizard.",
     });
@@ -114,8 +123,13 @@ export function ServicesPricingPageClient() {
   }
 
   function handleToggleActive(service: StudioService, active: boolean) {
-    updateStudioService(service.id, { active });
+    updateStudioService(service.id, { active, mandatory: active ? service.mandatory : false });
     toast.success(active ? "Service activated" : "Service deactivated");
+  }
+
+  function handleToggleMandatory(service: StudioService, mandatory: boolean) {
+    updateStudioService(service.id, { mandatory });
+    toast.success(mandatory ? "Service marked mandatory" : "Service marked optional");
   }
 
   function handleResetDefaults() {
@@ -189,6 +203,7 @@ export function ServicesPricingPageClient() {
             sortDirection={sortDirection}
             onSortFieldChange={handleSortFieldChange}
             onToggleActive={handleToggleActive}
+            onToggleMandatory={handleToggleMandatory}
             onEdit={openEditDialog}
             onDelete={openDeleteDialog}
           />

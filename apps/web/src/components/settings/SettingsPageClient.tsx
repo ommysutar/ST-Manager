@@ -8,6 +8,11 @@ import { layout } from "@st-manager/theme";
 
 const settingsLinks = [
   {
+    href: "/settings/studios",
+    title: "Studios",
+    description: "Create and manage studio rooms used for project bookings.",
+  },
+  {
     href: "/settings/services",
     title: "Service Management",
     description: "Manage studio services and pricing for the inquiry wizard.",
@@ -16,6 +21,11 @@ const settingsLinks = [
     href: "/settings/projects",
     title: "Project Plans",
     description: "Manage inquiry plan tiers (Basic, Standard, Professional).",
+  },
+  {
+    href: "/settings/template",
+    title: "Invoice & Quotation Template",
+    description: "Owner branding, bank/UPI details, and terms used on every document.",
   },
 ];
 

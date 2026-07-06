@@ -8,11 +8,12 @@ import { calculateProjectProgress, getCurrentTaskIndex } from "@/lib/projects/pr
 import {
   createCustomTask,
   deleteTaskFromList,
+  duplicateTaskInList,
   reorderTasks,
   sortTasks,
   updateTaskInList,
 } from "@/lib/projects/tasks";
-import { updateProjectTasks } from "@/lib/projects/storage";
+import { evaluateProjectCompletion, updateProjectTasks } from "@/lib/projects/storage";
 import type { ProjectTask, StudioProject } from "@/lib/projects/types";
 
 import { AddTaskDialog } from "./AddTaskDialog";
@@ -30,6 +31,7 @@ export function ProjectTaskFlow({ project }: ProjectTaskFlowProps) {
 
   function persistTasks(nextTasks: ProjectTask[]) {
     updateProjectTasks(project.id, nextTasks);
+    evaluateProjectCompletion(project.id);
   }
 
   function handleTaskUpdate(taskId: string, patch: Partial<ProjectTask>) {
@@ -42,6 +44,10 @@ export function ProjectTaskFlow({ project }: ProjectTaskFlowProps) {
 
   function handleDeleteTask(taskId: string) {
     persistTasks(deleteTaskFromList(tasks, taskId));
+  }
+
+  function handleDuplicateTask(taskId: string) {
+    persistTasks(duplicateTaskInList(tasks, taskId));
   }
 
   function handleDrop(targetIndex: number) {
@@ -99,6 +105,7 @@ export function ProjectTaskFlow({ project }: ProjectTaskFlowProps) {
                   isCurrent={index === currentIndex && !task.completed}
                   onUpdate={(patch) => handleTaskUpdate(task.id, patch)}
                   onDelete={() => handleDeleteTask(task.id)}
+                  onDuplicate={() => handleDuplicateTask(task.id)}
                 />
               </div>
             </div>

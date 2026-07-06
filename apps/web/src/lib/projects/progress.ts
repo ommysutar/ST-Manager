@@ -35,3 +35,13 @@ export function getCurrentTaskIndex(tasks: ProjectTask[]): number {
 
   return sorted.findIndex((task) => !task.completed);
 }
+
+export function getCurrentTaskName(tasks: ProjectTask[]): string {
+  const sorted = [...tasks].sort((a, b) => a.sortOrder - b.sortOrder);
+  const index = getCurrentTaskIndex(sorted);
+  if (index === -1) {
+    return sorted.every((task) => task.completed) ? "Complete" : "Not started";
+  }
+
+  return sorted[index]?.name ?? "Not started";
+}

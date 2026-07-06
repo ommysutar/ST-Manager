@@ -4,6 +4,7 @@ import { generateId } from "@/lib/inquiry/services";
 import {
   DEFAULT_ESTIMATED_MINUTES,
   FINAL_DELIVERY_TASK_NAME,
+  MANDATORY_TASK_DEFINITIONS,
   SERVICE_TASK_TEMPLATES,
 } from "./constants";
 import type { ProjectTask } from "./types";
@@ -18,14 +19,62 @@ function createTask(
     name,
     serviceId: options.serviceId,
     isCustom: options.isCustom ?? false,
+    mandatoryKey: options.mandatoryKey,
     assignedEngineer: options.assignedEngineer ?? "",
     estimatedDurationMinutes: options.estimatedDurationMinutes ?? DEFAULT_ESTIMATED_MINUTES,
     notes: options.notes ?? "",
     status: "pending",
     completed: false,
+    completedDate: undefined,
     dueDate: options.dueDate,
     sortOrder,
   };
+}
+
+/** True for any task the user is allowed to remove — every task except the three mandatory ones. */
+export function isTaskDeletable(task: ProjectTask): boolean {
+  return !task.mandatoryKey;
+}
+
+/**
+ * Guarantees the three mandatory tasks (Payment, Files Shared, Project Delivery) exist, in that
+ * relative order at the end of the flow. Idempotent — safe to call on every project load. Migrates
+ * the legacy "Final Delivery" auto-task into the "project_delivery" mandatory task in place so
+ * existing progress/completion state is preserved.
+ */
+export function ensureMandatoryTasks(tasks: ProjectTask[], assignedEngineer = ""): ProjectTask[] {
+  const result = [...tasks];
+  const existingKeys = new Set(result.map((task) => task.mandatoryKey).filter(Boolean));
+
+  const legacyDeliveryIndex = result.findIndex(
+    (task) => !task.isCustom && !task.mandatoryKey && task.name === FINAL_DELIVERY_TASK_NAME,
+  );
+  if (legacyDeliveryIndex !== -1 && !existingKeys.has("project_delivery")) {
+    result[legacyDeliveryIndex] = {
+      ...result[legacyDeliveryIndex],
+      name: "Project Delivery",
+      mandatoryKey: "project_delivery",
+    };
+    existingKeys.add("project_delivery");
+  }
+
+  let maxOrder = result.reduce((max, task) => Math.max(max, task.sortOrder), -1);
+
+  for (const definition of MANDATORY_TASK_DEFINITIONS) {
+    if (existingKeys.has(definition.key)) {
+      continue;
+    }
+    maxOrder += 1;
+    result.push(
+      createTask(definition.name, maxOrder, {
+        assignedEngineer,
+        mandatoryKey: definition.key,
+        estimatedDurationMinutes: definition.key === "project_delivery" ? 60 : 30,
+      }),
+    );
+  }
+
+  return result;
 }
 
 export function generateTasksFromServices(
@@ -51,14 +100,7 @@ export function generateTasksFromServices(
     }
   }
 
-  tasks.push(
-    createTask(FINAL_DELIVERY_TASK_NAME, sortOrder, {
-      assignedEngineer,
-      estimatedDurationMinutes: 60,
-    }),
-  );
-
-  return tasks;
+  return ensureMandatoryTasks(tasks, assignedEngineer);
 }
 
 export function createCustomTask(
@@ -71,6 +113,30 @@ export function createCustomTask(
     isCustom: true,
     assignedEngineer,
   });
+}
+
+/** Creates a copy of an existing task (never copies a mandatory key — duplicates are always regular tasks). */
+export function duplicateTaskInList(tasks: ProjectTask[], taskId: string): ProjectTask[] {
+  const source = tasks.find((task) => task.id === taskId);
+  if (!source) {
+    return tasks;
+  }
+
+  const duplicate: ProjectTask = {
+    ...source,
+    id: generateId("task"),
+    name: `${source.name} (Copy)`,
+    isCustom: true,
+    mandatoryKey: undefined,
+    completed: false,
+    completedDate: undefined,
+    status: "pending",
+    sortOrder: source.sortOrder + 0.5,
+  };
+
+  return [...tasks, duplicate]
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((task, index) => ({ ...task, sortOrder: index }));
 }
 
 export function reorderTasks(tasks: ProjectTask[], fromIndex: number, toIndex: number): ProjectTask[] {
@@ -99,19 +165,24 @@ export function updateTaskInList(
     const status =
       patch.status ??
       (completed ? "completed" : task.status === "completed" ? "pending" : task.status);
+    const wasCompleted = task.completed;
 
     return {
       ...task,
       ...patch,
       completed,
       status: completed ? "completed" : status === "completed" ? "pending" : status,
+      completedDate: completed
+        ? (patch.completedDate ?? (wasCompleted ? task.completedDate : new Date().toISOString()))
+        : undefined,
     };
   });
 }
 
+/** Removes a task. Mandatory tasks (Payment, Files Shared, Project Delivery) are never removed. */
 export function deleteTaskFromList(tasks: ProjectTask[], taskId: string): ProjectTask[] {
   return tasks
-    .filter((task) => task.id !== taskId)
+    .filter((task) => task.id !== taskId || !isTaskDeletable(task))
     .map((task, index) => ({ ...task, sortOrder: index }));
 }
 

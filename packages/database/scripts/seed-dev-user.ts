@@ -3,8 +3,14 @@ import "dotenv/config";
 
 import { createSqlitePrismaClient, getPrisma } from "../src/index";
 
-const DEV_EMAIL = "dev@st-manager.local";
 const DEV_PASSWORD = "devpassword";
+
+const DEV_USERS = [
+  { email: "owner@st-manager.local", role: "owner" },
+  { email: "assistant@st-manager.local", role: "assistant" },
+  { email: "engineer@st-manager.local", role: "engineer" },
+  { email: "dev@st-manager.local", role: "owner" },
+] as const;
 
 async function main(): Promise<void> {
   const usePostgres =
@@ -12,18 +18,20 @@ async function main(): Promise<void> {
   const client = usePostgres ? getPrisma() : createSqlitePrismaClient();
   const passwordHash = await bcrypt.hash(DEV_PASSWORD, 10);
 
-  await client.user.upsert({
-    where: { email: DEV_EMAIL },
-    update: { passwordHash, role: "owner" },
-    create: {
-      email: DEV_EMAIL,
-      passwordHash,
-      role: "owner",
-    },
-  });
+  for (const user of DEV_USERS) {
+    await client.user.upsert({
+      where: { email: user.email },
+      update: { passwordHash, role: user.role },
+      create: {
+        email: user.email,
+        passwordHash,
+        role: user.role,
+      },
+    });
+  }
 
   process.stdout.write(
-    `Seeded dev user ${DEV_EMAIL} (password: ${DEV_PASSWORD}, role: owner)\n`,
+    `Seeded dev users (password: ${DEV_PASSWORD}) — owner, assistant, engineer\n`,
   );
 }
 

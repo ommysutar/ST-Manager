@@ -53,6 +53,8 @@ export function ServiceFormDialog({
   } = form;
 
   const active = useWatch({ control, name: "active" });
+  const mandatory = useWatch({ control, name: "mandatory" });
+  const isStudioRent = useWatch({ control, name: "isStudioRent" });
 
   useEffect(() => {
     if (!open) {
@@ -62,10 +64,14 @@ export function ServiceFormDialog({
     if (mode === "edit" && service) {
       reset({
         name: service.name,
-        price: service.price,
+        priceBasic: service.prices.basic,
+        priceStandard: service.prices.standard,
+        pricePremium: service.prices.premium,
         category: service.category,
         description: service.description,
         active: service.active,
+        mandatory: service.mandatory,
+        isStudioRent: service.isStudioRent ?? false,
       });
       return;
     }
@@ -98,19 +104,46 @@ export function ServiceFormDialog({
             {errors.name ? <p className="text-sm text-destructive">{errors.name.message}</p> : null}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="service-price">Price (₹) *</Label>
-            <Input
-              id="service-price"
-              type="number"
-              min={0}
-              step={1}
-              placeholder="5000"
-              {...register("price", { valueAsNumber: true })}
-            />
-            {errors.price ? (
-              <p className="text-sm text-destructive">{errors.price.message}</p>
-            ) : null}
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="service-price-basic">Basic (₹) *</Label>
+              <Input
+                id="service-price-basic"
+                type="number"
+                min={0}
+                step={1}
+                {...register("priceBasic", { valueAsNumber: true })}
+              />
+              {errors.priceBasic ? (
+                <p className="text-sm text-destructive">{errors.priceBasic.message}</p>
+              ) : null}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="service-price-standard">Standard (₹) *</Label>
+              <Input
+                id="service-price-standard"
+                type="number"
+                min={0}
+                step={1}
+                {...register("priceStandard", { valueAsNumber: true })}
+              />
+              {errors.priceStandard ? (
+                <p className="text-sm text-destructive">{errors.priceStandard.message}</p>
+              ) : null}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="service-price-premium">Premium (₹) *</Label>
+              <Input
+                id="service-price-premium"
+                type="number"
+                min={0}
+                step={1}
+                {...register("pricePremium", { valueAsNumber: true })}
+              />
+              {errors.pricePremium ? (
+                <p className="text-sm text-destructive">{errors.pricePremium.message}</p>
+              ) : null}
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -125,6 +158,35 @@ export function ServiceFormDialog({
               rows={3}
               placeholder="Brief description for internal reference"
               {...register("description")}
+            />
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl border border-border/60 bg-background/40 p-4">
+            <div>
+              <Label htmlFor="service-studio-rent">Studio Rent (hourly rate)</Label>
+              <p className="text-xs text-muted-foreground">
+                When enabled, the inquiry wizard asks for hours and calculates total automatically.
+              </p>
+            </div>
+            <Switch
+              id="service-studio-rent"
+              checked={isStudioRent}
+              onCheckedChange={(checked) => setValue("isStudioRent", checked, { shouldDirty: true })}
+            />
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl border border-border/60 bg-background/40 p-4">
+            <div>
+              <Label htmlFor="service-mandatory">Mandatory</Label>
+              <p className="text-xs text-muted-foreground">
+                Mandatory services are auto-included in every new inquiry.
+              </p>
+            </div>
+            <Switch
+              id="service-mandatory"
+              checked={mandatory}
+              disabled={!active || isStudioRent}
+              onCheckedChange={(checked) => setValue("mandatory", checked, { shouldDirty: true })}
             />
           </div>
 

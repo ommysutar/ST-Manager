@@ -46,98 +46,120 @@ export const DEFAULT_PROJECT_PLANS: ProjectPlan[] = [
   },
 ];
 
+export const STUDIO_RENT_SERVICE_ID = "studio_rent";
+
 export const DEFAULT_STUDIO_SERVICES: StudioService[] = [
   {
     id: "recording",
     name: "Recording",
     price: 5000,
+    prices: { basic: 4000, standard: 5000, premium: 7000 },
     category: "Audio",
     description: "Studio recording session",
     active: true,
+    mandatory: false,
   },
   {
     id: "mixing",
     name: "Mixing",
     price: 3000,
+    prices: { basic: 2400, standard: 3000, premium: 4500 },
     category: "Audio",
     description: "Track mixing and balance",
     active: true,
+    mandatory: false,
   },
   {
     id: "mastering",
     name: "Mastering",
     price: 2000,
+    prices: { basic: 1600, standard: 2000, premium: 3000 },
     category: "Audio",
     description: "Final master delivery",
     active: true,
+    mandatory: false,
   },
   {
     id: "programming",
     name: "Programming",
     price: 4000,
+    prices: { basic: 3200, standard: 4000, premium: 5500 },
     category: "Production",
     description: "Beat and arrangement programming",
     active: true,
+    mandatory: false,
   },
   {
     id: "editing",
     name: "Editing",
     price: 2500,
+    prices: { basic: 2000, standard: 2500, premium: 3500 },
     category: "Post-Production",
     description: "Audio editing and cleanup",
     active: true,
+    mandatory: false,
   },
   {
     id: "vocal-tuning",
     name: "Vocal Tuning",
     price: 3500,
+    prices: { basic: 2800, standard: 3500, premium: 5000 },
     category: "Post-Production",
     description: "Pitch correction and tuning",
     active: true,
+    mandatory: false,
   },
   {
     id: "live-recording",
     name: "Live Recording",
     price: 8000,
+    prices: { basic: 6400, standard: 8000, premium: 10000 },
     category: "Live",
     description: "On-location live recording",
     active: true,
+    mandatory: false,
   },
   {
     id: "video-shoot",
     name: "Video Shoot",
     price: 15000,
+    prices: { basic: 12000, standard: 15000, premium: 20000 },
     category: "Video",
     description: "Studio or location video shoot",
     active: true,
+    mandatory: false,
   },
   {
     id: "video-editing",
     name: "Video Editing",
     price: 10000,
+    prices: { basic: 8000, standard: 10000, premium: 14000 },
     category: "Video",
     description: "Video post-production editing",
     active: true,
+    mandatory: false,
+  },
+  {
+    id: STUDIO_RENT_SERVICE_ID,
+    name: "Studio Rent",
+    price: 1500,
+    prices: { basic: 1200, standard: 1500, premium: 2000 },
+    category: "Studio",
+    description: "Hourly studio rental",
+    active: true,
+    mandatory: false,
+    isStudioRent: true,
   },
 ];
 
-export const STUDIO_DISCOUNT_OPTIONS = [0, 5, 10, 15, 20] as const;
 export const ADVANCE_PERCENT_OPTIONS = [10, 20, 30, 50] as const;
 
-export const PROJECT_CATEGORIES = [
-  "Music Production",
-  "Podcast",
-  "Voice Over",
-  "Film Scoring",
-  "Live Event",
-  "Corporate",
-  "Other",
-] as const;
+export const PROJECT_CATEGORIES = ["Audio", "Video", "Image"] as const;
 
 export const WIZARD_STEPS = [
   { id: 1, label: "Client Details", shortLabel: "Client" },
   { id: 2, label: "Project Details", shortLabel: "Project" },
-  { id: 3, label: "Plan Selection", shortLabel: "Plan" },
+  { id: 3, label: "Compare Plans", shortLabel: "Plans" },
   { id: 4, label: "Services", shortLabel: "Services" },
   { id: 5, label: "Decision", shortLabel: "Decision" },
   { id: 6, label: "Advance Payment", shortLabel: "Payment" },

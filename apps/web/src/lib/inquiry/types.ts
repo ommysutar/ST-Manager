@@ -2,14 +2,31 @@ import type { InquiryWizardFormValues } from "./schema";
 
 export type InquiryStatus = "inquiry" | "project";
 export type ProjectPriority = "low" | "medium" | "high";
+export type ServicePricingTier = "basic" | "standard" | "premium";
+
+export interface ServicePrices {
+  basic: number;
+  standard: number;
+  premium: number;
+}
+
+export interface CustomServiceLine {
+  id: string;
+  name: string;
+  price: number;
+}
 
 export interface StudioService {
   id: string;
   name: string;
+  /** @deprecated Use prices.standard — kept for migration */
   price: number;
+  prices: ServicePrices;
   category: string;
   description: string;
   active: boolean;
+  mandatory: boolean;
+  isStudioRent?: boolean;
 }
 
 export interface ProjectPlan {
@@ -26,6 +43,10 @@ export type { InquiryWizardFormValues } from "./schema";
 export interface QuotationBreakdown {
   planAmount: number;
   serviceLines: { id: string; name: string; price: number }[];
+  customServiceLines: { id: string; name: string; price: number }[];
+  studioRentHours: number;
+  studioRentRate: number;
+  studioRentAmount: number;
   servicesSubtotal: number;
   subtotal: number;
   discountAmount: number;
@@ -34,6 +55,7 @@ export interface QuotationBreakdown {
 
 export interface SavedInquiry {
   id: string;
+  inquiryNumber: string;
   status: InquiryStatus;
   createdAt: string;
   updatedAt: string;

@@ -10,7 +10,7 @@ import {
   Label,
   Textarea,
 } from "@st-manager/ui";
-import { Trash2Icon } from "lucide-react";
+import { CopyIcon, LockIcon, Trash2Icon } from "lucide-react";
 
 import type { ProjectTask } from "@/lib/projects/types";
 
@@ -19,9 +19,23 @@ interface ProjectTaskCardProps {
   isCurrent: boolean;
   onUpdate: (patch: Partial<ProjectTask>) => void;
   onDelete: () => void;
+  onDuplicate: () => void;
 }
 
-export function ProjectTaskCard({ task, isCurrent, onUpdate, onDelete }: ProjectTaskCardProps) {
+function formatCompletedDate(value?: string): string | null {
+  if (!value) {
+    return null;
+  }
+  return new Date(value).toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export function ProjectTaskCard({ task, isCurrent, onUpdate, onDelete, onDuplicate }: ProjectTaskCardProps) {
   const statusLabel = task.completed
     ? "Completed"
     : isCurrent
@@ -31,6 +45,9 @@ export function ProjectTaskCard({ task, isCurrent, onUpdate, onDelete }: Project
         : "Pending";
 
   const statusVariant = task.completed ? "success" : isCurrent ? "secondary" : "secondary";
+  const isMandatory = Boolean(task.mandatoryKey);
+  const isPaymentTask = task.mandatoryKey === "payment";
+  const completedDateLabel = formatCompletedDate(task.completedDate);
 
   return (
     <Card
@@ -38,8 +55,8 @@ export function ProjectTaskCard({ task, isCurrent, onUpdate, onDelete }: Project
         task.completed
           ? "border-emerald-500/30 bg-emerald-500/5"
           : isCurrent
-            ? "border-primary/40"
-            : "border-border/60"
+            ? "border-primary/40 bg-primary/5"
+            : "border-border/50 bg-muted/20 opacity-80"
       }
     >
       <CardContent className="space-y-4 pt-6">
@@ -47,6 +64,7 @@ export function ProjectTaskCard({ task, isCurrent, onUpdate, onDelete }: Project
           <div className="flex items-start gap-3">
             <Checkbox
               checked={task.completed}
+              disabled={isPaymentTask}
               onCheckedChange={(checked) =>
                 onUpdate({
                   completed: Boolean(checked),
@@ -60,15 +78,48 @@ export function ProjectTaskCard({ task, isCurrent, onUpdate, onDelete }: Project
                 <p className="font-medium">{task.name}</p>
                 <Badge variant={statusVariant}>{statusLabel}</Badge>
                 {task.isCustom ? <Badge variant="outline">Custom</Badge> : null}
+                {isMandatory ? (
+                  <Badge variant="outline" className="gap-1">
+                    <LockIcon className="size-3" />
+                    Mandatory
+                  </Badge>
+                ) : null}
               </div>
+              {completedDateLabel ? (
+                <p className="mt-1 text-xs text-muted-foreground">Completed {completedDateLabel}</p>
+              ) : null}
+              {isPaymentTask ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Synced automatically from the Payments tab — cannot be toggled manually.
+                </p>
+              ) : null}
             </div>
           </div>
 
-          {task.isCustom ? (
-            <Button type="button" variant="ghost" size="icon" onClick={onDelete}>
-              <Trash2Icon className="size-4 text-destructive" />
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onDuplicate}
+              aria-label={`Duplicate ${task.name}`}
+              title="Duplicate task"
+            >
+              <CopyIcon className="size-4" />
             </Button>
-          ) : null}
+            {!isMandatory ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={onDelete}
+                aria-label={`Delete ${task.name}`}
+                title="Delete task"
+              >
+                <Trash2Icon className="size-4 text-destructive" />
+              </Button>
+            ) : null}
+          </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -81,7 +132,7 @@ export function ProjectTaskCard({ task, isCurrent, onUpdate, onDelete }: Project
             />
           </div>
           <div className="space-y-2">
-            <Label>Estimated Duration (minutes)</Label>
+            <Label>Estimated Time (minutes)</Label>
             <Input
               type="number"
               min={15}

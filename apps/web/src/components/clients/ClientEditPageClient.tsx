@@ -3,14 +3,17 @@
 import { ApiError } from "@st-manager/api-sdk";
 import type { ClientResponseDto } from "@st-manager/contracts";
 import { layout } from "@st-manager/theme";
-import { Button } from "@st-manager/ui";
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from "@st-manager/ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { ClientForm, type ClientFormValues } from "@/components/clients/ClientForm";
 import { useAuth } from "@/hooks/useAuth";
+import { useClientPaymentsSummary } from "@/hooks/useClientPaymentsSummary";
 import { clientsApi } from "@/lib/api-client";
+import { formatINR } from "@/lib/currency";
+import { PAYMENT_STATUS_LABELS, getPaymentStatus } from "@/lib/payments/status";
 
 function toFormValues(client: ClientResponseDto): ClientFormValues {
   return {
@@ -40,6 +43,7 @@ export function ClientEditPageClient({ clientId }: { clientId: string }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const canFetch = isAuthenticated;
+  const paymentsSummary = useClientPaymentsSummary(clientId);
 
   useEffect(() => {
     if (!canFetch) {
@@ -125,6 +129,73 @@ export function ClientEditPageClient({ clientId }: { clientId: string }) {
             error={error}
             onSubmit={handleSubmit}
           />
+
+          <Card className="border-border/60 bg-background/60 backdrop-blur-md dark:bg-background/30">
+            <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+              <CardTitle className="text-base">Payments</CardTitle>
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/payments/clients/${clientId}`}>View full history</Link>
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 text-sm sm:grid-cols-2">
+                <div>
+                  <p className="text-muted-foreground">Paid</p>
+                  <p className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">
+                    {formatINR(paymentsSummary.totalPaid)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Pending</p>
+                  <p className="text-lg font-semibold text-amber-600 dark:text-amber-400">
+                    {formatINR(paymentsSummary.totalPending)}
+                  </p>
+                </div>
+              </div>
+
+              {paymentsSummary.projects.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No projects for this client yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {paymentsSummary.projects.map((project) => (
+                    <Link
+                      key={project.id}
+                      href={`/payments/${project.id}`}
+                      className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2 text-sm transition-colors hover:border-primary/30 hover:bg-primary/5"
+                    >
+                      <span>
+                        {project.projectNumber} · {project.projectName}
+                      </span>
+                      <Badge variant={getPaymentStatus(project) === "paid" ? "success" : "secondary"}>
+                        {PAYMENT_STATUS_LABELS[getPaymentStatus(project)]}
+                      </Badge>
+                    </Link>
+                  ))}
+                </div>
+              )}
+
+              {paymentsSummary.documents.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Invoices &amp; Quotations
+                  </p>
+                  {paymentsSummary.documents.map((document) => (
+                    <Link
+                      key={document.id}
+                      href={`/documents/${document.id}`}
+                      className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2 text-sm transition-colors hover:border-primary/30 hover:bg-primary/5"
+                    >
+                      <span>{document.documentNumber}</span>
+                      <Badge variant={document.type === "invoice" ? "default" : "secondary"}>
+                        {document.type === "invoice" ? "Invoice" : "Quotation"}
+                      </Badge>
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+
           <Button variant="destructive" disabled={isDeleting} onClick={() => void handleArchive()}>
             {isDeleting ? "Archiving..." : "Archive client"}
           </Button>

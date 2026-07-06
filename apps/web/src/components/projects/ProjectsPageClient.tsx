@@ -1,14 +1,36 @@
 "use client";
 
-import { Badge, Button, Card, CardContent, Progress, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@st-manager/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  Input,
+  Progress,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@st-manager/ui";
+import { SearchIcon } from "lucide-react";
 import Link from "next/link";
+import { useMemo, useState } from "react";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useProjects } from "@/hooks/useProjects";
 import { layout } from "@st-manager/theme";
 import { PROJECT_STATUS_LABELS } from "@/lib/projects/constants";
+import {
+  filterActiveProjects,
+  filterCompletedProjects,
+  filterProjectsBySearch,
+} from "@/lib/projects/filters";
 import { calculateProjectProgress, getPrimaryEngineer } from "@/lib/projects/progress";
 import type { StudioProject } from "@/lib/projects/types";
+
+type ProjectsTab = "active" | "completed";
 
 function formatUpdatedAt(value: string): string {
   return new Date(value).toLocaleString();
@@ -20,17 +42,14 @@ function ProjectRow({ project }: { project: StudioProject }) {
 
   return (
     <TableRow>
+      <TableCell className="font-mono text-sm">{project.projectNumber}</TableCell>
       <TableCell>
         <Link href={`/projects/${project.id}`} className="font-medium hover:underline">
           {project.projectName}
         </Link>
       </TableCell>
       <TableCell>{project.clientName}</TableCell>
-      <TableCell>
-        <Badge variant={project.status === "active" ? "success" : "secondary"}>
-          {PROJECT_STATUS_LABELS[project.status] ?? project.status}
-        </Badge>
-      </TableCell>
+      <TableCell className="text-muted-foreground">{project.projectCategory ?? "—"}</TableCell>
       <TableCell>
         <div className="min-w-32 space-y-1">
           <div className="flex justify-between text-xs text-muted-foreground">
@@ -42,6 +61,11 @@ function ProjectRow({ project }: { project: StudioProject }) {
           <Progress value={progress.percent} />
         </div>
       </TableCell>
+      <TableCell>
+        <Badge variant={project.status === "active" ? "success" : "secondary"}>
+          {PROJECT_STATUS_LABELS[project.status] ?? project.status}
+        </Badge>
+      </TableCell>
       <TableCell>{engineer}</TableCell>
       <TableCell className="text-muted-foreground">{formatUpdatedAt(project.updatedAt)}</TableCell>
     </TableRow>
@@ -51,6 +75,16 @@ function ProjectRow({ project }: { project: StudioProject }) {
 export function ProjectsPageClient() {
   const { isAuthenticated } = useAuth();
   const projects = useProjects();
+  const [tab, setTab] = useState<ProjectsTab>("active");
+  const [query, setQuery] = useState("");
+
+  const activeProjects = filterActiveProjects(projects);
+  const completedProjects = filterCompletedProjects(projects);
+  const tabProjects = tab === "active" ? activeProjects : completedProjects;
+  const visibleProjects = useMemo(
+    () => filterProjectsBySearch(tabProjects, query),
+    [tabProjects, query],
+  );
 
   if (!isAuthenticated) {
     return (
@@ -76,10 +110,45 @@ export function ProjectsPageClient() {
         </Button>
       </div>
 
-      {projects.length === 0 ? (
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={tab === "active" ? "default" : "outline"}
+            onClick={() => setTab("active")}
+          >
+            Active Projects ({activeProjects.length})
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={tab === "completed" ? "default" : "outline"}
+            onClick={() => setTab("completed")}
+          >
+            Completed Projects ({completedProjects.length})
+          </Button>
+        </div>
+
+        <div className="relative w-full max-w-sm">
+          <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search number, name, client, category, engineer, status..."
+            className="pl-9"
+          />
+        </div>
+      </div>
+
+      {visibleProjects.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            No projects yet. Create one from the dashboard or convert an inquiry.
+            {query.trim()
+              ? "No projects match your search."
+              : tab === "active"
+                ? "No active projects yet. Create one from the dashboard or convert an inquiry."
+                : "No completed projects yet. Projects move here automatically once fully delivered and paid."}
           </CardContent>
         </Card>
       ) : (
@@ -87,16 +156,18 @@ export function ProjectsPageClient() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Project Number</TableHead>
                 <TableHead>Project Name</TableHead>
                 <TableHead>Client Name</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Category</TableHead>
                 <TableHead>Progress</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Assigned Engineer</TableHead>
                 <TableHead>Last Updated</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {projects.map((project) => (
+              {visibleProjects.map((project) => (
                 <ProjectRow key={project.id} project={project} />
               ))}
             </TableBody>

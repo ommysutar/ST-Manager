@@ -1,13 +1,12 @@
 import {
   BarChart3,
-  Calendar,
+  CalendarDays,
   ClipboardList,
   FolderKanban,
   LayoutDashboard,
-  Mic2,
-  Receipt,
   Settings,
   Users,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -26,8 +25,8 @@ export const navItems: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
-    label: "New Inquiry",
-    href: "/inquiries/new",
+    label: "Inquiries",
+    href: "/inquiries",
     icon: ClipboardList,
   },
   {
@@ -41,19 +40,14 @@ export const navItems: NavItem[] = [
     icon: Users,
   },
   {
-    label: "Calendar",
-    href: "/calendar",
-    icon: Calendar,
+    label: "Bookings",
+    href: "/bookings",
+    icon: CalendarDays,
   },
   {
-    label: "Sessions",
-    href: "/sessions",
-    icon: Mic2,
-  },
-  {
-    label: "Billing",
-    href: "/billing",
-    icon: Receipt,
+    label: "Payments",
+    href: "/payments",
+    icon: Wallet,
   },
   {
     label: "Reports",

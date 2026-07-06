@@ -4,6 +4,8 @@ import { Button } from "@st-manager/ui";
 import { FolderPlusIcon, PlusCircleIcon } from "lucide-react";
 import Link from "next/link";
 
+import { PaymentStatusWidget } from "@/components/dashboard/PaymentStatusWidget";
+import { ProjectStatusWidget } from "@/components/dashboard/ProjectStatusWidget";
 import { useAuth } from "@/hooks/useAuth";
 import { layout } from "@st-manager/theme";
 
@@ -12,7 +14,7 @@ export function DashboardPageClient() {
 
   return (
     <div
-      className="mx-auto flex min-h-[60vh] flex-col justify-center gap-8"
+      className="mx-auto flex flex-col gap-8"
       style={{ maxWidth: layout.contentMaxWidth }}
     >
       <div>
@@ -50,6 +52,13 @@ export function DashboardPageClient() {
           </Link>
         </Button>
       </div>
+
+      {isAuthenticated ? (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <ProjectStatusWidget />
+          <PaymentStatusWidget />
+        </div>
+      ) : null}
     </div>
   );
 }

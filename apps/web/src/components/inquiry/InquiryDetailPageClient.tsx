@@ -1,19 +1,30 @@
 "use client";
 
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Separator } from "@st-manager/ui";
+import { FileTextIcon } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 import { QuotationSummary } from "@/components/inquiry/wizard/QuotationSummary";
 import { useAuth } from "@/hooks/useAuth";
 import { useInquiry } from "@/hooks/useInquiryStorage";
 import { formatINR } from "@/lib/currency";
+import { getOrCreateQuotation } from "@/lib/documents/storage";
 import { layout } from "@st-manager/theme";
 
 export function InquiryDetailPageClient() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const { isAuthenticated } = useAuth();
   const inquiry = useInquiry(params.id);
+
+  function handleMakeQuotation() {
+    if (!inquiry) {
+      return;
+    }
+    const document = getOrCreateQuotation({ inquiryId: inquiry.id, projectId: inquiry.projectId });
+    router.push(`/documents/${document.id}`);
+  }
 
   if (!isAuthenticated) {
     return <p className="text-sm text-muted-foreground">Sign in to view inquiries.</p>;
@@ -118,9 +129,13 @@ export function InquiryDetailPageClient() {
           </Button>
         ) : (
           <Button asChild>
-            <Link href="/inquiries/new">Convert via New Wizard</Link>
+            <Link href={`/inquiries/new?inquiryId=${inquiry.id}&mode=convert`}>Convert to Project</Link>
           </Button>
         )}
+        <Button type="button" variant="outline" onClick={handleMakeQuotation}>
+          <FileTextIcon className="size-4" />
+          Make Quotation
+        </Button>
         <Button asChild variant="outline">
           <Link href="/">Back To Dashboard</Link>
         </Button>

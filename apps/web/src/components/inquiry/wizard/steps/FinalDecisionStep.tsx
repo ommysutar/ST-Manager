@@ -5,6 +5,7 @@ import { FileTextIcon, FolderPlusIcon } from "lucide-react";
 
 import { QuotationSummary } from "@/components/inquiry/wizard/QuotationSummary";
 import { WizardStepHeader } from "@/components/inquiry/wizard/WizardStepHeader";
+import { useStudioServices } from "@/hooks/useInquiryStorage";
 import { calculateQuotation } from "@/lib/inquiry/quotation";
 import type { InquiryWizardSchema } from "@/lib/inquiry/schema";
 import { useFormContext } from "react-hook-form";
@@ -21,8 +22,9 @@ export function FinalDecisionStep({
   isSubmitting,
 }: FinalDecisionStepProps) {
   const { watch } = useFormContext<InquiryWizardSchema>();
+  const services = useStudioServices();
   const values = watch();
-  const quotation = calculateQuotation(values);
+  const quotation = calculateQuotation(values, services);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">

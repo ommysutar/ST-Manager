@@ -18,6 +18,11 @@ export function QuotationSummary({
   className,
   compact = false,
 }: QuotationSummaryProps) {
+  const hasLines =
+    quotation.serviceLines.length > 0 ||
+    quotation.customServiceLines.length > 0 ||
+    quotation.studioRentAmount > 0;
+
   return (
     <div
       className={cn(
@@ -33,13 +38,6 @@ export function QuotationSummary({
       </div>
 
       <div className="space-y-2 text-sm">
-        {quotation.planAmount > 0 ? (
-          <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Selected plan</span>
-            <span className="font-medium">{formatINR(quotation.planAmount)}</span>
-          </div>
-        ) : null}
-
         {quotation.serviceLines.map((line) => (
           <div key={line.id} className="flex justify-between gap-4">
             <span className="text-muted-foreground">{line.name}</span>
@@ -47,8 +45,24 @@ export function QuotationSummary({
           </div>
         ))}
 
-        {quotation.serviceLines.length === 0 && quotation.planAmount === 0 ? (
-          <p className="text-muted-foreground">Select a plan and services to preview quotation.</p>
+        {quotation.customServiceLines.map((line) => (
+          <div key={line.id} className="flex justify-between gap-4">
+            <span className="text-muted-foreground">{line.name} (custom)</span>
+            <span className="font-medium">{formatINR(line.price)}</span>
+          </div>
+        ))}
+
+        {quotation.studioRentAmount > 0 ? (
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">
+              Studio Rent ({quotation.studioRentHours}h × {formatINR(quotation.studioRentRate)})
+            </span>
+            <span className="font-medium">{formatINR(quotation.studioRentAmount)}</span>
+          </div>
+        ) : null}
+
+        {!hasLines ? (
+          <p className="text-muted-foreground">Select services to preview quotation.</p>
         ) : null}
       </div>
 

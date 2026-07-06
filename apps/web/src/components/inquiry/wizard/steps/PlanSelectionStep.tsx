@@ -10,12 +10,7 @@ import { useProjectPlans } from "@/hooks/useInquiryStorage";
 import type { InquiryWizardSchema } from "@/lib/inquiry/schema";
 
 export function PlanSelectionStep() {
-  const {
-    register,
-    watch,
-    setValue,
-    formState: { errors },
-  } = useFormContext<InquiryWizardSchema>();
+  const { watch, setValue } = useFormContext<InquiryWizardSchema>();
 
   const plans = useProjectPlans();
   const selectedPlanId = watch("planId");
@@ -30,11 +25,9 @@ export function PlanSelectionStep() {
   return (
     <div className="space-y-6">
       <WizardStepHeader
-        title="Select Project Plan"
-        description="Choose from studio project plans managed in Owner Panel → Project Plans. All prices are in Indian Rupees (₹)."
+        title="Compare Project Plans"
+        description="Review studio plans for client comparison only. Plan prices are not added to the quotation."
       />
-
-      <input type="hidden" {...register("planId")} />
 
       <div className="flex flex-wrap items-center justify-end gap-3">
         <ComparePlansDialog plans={plans} />
@@ -57,9 +50,11 @@ export function PlanSelectionStep() {
         </div>
       )}
 
-      {errors.planId ? (
-        <p className="text-sm text-destructive">{errors.planId.message}</p>
-      ) : null}
+      <p className="text-sm text-muted-foreground">
+        {selectedPlanId
+          ? "Selected plan is noted for reference and does not affect quotation totals."
+          : "Optional: select a plan to highlight it for the client. You can continue without selecting one."}
+      </p>
     </div>
   );
 }

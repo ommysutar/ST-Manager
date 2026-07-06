@@ -24,6 +24,7 @@ interface ServicesTableProps {
   sortDirection: ServiceSortDirection;
   onSortFieldChange: (field: ServiceSortField) => void;
   onToggleActive: (service: StudioService, active: boolean) => void;
+  onToggleMandatory: (service: StudioService, mandatory: boolean) => void;
   onEdit: (service: StudioService) => void;
   onDelete: (service: StudioService) => void;
 }
@@ -67,6 +68,7 @@ export function ServicesTable({
   sortDirection,
   onSortFieldChange,
   onToggleActive,
+  onToggleMandatory,
   onEdit,
   onDelete,
 }: ServicesTableProps) {
@@ -97,16 +99,11 @@ export function ServicesTable({
                   onClick={() => toggleSort("name")}
                 />
               </TableHead>
-              <TableHead>
-                <SortButton
-                  label="Price (₹)"
-                  field="price"
-                  activeField={sortField}
-                  direction={sortDirection}
-                  onClick={() => toggleSort("price")}
-                />
-              </TableHead>
+              <TableHead>Basic (₹)</TableHead>
+              <TableHead>Standard (₹)</TableHead>
+              <TableHead>Premium (₹)</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Mandatory</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -116,9 +113,16 @@ export function ServicesTable({
                 <TableCell>
                   <div>
                     <p className="font-medium">{service.name}</p>
-                    {service.category ? (
-                      <p className="text-xs text-muted-foreground">{service.category}</p>
-                    ) : null}
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {service.category ? (
+                        <span className="text-xs text-muted-foreground">{service.category}</span>
+                      ) : null}
+                      {service.isStudioRent ? (
+                        <Badge variant="secondary" className="text-[10px]">
+                          Hourly rent
+                        </Badge>
+                      ) : null}
+                    </div>
                     {service.description ? (
                       <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
                         {service.description}
@@ -126,7 +130,9 @@ export function ServicesTable({
                     ) : null}
                   </div>
                 </TableCell>
-                <TableCell className="font-medium">{formatINR(service.price)}</TableCell>
+                <TableCell className="font-medium">{formatINR(service.prices.basic)}</TableCell>
+                <TableCell className="font-medium">{formatINR(service.prices.standard)}</TableCell>
+                <TableCell className="font-medium">{formatINR(service.prices.premium)}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Switch
@@ -137,6 +143,19 @@ export function ServicesTable({
                     <Badge variant={service.active ? "success" : "secondary"}>
                       {service.active ? "Active" : "Inactive"}
                     </Badge>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      checked={service.mandatory}
+                      disabled={!service.active || service.isStudioRent}
+                      onCheckedChange={(checked) => onToggleMandatory(service, checked)}
+                      aria-label={`Toggle ${service.name} mandatory status`}
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {service.mandatory ? "Required" : "Optional"}
+                    </span>
                   </div>
                 </TableCell>
                 <TableCell className="text-right">

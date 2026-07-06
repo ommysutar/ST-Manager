@@ -29,6 +29,13 @@ const nextConfig: NextConfig = {
     "@st-manager/constants",
     "@st-manager/validation",
   ],
+  async redirects() {
+    return [
+      { source: "/calendar", destination: "/bookings", permanent: true },
+      { source: "/calendar/new", destination: "/bookings/new", permanent: true },
+      { source: "/calendar/:id", destination: "/bookings/:id", permanent: true },
+    ];
+  },
   async rewrites() {
     // Proxy under `/api/*` so App Router page `/studios` does not collide with API paths.
     return [

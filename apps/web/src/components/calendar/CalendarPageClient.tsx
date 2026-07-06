@@ -21,7 +21,7 @@ import {
 } from "@/lib/calendar-utils";
 import { bookingsApi, studiosApi } from "@/lib/api-client";
 
-type CalendarView = "week" | "month";
+type CalendarView = "day" | "week" | "month";
 
 function groupBookingsByDay(bookings: BookingResponseDto[]): Map<string, BookingResponseDto[]> {
   const grouped = new Map<string, BookingResponseDto[]>();
@@ -47,6 +47,14 @@ export function CalendarPageClient() {
   const [loadedRangeKey, setLoadedRangeKey] = useState<string | null>(null);
 
   const range = useMemo(() => {
+    if (view === "day") {
+      const from = new Date(anchorDate);
+      from.setHours(0, 0, 0, 0);
+      const to = new Date(from);
+      to.setDate(to.getDate() + 1);
+      return { from, to };
+    }
+
     if (view === "week") {
       const from = startOfWeek(anchorDate);
       return { from, to: addDays(from, 7) };
@@ -135,6 +143,13 @@ export function CalendarPageClient() {
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
+            variant={view === "day" ? "default" : "outline"}
+            onClick={() => setView("day")}
+          >
+            Day
+          </Button>
+          <Button
+            type="button"
             variant={view === "week" ? "default" : "outline"}
             onClick={() => setView("week")}
           >
@@ -191,15 +206,59 @@ export function CalendarPageClient() {
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           {isLoading ? <p className="text-sm text-muted-foreground">Loading bookings...</p> : null}
 
-          {view === "week" ? (
+          {view === "day" ? (
+            <Card className="overflow-hidden border-border/60 shadow-lg">
+              <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent pb-4">
+                <CardTitle className="text-lg">
+                  {anchorDate.toLocaleDateString(undefined, {
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </CardTitle>
+                <CardDescription>
+                  <Link
+                    href={buildNewBookingHref(selectedStudioId, anchorDate)}
+                    className="text-primary underline-offset-4 hover:underline"
+                  >
+                    Add booking
+                  </Link>
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="min-h-[28rem] space-y-3 p-6">
+                {(bookingsByDay.get(anchorDate.toDateString()) ?? []).length > 0 ? (
+                  (bookingsByDay.get(anchorDate.toDateString()) ?? []).map((booking) => (
+                    <Link
+                      key={booking.id}
+                      href={`/calendar/${booking.id}`}
+                      className="block rounded-xl border border-border/60 bg-background/60 p-4 text-sm shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5"
+                    >
+                      <div className="font-medium">{booking.title}</div>
+                      <div className="text-muted-foreground">
+                        {formatTimeRange(booking.startAt, booking.endAt)}
+                      </div>
+                    </Link>
+                  ))
+                ) : (
+                  <p className="py-16 text-center text-sm text-muted-foreground">No bookings scheduled</p>
+                )}
+              </CardContent>
+            </Card>
+          ) : view === "week" ? (
             <div className="grid gap-4 lg:grid-cols-7">
               {weekDays.map((day) => {
                 const dayBookings = bookingsByDay.get(day.toDateString()) ?? [];
+                const isToday = day.toDateString() === new Date().toDateString();
 
                 return (
-                  <Card key={day.toISOString()}>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm">
+                  <Card
+                    key={day.toISOString()}
+                    className={`min-h-[20rem] overflow-hidden border-border/60 shadow-md ${
+                      isToday ? "ring-2 ring-primary/30" : ""
+                    }`}
+                  >
+                    <CardHeader className="border-b border-border/50 bg-gradient-to-b from-primary/5 to-transparent pb-4">
+                      <CardTitle className="text-base">
                         {day.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
                       </CardTitle>
                       <CardDescription>
@@ -211,13 +270,13 @@ export function CalendarPageClient() {
                         </Link>
                       </CardDescription>
                     </CardHeader>
-                    <CardContent className="flex flex-col gap-2">
+                    <CardContent className="flex min-h-[16rem] flex-col gap-3 p-4">
                       {dayBookings.length > 0 ? (
                         dayBookings.map((booking) => (
                           <Link
                             key={booking.id}
                             href={`/calendar/${booking.id}`}
-                            className="rounded-md border border-border p-2 text-sm hover:bg-accent"
+                            className="rounded-xl border border-border/60 bg-background/60 p-3 text-sm transition-colors hover:border-primary/30 hover:bg-primary/5"
                           >
                             <div className="font-medium">{booking.title}</div>
                             <div className="text-muted-foreground">
@@ -226,7 +285,9 @@ export function CalendarPageClient() {
                           </Link>
                         ))
                       ) : (
-                        <p className="text-sm text-muted-foreground">No bookings</p>
+                        <p className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+                          No bookings
+                        </p>
                       )}
                     </CardContent>
                   </Card>
@@ -234,32 +295,34 @@ export function CalendarPageClient() {
               })}
             </div>
           ) : (
-            <Card>
-              <CardHeader>
+            <Card className="overflow-hidden border-border/60 shadow-lg">
+              <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
                 <CardTitle className="text-base">Month view</CardTitle>
                 <CardDescription>Select a day to focus the week view or add a booking.</CardDescription>
               </CardHeader>
-              <CardContent className="flex flex-col gap-4">
-                <DayPicker
-                  mode="single"
-                  selected={anchorDate}
-                  onSelect={(date) => {
-                    if (date) {
-                      setAnchorDate(date);
-                      setView("week");
-                    }
-                  }}
-                  month={anchorDate}
-                  onMonthChange={setAnchorDate}
-                  modifiers={{ hasBooking: daysWithBookings }}
-                  modifiersClassNames={{ hasBooking: "font-semibold underline" }}
-                />
-                <ul className="flex flex-col gap-2">
+              <CardContent className="flex flex-col gap-6 p-6">
+                <div className="rounded-2xl border border-border/60 bg-background/40 p-4 [&_.rdp]:mx-auto [&_.rdp-day]:min-h-12 [&_.rdp-day]:min-w-12 [&_.rdp-day_button]:h-12 [&_.rdp-day_button]:w-12 [&_.rdp-day_button]:rounded-xl [&_.rdp-day_button]:text-base">
+                  <DayPicker
+                    mode="single"
+                    selected={anchorDate}
+                    onSelect={(date) => {
+                      if (date) {
+                        setAnchorDate(date);
+                        setView("day");
+                      }
+                    }}
+                    month={anchorDate}
+                    onMonthChange={setAnchorDate}
+                    modifiers={{ hasBooking: daysWithBookings }}
+                    modifiersClassNames={{ hasBooking: "font-semibold underline decoration-primary" }}
+                  />
+                </div>
+                <ul className="flex flex-col gap-3">
                   {bookings.map((booking) => (
                     <li key={booking.id}>
                       <Link
                         href={`/calendar/${booking.id}`}
-                        className="text-sm text-primary underline-offset-4 hover:underline"
+                        className="block rounded-xl border border-border/60 p-3 text-sm transition-colors hover:border-primary/30 hover:bg-primary/5"
                       >
                         {booking.title} — {new Date(booking.startAt).toLocaleDateString()} (
                         {formatTimeRange(booking.startAt, booking.endAt)})

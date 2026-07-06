@@ -1,20 +1,53 @@
 "use client";
 
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@st-manager/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@st-manager/ui";
+import { FileTextIcon, FolderPlusIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useInquiries } from "@/hooks/useInquiryStorage";
 import { formatINR } from "@/lib/currency";
+import { getOrCreateQuotation } from "@/lib/documents/storage";
 import { layout } from "@st-manager/theme";
+import { deleteInquiry } from "@/lib/inquiry/storage";
+import type { SavedInquiry } from "@/lib/inquiry/types";
 
 function inquiryStatusLabel(status: "inquiry" | "project"): string {
-  return status === "project" ? "Project" : "Inquiry";
+  return status === "project" ? "Converted" : "Inquiry";
 }
 
 export function InquiriesPageClient() {
+  const router = useRouter();
   const { isAuthenticated } = useAuth();
   const inquiries = useInquiries();
+
+  function handleDelete(inquiryId: string, projectName: string) {
+    if (!window.confirm(`Delete inquiry "${projectName || "Untitled"}"? This cannot be undone.`)) {
+      return;
+    }
+
+    if (deleteInquiry(inquiryId)) {
+      toast.success("Inquiry deleted");
+      return;
+    }
+
+    toast.error("Could not delete inquiry");
+  }
+
+  function handleMakeQuotation(inquiry: SavedInquiry) {
+    const document = getOrCreateQuotation({ inquiryId: inquiry.id, projectId: inquiry.projectId });
+    router.push(`/documents/${document.id}`);
+  }
 
   return (
     <div
@@ -25,7 +58,7 @@ export function InquiriesPageClient() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Inquiries</h1>
           <p className="text-sm text-muted-foreground">
-            Saved inquiries and converted projects from the wizard workflow.
+            Saved inquiries from the wizard. Open, convert to project, or delete when no longer needed.
           </p>
         </div>
         <Button asChild>
@@ -58,12 +91,7 @@ export function InquiriesPageClient() {
               <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
                 <div>
                   <CardTitle className="text-base">
-                    <Link
-                      href={`/inquiries/${inquiry.id}`}
-                      className="hover:text-primary hover:underline underline-offset-4"
-                    >
-                      {inquiry.form.projectName || "Untitled Project"}
-                    </Link>
+                    {inquiry.inquiryNumber} · {inquiry.form.projectName || "Untitled Project"}
                   </CardTitle>
                   <CardDescription>
                     {inquiry.form.clientName} · {inquiry.form.projectCategory || "No category"}
@@ -80,13 +108,46 @@ export function InquiriesPageClient() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button asChild variant="outline" size="sm">
-                    <Link href={`/inquiries/${inquiry.id}`}>View details</Link>
+                    <Link href={`/inquiries/new?inquiryId=${inquiry.id}`}>
+                      <PencilIcon className="size-4" />
+                      Open Inquiry
+                    </Link>
                   </Button>
                   {inquiry.projectId ? (
                     <Button asChild variant="outline" size="sm">
                       <Link href={`/projects/${inquiry.projectId}`}>View Project</Link>
                     </Button>
-                  ) : null}
+                  ) : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() =>
+                        router.push(`/inquiries/new?inquiryId=${inquiry.id}&mode=convert`)
+                      }
+                    >
+                      <FolderPlusIcon className="size-4" />
+                      Convert to Project
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleMakeQuotation(inquiry)}
+                  >
+                    <FileTextIcon className="size-4" />
+                    Make Quotation
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => handleDelete(inquiry.id, inquiry.form.projectName)}
+                  >
+                    <Trash2Icon className="size-4" />
+                    Delete Inquiry
+                  </Button>
                 </div>
               </CardContent>
             </Card>

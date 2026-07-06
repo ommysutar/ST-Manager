@@ -1,21 +1,28 @@
 import { DEFAULT_STUDIO_SERVICES } from "./constants";
 import { notifyServicePricingUpdated } from "./events";
+import { getServicePrice, normalizeServicePrices } from "./service-pricing";
 import { setAllServicesSnapshot } from "./snapshots";
 import type { StudioService } from "./types";
 import { SERVICE_PRICING_STORAGE_KEY } from "./types";
+
+export { getServicePrice, normalizeServicePrices };
 
 export function generateId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function normalizeService(raw: Partial<StudioService> & { id: string }): StudioService {
+  const prices = normalizeServicePrices(raw);
   return {
     id: raw.id,
     name: raw.name?.trim() || "Untitled Service",
-    price: Number.isFinite(raw.price) ? Math.max(0, Math.round(raw.price!)) : 0,
+    price: prices.standard,
+    prices,
     category: raw.category?.trim() ?? "",
     description: raw.description?.trim() ?? "",
     active: raw.active ?? true,
+    mandatory: raw.mandatory ?? false,
+    isStudioRent: raw.isStudioRent ?? false,
   };
 }
 
@@ -108,6 +115,12 @@ export function filterStudioServices(services: StudioService[], query: string): 
       service.category.toLowerCase().includes(normalized) ||
       service.description.toLowerCase().includes(normalized),
   );
+}
+
+export function getMandatoryServiceIds(): string[] {
+  return getActiveStudioServices()
+    .filter((service) => service.mandatory)
+    .map((service) => service.id);
 }
 
 export function initializeServiceSnapshots(): void {
