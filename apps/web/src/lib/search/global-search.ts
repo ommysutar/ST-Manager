@@ -76,6 +76,7 @@ export function searchLocalEntities(query: string): SearchResult[] {
     const studioName = getStudio(booking.studioId)?.name ?? "";
     const formattedDate = new Date(`${booking.date}T12:00:00`).toLocaleDateString();
     const haystack = [
+      booking.projectNumber,
       booking.projectName,
       booking.clientName,
       booking.bookingFor,

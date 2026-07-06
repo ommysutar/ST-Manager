@@ -51,6 +51,11 @@ function normalizeBooking(raw: Partial<ProjectBooking> & { id: string }): Projec
     status: normalizeStatus(raw.status),
     clientName: raw.clientName ?? "",
     projectName: raw.projectName ?? "",
+    projectNumber: raw.projectNumber ?? "",
+    engineerId: raw.engineerId ?? null,
+    sessionId: raw.sessionId ?? null,
+    attendanceRecorded: raw.attendanceRecorded ?? false,
+    equipmentIds: Array.isArray(raw.equipmentIds) ? raw.equipmentIds : [],
     createdAt: raw.createdAt ?? now,
     updatedAt: raw.updatedAt ?? now,
   };
@@ -158,6 +163,7 @@ export function createBooking(input: CreateBookingInput): ProjectBooking {
     status,
     clientName: project.clientName,
     projectName: project.projectName,
+    projectNumber: project.projectNumber,
     createdAt: now,
     updatedAt: now,
   });

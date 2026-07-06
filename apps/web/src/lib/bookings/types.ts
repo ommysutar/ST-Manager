@@ -1,8 +1,23 @@
 export type BookingSlotId = string;
 export type ProjectBookingStatus = "draft" | "booked" | "completed" | "cancelled";
 
+/**
+ * Sprint 5+ extension hooks — reserved on every booking, not used in Sprint 4 UI.
+ * Keeps the scheduling engine ready for engineer assignment, attendance, sessions, and gear.
+ */
+export interface BookingFutureLinks {
+  /** Assigned engineer user id (Sprint 5 roster). */
+  engineerId?: string | null;
+  /** Linked API session id once sessions merge with projects. */
+  sessionId?: string | null;
+  /** Whether attendance was recorded for this booking. */
+  attendanceRecorded?: boolean;
+  /** Equipment allocation ids for this booking. */
+  equipmentIds?: string[];
+}
+
 /** Project-owned booking — single source of truth referenced by project.bookingIds */
-export interface ProjectBooking {
+export interface ProjectBooking extends BookingFutureLinks {
   id: string;
   projectId: string;
   studioId: string;
@@ -13,6 +28,8 @@ export interface ProjectBooking {
   status: ProjectBookingStatus;
   clientName: string;
   projectName: string;
+  /** Denormalized for search — synced from project on create/update. */
+  projectNumber: string;
   createdAt: string;
   updatedAt: string;
 }

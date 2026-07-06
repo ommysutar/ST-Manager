@@ -1,6 +1,9 @@
 export interface StudioRoom {
   id: string;
+  /** Primary studio label (e.g. Studio A, Mix Room). */
   name: string;
+  /** Optional room identifier within the studio (e.g. Booth 1). */
+  roomName?: string;
   description: string;
   color: string;
   active: boolean;

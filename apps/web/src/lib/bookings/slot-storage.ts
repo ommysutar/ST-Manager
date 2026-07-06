@@ -65,6 +65,30 @@ function persistSlots(slots: BookingSlot[]): BookingSlot[] {
   return sorted;
 }
 
+function slotStartMinutes(slot: Pick<BookingSlot, "startHour" | "startMinute">): number {
+  return slot.startHour * 60 + slot.startMinute;
+}
+
+function slotEndMinutes(slot: Pick<BookingSlot, "endHour" | "endMinute">): number {
+  return slot.endHour * 60 + slot.endMinute;
+}
+
+function slotsOverlap(
+  left: Pick<BookingSlot, "startHour" | "startMinute" | "endHour" | "endMinute">,
+  right: BookingSlot,
+): boolean {
+  return (
+    slotStartMinutes(left) < slotEndMinutes(right) &&
+    slotStartMinutes(right) < slotEndMinutes(left)
+  );
+}
+
+function findOverlappingSlot(
+  candidate: Pick<BookingSlot, "startHour" | "startMinute" | "endHour" | "endMinute">,
+): BookingSlot | undefined {
+  return readSlotsFromStorage().find((existing) => slotsOverlap(candidate, existing));
+}
+
 export function loadAllSlots(): BookingSlot[] {
   return sortSlots(readSlotsFromStorage());
 }
@@ -74,6 +98,17 @@ export function getSlot(id: string): BookingSlot | undefined {
 }
 
 export function createCustomSlot(input: CreateCustomSlotInput): BookingSlot {
+  const startTotal = input.startHour * 60 + input.startMinute;
+  const endTotal = input.endHour * 60 + input.endMinute;
+  if (endTotal <= startTotal) {
+    throw new Error("End time must be after start time.");
+  }
+
+  const overlap = findOverlappingSlot(input);
+  if (overlap) {
+    throw new Error(`Slot overlaps with "${overlap.label}".`);
+  }
+
   const now = new Date().toISOString();
   const slot = normalizeSlot({
     id: generateId("slot"),

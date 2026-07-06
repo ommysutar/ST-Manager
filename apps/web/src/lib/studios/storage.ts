@@ -8,15 +8,22 @@ import { DEFAULT_STUDIO_COLOR, STUDIOS_STORAGE_KEY } from "./types";
 
 function normalizeStudio(raw: Partial<StudioRoom> & { id: string }): StudioRoom {
   const now = new Date().toISOString();
+  const roomName = raw.roomName?.trim();
   return {
     id: raw.id,
     name: raw.name?.trim() || "Untitled Studio",
+    roomName: roomName || undefined,
     description: raw.description?.trim() ?? "",
     color: raw.color?.trim() || DEFAULT_STUDIO_COLOR,
     active: raw.active ?? true,
     createdAt: raw.createdAt ?? now,
     updatedAt: raw.updatedAt ?? now,
   };
+}
+
+/** Display label combining studio name and optional room name. */
+export function formatStudioLabel(studio: StudioRoom): string {
+  return studio.roomName ? `${studio.name} · ${studio.roomName}` : studio.name;
 }
 
 function readStudiosFromStorage(): StudioRoom[] {

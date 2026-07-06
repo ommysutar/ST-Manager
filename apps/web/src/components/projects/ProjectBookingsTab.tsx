@@ -40,7 +40,8 @@ export function ProjectBookingsTab({ projectId }: ProjectBookingsTabProps) {
                 <TableRow>
                   <TableHead>Studio</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead>Time</TableHead>
+                  <TableHead>Slot</TableHead>
+                  <TableHead>Booking For</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Notes</TableHead>
                   <TableHead className="text-right">Action</TableHead>
@@ -68,6 +69,7 @@ export function ProjectBookingsTab({ projectId }: ProjectBookingsTabProps) {
                         {new Date(`${booking.date}T12:00:00`).toLocaleDateString()}
                       </TableCell>
                       <TableCell>{getBookingSlotLabel(booking.slotId)}</TableCell>
+                      <TableCell className="font-medium">{booking.bookingFor}</TableCell>
                       <TableCell>
                         <Badge variant={booking.status === "cancelled" ? "secondary" : "success"}>
                           {BOOKING_STATUS_LABELS[booking.status]}

@@ -59,6 +59,7 @@ function StudioEditDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const [name, setName] = useState(studio?.name ?? "");
+  const [roomName, setRoomName] = useState(studio?.roomName ?? "");
   const [description, setDescription] = useState(studio?.description ?? "");
   const [color, setColor] = useState(studio?.color ?? DEFAULT_STUDIO_COLOR);
 
@@ -71,7 +72,7 @@ function StudioEditDialog({
       return;
     }
 
-    updateStudio(studio.id, { name, description, color });
+    updateStudio(studio.id, { name, roomName: roomName.trim() || undefined, description, color });
     toast.success("Studio updated");
     onOpenChange(false);
   }
@@ -86,6 +87,15 @@ function StudioEditDialog({
           <div className="space-y-2">
             <Label htmlFor="edit-studio-name">Studio Name *</Label>
             <Input id="edit-studio-name" value={name} onChange={(event) => setName(event.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-studio-room">Room Name</Label>
+            <Input
+              id="edit-studio-room"
+              value={roomName}
+              onChange={(event) => setRoomName(event.target.value)}
+              placeholder="Optional — e.g. Booth 1"
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="edit-studio-description">Description</Label>
@@ -123,6 +133,7 @@ export function StudiosSettingsPageClient() {
   const studios = useStudios();
   const slots = useBookingSlots();
   const [name, setName] = useState("");
+  const [roomName, setRoomName] = useState("");
   const [description, setDescription] = useState("");
   const [color, setColor] = useState(DEFAULT_STUDIO_COLOR);
   const [editingStudio, setEditingStudio] = useState<StudioRoom | null>(null);
@@ -138,8 +149,9 @@ export function StudiosSettingsPageClient() {
       return;
     }
 
-    createStudio({ name, description, color, active: true });
+    createStudio({ name, roomName: roomName.trim() || undefined, description, color, active: true });
     setName("");
+    setRoomName("");
     setDescription("");
     setColor(DEFAULT_STUDIO_COLOR);
     toast.success("Studio created");
@@ -168,15 +180,19 @@ export function StudiosSettingsPageClient() {
     const start = parseTimeInputValue(slotStart);
     const end = parseTimeInputValue(slotEnd);
 
-    createCustomSlot({
-      label: slotLabel,
-      startHour: start.hour,
-      startMinute: start.minute,
-      endHour: end.hour,
-      endMinute: end.minute,
-    });
-    setSlotLabel("");
-    toast.success("Custom slot created");
+    try {
+      createCustomSlot({
+        label: slotLabel,
+        startHour: start.hour,
+        startMinute: start.minute,
+        endHour: end.hour,
+        endMinute: end.minute,
+      });
+      setSlotLabel("");
+      toast.success("Custom slot created");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not create slot");
+    }
   }
 
   function handleDeleteSlot(slot: BookingSlot) {
@@ -227,6 +243,15 @@ export function StudiosSettingsPageClient() {
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="studio-room">Room Name</Label>
+              <Input
+                id="studio-room"
+                value={roomName}
+                onChange={(event) => setRoomName(event.target.value)}
+                placeholder="Optional — Voice Booth, Mix Room..."
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="studio-color">Color</Label>
               <div className="flex items-center gap-3">
                 <input
@@ -269,6 +294,7 @@ export function StudiosSettingsPageClient() {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
+                <TableHead>Room</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -287,6 +313,7 @@ export function StudiosSettingsPageClient() {
                       {studio.name}
                     </span>
                   </TableCell>
+                  <TableCell className="text-muted-foreground">{studio.roomName || "—"}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {studio.description || "—"}
                   </TableCell>

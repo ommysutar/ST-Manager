@@ -241,6 +241,7 @@ export function BookingCreatePageClient() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const initialProjectId = searchParams.get("projectId") ?? "";
   const initialDate = searchParams.get("date") ?? new Date().toISOString().slice(0, 10);
+  const initialSlotId = (searchParams.get("slotId") as BookingSlotId | null) ?? "slot_1";
 
   async function handleSubmit(values: ProjectBookingFormValues) {
     setIsSubmitting(true);
@@ -273,7 +274,7 @@ export function BookingCreatePageClient() {
         </CardHeader>
         <CardContent>
           <ProjectBookingForm
-            initialValues={{ projectId: initialProjectId, date: initialDate }}
+            initialValues={{ projectId: initialProjectId, date: initialDate, slotId: initialSlotId }}
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
             submitLabel="Confirm Booking"
