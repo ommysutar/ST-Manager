@@ -10,9 +10,19 @@ import { layout } from "@st-manager/theme";
 
 const settingsLinks = [
   {
+    href: "/settings/whatsapp-notifications",
+    title: "WhatsApp Notifications",
+    description: "Configure one-click WhatsApp message templates for client communication.",
+  },
+  {
     href: "/settings/files",
     title: "File Management",
     description: "Connect Google Drive, Dropbox, and OneDrive for project file storage.",
+  },
+  {
+    href: "/settings/booking-slots",
+    title: "Booking Slot Settings",
+    description: "Configure booking time slots, order, and schedules for Week and Month views.",
   },
   {
     href: "/settings/studios",
@@ -23,11 +33,6 @@ const settingsLinks = [
     href: "/settings/services",
     title: "Service Management",
     description: "Manage studio services and pricing for the inquiry wizard.",
-  },
-  {
-    href: "/settings/projects",
-    title: "Project Plans",
-    description: "Manage inquiry plan tiers (Basic, Standard, Professional).",
   },
   {
     href: "/settings/template",

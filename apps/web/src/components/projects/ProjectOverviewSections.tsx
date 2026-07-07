@@ -15,6 +15,7 @@ import { ProjectExpensesTab } from "@/components/projects/ProjectExpensesTab";
 import { ProjectFilesLinks } from "@/components/projects/ProjectFilesLinks";
 import { ProjectNotesTab } from "@/components/projects/ProjectNotesTab";
 import { ProjectTaskFlow } from "@/components/projects/ProjectTaskFlow";
+import { ProjectWhatsAppNotify } from "@/components/whatsapp/ProjectWhatsAppNotify";
 import { useProjectBookings } from "@/hooks/useBookings";
 import { usePaymentsForProject } from "@/hooks/usePayments";
 import { useStudios } from "@/hooks/useStudios";
@@ -150,7 +151,10 @@ export function ProjectOverviewSections({ project }: ProjectOverviewSectionsProp
             <CardContent className="space-y-3 text-sm">
               <div>
                 <p className="text-muted-foreground">Client Name</p>
-                <p className="font-medium">{project.clientName}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">{project.clientName}</p>
+                  <ProjectWhatsAppNotify project={project} type="project_ready" size="sm" />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -287,6 +291,7 @@ export function ProjectOverviewSections({ project }: ProjectOverviewSectionsProp
                   <Link href={`/clients/${project.clientId}`}>Client</Link>
                 </Button>
               ) : null}
+              <ProjectWhatsAppNotify project={project} type="project_ready" size="sm" />
               <Button type="button" variant="outline" size="sm" onClick={() => setSection("bookings")}>
                 Bookings
               </Button>
@@ -379,8 +384,9 @@ export function ProjectOverviewSections({ project }: ProjectOverviewSectionsProp
 
       {section === "timeline" ? (
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
             <CardTitle className="text-base">Timeline</CardTitle>
+            <ProjectWhatsAppNotify project={project} type="project_ready" size="sm" />
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">

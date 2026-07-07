@@ -21,6 +21,8 @@ import { useProjects } from "@/hooks/useProjects";
 import { layout } from "@st-manager/theme";
 import { BOOKING_STATUS_OPTIONS } from "@/lib/bookings/constants";
 import { createBooking, isSlotAvailable } from "@/lib/bookings/storage";
+import { getBookingSlotLabel } from "@/lib/bookings/slots";
+import { getFirstSlotId } from "@/lib/bookings/slot-utils";
 import type { BookingSlotId, ProjectBookingStatus } from "@/lib/bookings/types";
 import { filterActiveProjects } from "@/lib/projects/filters";
 
@@ -41,6 +43,8 @@ interface ProjectBookingFormProps {
   isSubmitting?: boolean;
   submitLabel?: string;
   lockProject?: boolean;
+  /** Wizard opened from calendar — date/slot are fixed; status defaults to booked. */
+  mode?: "full" | "wizard";
 }
 
 export function ProjectBookingForm({
@@ -50,6 +54,7 @@ export function ProjectBookingForm({
   isSubmitting = false,
   submitLabel = "Save Booking",
   lockProject = false,
+  mode = "full",
 }: ProjectBookingFormProps) {
   const projects = filterActiveProjects(useProjects());
   const studios = useActiveStudios();
@@ -60,7 +65,7 @@ export function ProjectBookingForm({
     bookingFor: initialValues?.bookingFor ?? "",
     notes: initialValues?.notes ?? "",
     date: initialValues?.date ?? new Date().toISOString().slice(0, 10),
-    slotId: initialValues?.slotId ?? "slot_1",
+    slotId: initialValues?.slotId ?? getFirstSlotId(slots),
     status: initialValues?.status ?? "booked",
   });
 
@@ -83,11 +88,36 @@ export function ProjectBookingForm({
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    await onSubmit(values);
+    const payload =
+      mode === "wizard"
+        ? { ...values, status: "booked" as ProjectBookingStatus }
+        : values;
+    await onSubmit(payload);
   }
+
+  const slotTaken =
+    mode === "wizard" &&
+    Boolean(values.studioId) &&
+    !isSlotAvailable(values.studioId, values.date, values.slotId, excludeBookingId);
 
   return (
     <form onSubmit={handleSubmit} className="flex max-w-xl flex-col gap-4">
+      {mode === "wizard" ? (
+        <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm">
+          <p className="font-medium">
+            {new Date(`${values.date}T12:00:00`).toLocaleDateString("en-IN", {
+              weekday: "short",
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })}
+          </p>
+          <p className="text-muted-foreground">{getBookingSlotLabel(values.slotId)}</p>
+        </div>
+      ) : null}
+      {slotTaken ? (
+        <p className="text-sm text-destructive">This studio is already booked for the selected slot.</p>
+      ) : null}
       <div className="space-y-2">
         <Label htmlFor="booking-project">Project *</Label>
         <select
@@ -165,70 +195,84 @@ export function ProjectBookingForm({
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="booking-date">Date *</Label>
-          <Input
-            id="booking-date"
-            type="date"
-            value={values.date}
-            onChange={(event) =>
-              setValues((current) => ({ ...current, date: event.target.value }))
-            }
-            required
-          />
-        </div>
+      {mode === "full" ? (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="booking-date">Date *</Label>
+              <Input
+                id="booking-date"
+                type="date"
+                value={values.date}
+                onChange={(event) =>
+                  setValues((current) => ({ ...current, date: event.target.value }))
+                }
+                required
+              />
+            </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="booking-status">Status *</Label>
-          <select
-            id="booking-status"
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-            value={values.status}
-            onChange={(event) =>
-              setValues((current) => ({
-                ...current,
-                status: event.target.value as ProjectBookingStatus,
-              }))
-            }
-            required
-          >
-            {BOOKING_STATUS_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+            <div className="space-y-2">
+              <Label htmlFor="booking-status">Status *</Label>
+              <select
+                id="booking-status"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                value={values.status}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    status: event.target.value as ProjectBookingStatus,
+                  }))
+                }
+                required
+              >
+                {BOOKING_STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="booking-slot">Booking Slot *</Label>
-        <select
-          id="booking-slot"
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-          value={values.slotId}
-          onChange={(event) =>
-            setValues((current) => ({
-              ...current,
-              slotId: event.target.value as BookingSlotId,
-            }))
-          }
-          required
-        >
-          {availableSlots.length === 0 ? (
-            <option value="">No slots available</option>
-          ) : (
-            availableSlots.map((slot) => (
-              <option key={slot.id} value={slot.id}>
-                {slot.label}
-              </option>
-            ))
-          )}
-        </select>
-      </div>
+          <div className="space-y-2">
+            <Label htmlFor="booking-slot">Booking Slot *</Label>
+            <select
+              id="booking-slot"
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+              value={values.slotId}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  slotId: event.target.value as BookingSlotId,
+                }))
+              }
+              required
+            >
+              {availableSlots.length === 0 ? (
+                <option value="">No slots available</option>
+              ) : (
+                availableSlots.map((slot) => (
+                  <option key={slot.id} value={slot.id}>
+                    {slot.label}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+        </>
+      ) : null}
 
-      <Button type="submit" disabled={isSubmitting || availableSlots.length === 0}>
+      <Button
+        type="submit"
+        disabled={
+          isSubmitting ||
+          !values.projectId ||
+          !values.studioId ||
+          !values.bookingFor.trim() ||
+          slotTaken ||
+          (mode === "full" && availableSlots.length === 0)
+        }
+      >
         {isSubmitting ? "Saving..." : submitLabel}
       </Button>
     </form>
@@ -238,10 +282,12 @@ export function ProjectBookingForm({
 export function BookingCreatePageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const slots = useBookingSlots();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const initialProjectId = searchParams.get("projectId") ?? "";
   const initialDate = searchParams.get("date") ?? new Date().toISOString().slice(0, 10);
-  const initialSlotId = (searchParams.get("slotId") as BookingSlotId | null) ?? "slot_1";
+  const initialSlotId =
+    (searchParams.get("slotId") as BookingSlotId | null) ?? getFirstSlotId(slots);
 
   async function handleSubmit(values: ProjectBookingFormValues) {
     setIsSubmitting(true);

@@ -14,12 +14,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { NewInquiryLink } from "@/components/inquiry/NewInquiryLink";
+import { WhatsAppNotifyIcon } from "@/components/whatsapp/WhatsAppNotifyIcon";
 import { useAuth } from "@/hooks/useAuth";
+import { useClients } from "@/hooks/useClients";
 import { useInquiries } from "@/hooks/useInquiryStorage";
+import { useProfile } from "@/hooks/useProfile";
 import { formatINR } from "@/lib/currency";
+import { resolveClientWhatsAppNumber } from "@/hooks/useClientWhatsApp";
 import { getOrCreateQuotation } from "@/lib/documents/storage";
 import { layout } from "@st-manager/theme";
 import { deleteInquiry } from "@/lib/inquiry/storage";
+import { buildInquiryWhatsAppVariables } from "@/lib/whatsapp/context";
 import type { SavedInquiry } from "@/lib/inquiry/types";
 
 function inquiryStatusLabel(status: "inquiry" | "project"): string {
@@ -28,7 +34,9 @@ function inquiryStatusLabel(status: "inquiry" | "project"): string {
 
 export function InquiriesPageClient() {
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const profile = useProfile(user);
+  const clients = useClients();
   const inquiries = useInquiries();
 
   function handleDelete(inquiryId: string, projectName: string) {
@@ -62,7 +70,7 @@ export function InquiriesPageClient() {
           </p>
         </div>
         <Button asChild>
-          <Link href="/inquiries/new">New Inquiry</Link>
+          <NewInquiryLink>New Inquiry</NewInquiryLink>
         </Button>
       </div>
 
@@ -77,7 +85,7 @@ export function InquiriesPageClient() {
           <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
             <p className="text-sm text-muted-foreground">No inquiries yet.</p>
             <Button asChild>
-              <Link href="/inquiries/new">Start New Inquiry</Link>
+              <NewInquiryLink>Start New Inquiry</NewInquiryLink>
             </Button>
           </CardContent>
         </Card>
@@ -93,8 +101,20 @@ export function InquiriesPageClient() {
                   <CardTitle className="text-base">
                     {inquiry.inquiryNumber} · {inquiry.form.projectName || "Untitled Project"}
                   </CardTitle>
-                  <CardDescription>
-                    {inquiry.form.clientName} · {inquiry.form.projectCategory || "No category"}
+                  <CardDescription className="flex items-center gap-2">
+                    <span>
+                      {inquiry.form.clientName} · {inquiry.form.projectCategory || "No category"}
+                    </span>
+                    <WhatsAppNotifyIcon
+                      whatsappNumber={
+                        inquiry.form.existingClientId
+                          ? resolveClientWhatsAppNumber(inquiry.form.existingClientId, clients)
+                          : inquiry.form.whatsappNumber || null
+                      }
+                      type="inquiry_received"
+                      variables={buildInquiryWhatsAppVariables(inquiry, profile)}
+                      size="sm"
+                    />
                   </CardDescription>
                 </div>
                 <Badge variant={inquiry.status === "project" ? "success" : "secondary"}>

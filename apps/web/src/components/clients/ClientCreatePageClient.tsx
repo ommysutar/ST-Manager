@@ -8,17 +8,7 @@ import { useState } from "react";
 
 import { ClientForm, type ClientFormValues } from "@/components/clients/ClientForm";
 import { useAuth } from "@/hooks/useAuth";
-import { clientsApi } from "@/lib/api-client";
-
-function toPayload(values: ClientFormValues) {
-  return {
-    name: values.name,
-    email: values.email || null,
-    phone: values.phone || null,
-    company: values.company || null,
-    notes: values.notes || null,
-  };
-}
+import { resolveOrCreateClient } from "@/lib/clients/sync";
 
 export function ClientCreatePageClient() {
   const router = useRouter();
@@ -31,7 +21,15 @@ export function ClientCreatePageClient() {
     setError(null);
 
     try {
-      const created = await clientsApi.createClient(toPayload(values));
+      const created = await resolveOrCreateClient({
+        name: values.name,
+        phone: values.phone,
+        whatsappNumber: values.whatsappNumber,
+        whatsappSameAsPhone: values.whatsappSameAsPhone,
+        email: values.email,
+        company: values.company,
+        notes: values.notes,
+      });
       router.push(`/clients/${created.id}`);
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Failed to create client";

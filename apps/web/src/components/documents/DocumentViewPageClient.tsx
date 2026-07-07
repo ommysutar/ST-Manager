@@ -6,17 +6,21 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 
 import { DocumentTemplate } from "@/components/documents/DocumentTemplate";
+import { ProjectWhatsAppNotify } from "@/components/whatsapp/ProjectWhatsAppNotify";
 import { useAuth } from "@/hooks/useAuth";
-import { useDocuments } from "@/hooks/useDocuments";
 import { useProfile } from "@/hooks/useProfile";
+import { useProject } from "@/hooks/useProjects";
+import { printDocumentPdf } from "@/lib/documents/pdf-filename";
+import { getDocument } from "@/lib/documents/storage";
 import { buildDocumentViewModel } from "@/lib/documents/view-model";
+import { buildDocumentWhatsAppVariables } from "@/lib/whatsapp/context";
 
 export function DocumentViewPageClient() {
   const params = useParams<{ id: string }>();
   const { user, isAuthenticated } = useAuth();
   const profile = useProfile(user);
-  const documents = useDocuments();
-  const document = documents.find((entry) => entry.id === params.id);
+  const document = getDocument(params.id);
+  const project = useProject(document?.projectId ?? "");
 
   if (!isAuthenticated) {
     return <p className="text-sm text-muted-foreground">Sign in to view documents.</p>;
@@ -56,17 +60,40 @@ export function DocumentViewPageClient() {
       : "/payments";
 
   return (
-    <div className="mx-auto flex flex-col gap-6 print:block" style={{ maxWidth: layout.contentMaxWidth }}>
-      <div className="flex items-center justify-between print:hidden">
+    <div
+      className="document-page mx-auto flex flex-col gap-6"
+      style={{ maxWidth: layout.contentMaxWidth }}
+    >
+      <div className="document-toolbar flex items-center justify-between" data-print-hide>
         <Link href={backHref} className="text-sm text-primary underline-offset-4 hover:underline">
           Back
         </Link>
-        <Button type="button" variant="outline" onClick={() => window.print()}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            if (document.type === "quotation" || document.type === "invoice") {
+              printDocumentPdf(data.project.projectName, document.type);
+            } else {
+              window.print();
+            }
+          }}
+        >
           Print / PDF
         </Button>
+        {project ? (
+          <ProjectWhatsAppNotify
+            project={project}
+            type={document.type === "invoice" ? "invoice_ready" : "quotation_ready"}
+            extras={buildDocumentWhatsAppVariables(project, document, profile)}
+            size="sm"
+          />
+        ) : null}
       </div>
 
-      <DocumentTemplate data={data} />
+      <div id="document-print-root" className="document-print-root">
+        <DocumentTemplate data={data} />
+      </div>
     </div>
   );
 }

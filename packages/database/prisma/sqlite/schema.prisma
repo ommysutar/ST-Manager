@@ -34,18 +34,20 @@ model User {
 }
 
 model Client {
-  id        String    @id @default(cuid())
-  name      String
-  email     String?
-  phone     String?
-  company   String?
-  notes     String?
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  bookings  Booking[]
-  sessions  Session[]
-  invoices  Invoice[]
+  id                  String    @id @default(cuid())
+  name                String
+  email               String?
+  phone               String?
+  whatsappNumber      String?
+  whatsappSameAsPhone Boolean   @default(false)
+  company             String?
+  notes               String?
+  deletedAt           DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  bookings            Booking[]
+  sessions            Session[]
+  invoices            Invoice[]
 
   @@map("clients")
 }

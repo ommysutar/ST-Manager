@@ -163,9 +163,9 @@ export function ServiceFormDialog({
 
           <div className="flex items-center justify-between rounded-xl border border-border/60 bg-background/40 p-4">
             <div>
-              <Label htmlFor="service-studio-rent">Studio Rent (hourly rate)</Label>
+              <Label htmlFor="service-studio-rent">Per Hour Rent</Label>
               <p className="text-xs text-muted-foreground">
-                When enabled, the inquiry wizard asks for hours and calculates total automatically.
+                When enabled, the inquiry wizard shows an hours field and calculates total as rate × hours.
               </p>
             </div>
             <Switch

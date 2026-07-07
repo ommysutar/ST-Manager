@@ -18,6 +18,10 @@ import type { ProjectTask, StudioProject } from "@/lib/projects/types";
 
 import { AddTaskDialog } from "./AddTaskDialog";
 import { ProjectTaskCard } from "./ProjectTaskCard";
+import { useClientWhatsAppNumber } from "@/hooks/useClientWhatsApp";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
+import { buildProjectWhatsAppVariables } from "@/lib/whatsapp/context";
 
 interface ProjectTaskFlowProps {
   project: StudioProject;
@@ -25,6 +29,12 @@ interface ProjectTaskFlowProps {
 
 export function ProjectTaskFlow({ project }: ProjectTaskFlowProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const { user } = useAuth();
+  const profile = useProfile(user);
+  const whatsappNumber = useClientWhatsAppNumber(project.clientId);
+  const whatsappVariables = buildProjectWhatsAppVariables(project, profile, {
+    GoogleDriveLink: project.files[0]?.cloudUrl ?? project.links[0]?.url ?? "",
+  });
   const tasks = useMemo(() => sortTasks(project.tasks), [project.tasks]);
   const progress = calculateProjectProgress(project);
   const currentIndex = getCurrentTaskIndex(tasks);
@@ -106,6 +116,8 @@ export function ProjectTaskFlow({ project }: ProjectTaskFlowProps) {
                   onUpdate={(patch) => handleTaskUpdate(task.id, patch)}
                   onDelete={() => handleDeleteTask(task.id)}
                   onDuplicate={() => handleDuplicateTask(task.id)}
+                  whatsappNumber={whatsappNumber}
+                  whatsappVariables={whatsappVariables}
                 />
               </div>
             </div>

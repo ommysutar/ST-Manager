@@ -5,7 +5,7 @@
   "description": "Enterprise AI-powered Studio Management System",
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --filter=@st-manager/api --filter=@st-manager/web",
     "lint": "eslint .",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",

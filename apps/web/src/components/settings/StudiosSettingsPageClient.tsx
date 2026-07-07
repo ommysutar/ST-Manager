@@ -29,25 +29,11 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { useAuth } from "@/hooks/useAuth";
-import { useBookingSlots } from "@/hooks/useBookingSlots";
 import { useStudios } from "@/hooks/useStudios";
 import { layout } from "@st-manager/theme";
-import { createCustomSlot, deleteCustomSlot } from "@/lib/bookings/slot-storage";
-import type { BookingSlot } from "@/lib/bookings/types";
 import { createStudio, deleteStudio, updateStudio } from "@/lib/studios/storage";
 import { DEFAULT_STUDIO_COLOR } from "@/lib/studios/types";
 import type { StudioRoom } from "@/lib/studios/types";
-
-function formatSlotTime(hour: number, minute: number): string {
-  const date = new Date();
-  date.setHours(hour, minute, 0, 0);
-  return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-}
-
-function parseTimeInputValue(value: string): { hour: number; minute: number } {
-  const [hour, minute] = value.split(":").map((part) => Number.parseInt(part, 10));
-  return { hour: hour || 0, minute: minute || 0 };
-}
 
 function StudioEditDialog({
   studio,
@@ -131,16 +117,11 @@ function StudioEditDialog({
 export function StudiosSettingsPageClient() {
   const { isAuthenticated } = useAuth();
   const studios = useStudios();
-  const slots = useBookingSlots();
   const [name, setName] = useState("");
   const [roomName, setRoomName] = useState("");
   const [description, setDescription] = useState("");
   const [color, setColor] = useState(DEFAULT_STUDIO_COLOR);
   const [editingStudio, setEditingStudio] = useState<StudioRoom | null>(null);
-
-  const [slotLabel, setSlotLabel] = useState("");
-  const [slotStart, setSlotStart] = useState("10:00");
-  const [slotEnd, setSlotEnd] = useState("11:00");
 
   function handleCreate(event: React.FormEvent) {
     event.preventDefault();
@@ -170,41 +151,6 @@ export function StudiosSettingsPageClient() {
     toast.success("Studio deleted");
   }
 
-  function handleCreateSlot(event: React.FormEvent) {
-    event.preventDefault();
-    if (!slotLabel.trim()) {
-      toast.error("Slot label is required");
-      return;
-    }
-
-    const start = parseTimeInputValue(slotStart);
-    const end = parseTimeInputValue(slotEnd);
-
-    try {
-      createCustomSlot({
-        label: slotLabel,
-        startHour: start.hour,
-        startMinute: start.minute,
-        endHour: end.hour,
-        endMinute: end.minute,
-      });
-      setSlotLabel("");
-      toast.success("Custom slot created");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not create slot");
-    }
-  }
-
-  function handleDeleteSlot(slot: BookingSlot) {
-    if (!window.confirm(`Delete slot "${slot.label}"?`)) {
-      return;
-    }
-    const deleted = deleteCustomSlot(slot.id);
-    if (deleted) {
-      toast.success("Slot deleted");
-    }
-  }
-
   if (!isAuthenticated) {
     return (
       <Card>
@@ -223,7 +169,7 @@ export function StudiosSettingsPageClient() {
         </Link>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight">Studios</h1>
         <p className="text-sm text-muted-foreground">
-          Manage studio rooms used for project bookings. No hardcoded rooms.
+          Manage studio rooms used for project bookings.
         </p>
       </div>
 
@@ -367,97 +313,6 @@ export function StudiosSettingsPageClient() {
           }
         }}
       />
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Booking Slots</CardTitle>
-          <CardDescription>
-            Default slots (11 AM–2 PM, 3 PM–6 PM, 7 PM–9 PM) plus any custom slots you create.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Label</TableHead>
-                <TableHead>Time</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {slots.map((slot) => (
-                <TableRow key={slot.id}>
-                  <TableCell className="font-medium">{slot.label}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatSlotTime(slot.startHour, slot.startMinute)} –{" "}
-                    {formatSlotTime(slot.endHour, slot.endMinute)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={slot.isCustom ? "secondary" : "outline"}>
-                      {slot.isCustom ? "Custom" : "Default"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {slot.isCustom ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleDeleteSlot(slot)}
-                        aria-label="Delete slot"
-                      >
-                        <Trash2Icon className="size-4" />
-                      </Button>
-                    ) : null}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-
-          <form
-            onSubmit={handleCreateSlot}
-            className="grid gap-4 border-t border-border/60 pt-4 sm:grid-cols-3"
-          >
-            <div className="space-y-2 sm:col-span-3">
-              <Label htmlFor="slot-label">Custom Slot Label *</Label>
-              <Input
-                id="slot-label"
-                value={slotLabel}
-                onChange={(event) => setSlotLabel(event.target.value)}
-                placeholder="9:00 AM – 10:30 AM"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="slot-start">Start Time *</Label>
-              <Input
-                id="slot-start"
-                type="time"
-                value={slotStart}
-                onChange={(event) => setSlotStart(event.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="slot-end">End Time *</Label>
-              <Input
-                id="slot-end"
-                type="time"
-                value={slotEnd}
-                onChange={(event) => setSlotEnd(event.target.value)}
-                required
-              />
-            </div>
-            <div className="flex items-end">
-              <Button type="submit" className="w-full">
-                <PlusIcon className="size-4" />
-                Create Custom Slot
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
     </div>
   );
 }

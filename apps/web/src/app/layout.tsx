@@ -6,7 +6,7 @@ import "../styles/globals.css";
 // Next.js App Router layouts co-export `metadata` with the layout component.
 // eslint-disable-next-line react-refresh/only-export-components
 export const metadata: Metadata = {
-  title: "ST Manager",
+  title: "ST Manager v1.0",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

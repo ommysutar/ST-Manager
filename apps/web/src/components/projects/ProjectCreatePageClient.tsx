@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useStudioServices } from "@/hooks/useInquiryStorage";
 import { layout } from "@st-manager/theme";
+import { resolveOrCreateClient } from "@/lib/clients/sync";
 import {
   defaultManualProjectValues,
   manualProjectSchema,
@@ -42,12 +43,19 @@ export function ProjectCreatePageClient() {
     setValue("selectedServiceIds", next, { shouldValidate: true });
   }
 
-  function onSubmit(values: ManualProjectFormValues) {
+  async function onSubmit(values: ManualProjectFormValues) {
+    const client = await resolveOrCreateClient({
+      name: values.clientName,
+      phone: values.clientMobile,
+    });
+
     const project = createProject({
       source: "manual",
       projectName: values.projectName,
-      clientName: values.clientName,
-      clientMobile: values.clientMobile,
+      clientId: client.id,
+      clientName: client.name,
+      clientMobile: client.phone ?? undefined,
+      clientEmail: client.email ?? undefined,
       assignedEngineer: values.assignedEngineer,
       selectedServiceIds: values.selectedServiceIds,
       notes: values.notes,
@@ -117,20 +125,30 @@ export function ProjectCreatePageClient() {
               <p className="text-xs text-muted-foreground">
                 Selected services generate the default task workflow.
               </p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {services.map((service) => (
-                  <label
-                    key={service.id}
-                    className="flex cursor-pointer items-center gap-2 rounded-md border border-border p-3"
-                  >
-                    <Checkbox
-                      checked={selectedServiceIds.includes(service.id)}
-                      onCheckedChange={() => toggleService(service.id)}
-                    />
-                    <span className="text-sm">{service.name}</span>
-                  </label>
-                ))}
-              </div>
+              {services.length === 0 ? (
+                <div className="rounded-md border border-dashed border-border/70 p-4 text-sm text-muted-foreground">
+                  Please create at least one Service in{" "}
+                  <Link href="/settings/services" className="text-primary underline-offset-4 hover:underline">
+                    Settings
+                  </Link>{" "}
+                  before creating a project.
+                </div>
+              ) : (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {services.map((service) => (
+                    <label
+                      key={service.id}
+                      className="flex cursor-pointer items-center gap-2 rounded-md border border-border p-3"
+                    >
+                      <Checkbox
+                        checked={selectedServiceIds.includes(service.id)}
+                        onCheckedChange={() => toggleService(service.id)}
+                      />
+                      <span className="text-sm">{service.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
               {errors.selectedServiceIds ? (
                 <p className="text-sm text-destructive">{errors.selectedServiceIds.message}</p>
               ) : null}
@@ -142,7 +160,7 @@ export function ProjectCreatePageClient() {
             </div>
 
             <div className="flex gap-3">
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting || services.length === 0}>
                 Create Project
               </Button>
               <Button type="button" variant="outline" asChild>

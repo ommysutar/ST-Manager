@@ -1,14 +1,11 @@
-import { DEFAULT_PROJECT_PLANS, DEFAULT_STUDIO_SERVICES } from "./constants";
-import type { ProjectPlan, SavedInquiry, StudioService } from "./types";
+import { DEFAULT_STUDIO_SERVICES } from "./constants";
+import type { SavedInquiry, StudioService } from "./types";
 
 const defaultActiveServices = DEFAULT_STUDIO_SERVICES.filter((service) => service.active);
-const defaultActivePlans = DEFAULT_PROJECT_PLANS.filter((plan) => plan.active);
 
 let inquiriesSnapshot: SavedInquiry[] = [];
 let allServicesSnapshot: StudioService[] = DEFAULT_STUDIO_SERVICES;
 let activeServicesSnapshot: StudioService[] = defaultActiveServices;
-let allPlansSnapshot: ProjectPlan[] = DEFAULT_PROJECT_PLANS;
-let activePlansSnapshot: ProjectPlan[] = defaultActivePlans;
 
 export function getInquiriesSnapshot(): SavedInquiry[] {
   return inquiriesSnapshot;
@@ -35,18 +32,4 @@ export function setAllServicesSnapshot(next: StudioService[]): StudioService[] {
 
 export function getActiveServicesSnapshot(): StudioService[] {
   return activeServicesSnapshot;
-}
-
-export function getAllPlansSnapshot(): ProjectPlan[] {
-  return allPlansSnapshot;
-}
-
-export function setAllPlansSnapshot(next: ProjectPlan[]): ProjectPlan[] {
-  allPlansSnapshot = next;
-  activePlansSnapshot = next.filter((plan) => plan.active);
-  return allPlansSnapshot;
-}
-
-export function getActivePlansSnapshot(): ProjectPlan[] {
-  return activePlansSnapshot;
 }

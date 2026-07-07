@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useBookings } from "@/hooks/useBookings";
+import { useProject } from "@/hooks/useProjects";
 import { useStudios } from "@/hooks/useStudios";
 import { layout } from "@st-manager/theme";
 import { BOOKING_STATUS_LABELS, BOOKING_STATUS_OPTIONS } from "@/lib/bookings/constants";
@@ -16,6 +17,7 @@ import { getBookingSlotLabel } from "@/lib/bookings/slots";
 import type { ProjectBookingStatus } from "@/lib/bookings/types";
 
 import { ProjectBookingForm, type ProjectBookingFormValues } from "./BookingCreatePageClient";
+import { ProjectWhatsAppNotify } from "@/components/whatsapp/ProjectWhatsAppNotify";
 
 function statusBadgeVariant(status: ProjectBookingStatus): "success" | "secondary" | "outline" {
   if (status === "booked" || status === "completed") return "success";
@@ -35,6 +37,7 @@ export function BookingDetailPageClient() {
     () => bookings.find((entry) => entry.id === params.id),
     [bookings, params.id],
   );
+  const project = useProject(booking?.projectId ?? "");
   const studio = studios.find((entry) => entry.id === booking?.studioId);
 
   if (!isAuthenticated) {
@@ -164,7 +167,23 @@ export function BookingDetailPageClient() {
             </div>
             <div>
               <p className="text-muted-foreground">Client</p>
-              <p className="font-medium">{booking.clientName}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium">{booking.clientName}</p>
+                {project ? (
+                  <ProjectWhatsAppNotify
+                    project={project}
+                    type="booking_confirmed"
+                    extras={{
+                      BookingDate: new Date(`${booking.date}T12:00:00`).toLocaleDateString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      }),
+                    }}
+                    size="sm"
+                  />
+                ) : null}
+              </div>
             </div>
             <div>
               <p className="text-muted-foreground">Studio</p>

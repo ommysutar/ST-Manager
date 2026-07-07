@@ -48,7 +48,9 @@ export function AdvancePaymentStep() {
 
         <QuotationSummary
           quotation={quotation}
+          discountType={values.studioDiscountType}
           discountPercent={values.studioDiscountPercent}
+          discountAmountInput={values.studioDiscountAmount}
           compact
         />
 

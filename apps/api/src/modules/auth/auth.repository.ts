@@ -28,4 +28,15 @@ export class AuthRepository {
     const client = asAuthClient(this.prismaService.getClient());
     return client.user.findUnique({ where: { id } });
   }
+
+  async createUser(
+    email: string,
+    passwordHash: string,
+    role: string,
+  ): Promise<AuthUserRecord> {
+    const client = asAuthClient(this.prismaService.getClient());
+    return client.user.create({
+      data: { email, passwordHash, role },
+    });
+  }
 }

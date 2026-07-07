@@ -1,17 +1,59 @@
 import { generateId } from "@/lib/inquiry/services";
+import { getProject } from "@/lib/projects/storage";
 
+import { buildDocumentSnapshot, mergeProjectIntoSnapshot } from "./snapshot";
 import { notifyDocumentsUpdated } from "./events";
 import { getDocumentsSnapshot, setDocumentsSnapshot } from "./snapshots";
-import type { DocumentType, StudioDocument } from "./types";
+import type { DocumentSnapshot, DocumentType, StudioDocument } from "./types";
 import { DOCUMENTS_STORAGE_KEY } from "./types";
 
+function normalizeSnapshot(raw: unknown): DocumentSnapshot | undefined {
+  if (!raw || typeof raw !== "object") {
+    return undefined;
+  }
+
+  const snapshot = raw as Partial<DocumentSnapshot>;
+  if (!snapshot.clientName || !snapshot.projectName || !snapshot.projectNumber) {
+    return undefined;
+  }
+
+  return {
+    clientId: snapshot.clientId ?? "",
+    clientDisplayNumber: snapshot.clientDisplayNumber ?? "",
+    clientName: snapshot.clientName,
+    clientMobile: snapshot.clientMobile ?? "",
+    clientEmail: snapshot.clientEmail ?? "",
+    clientAddress: snapshot.clientAddress ?? "",
+    projectId: snapshot.projectId ?? "",
+    projectNumber: snapshot.projectNumber,
+    projectName: snapshot.projectName,
+    projectCategory: snapshot.projectCategory ?? "",
+    lineItems: Array.isArray(snapshot.lineItems) ? snapshot.lineItems : [],
+    subtotal: Number(snapshot.subtotal ?? 0),
+    discountAmount: Number(snapshot.discountAmount ?? 0),
+    grandTotal: Number(snapshot.grandTotal ?? 0),
+    paymentId: snapshot.paymentId,
+    paymentAmount: snapshot.paymentAmount,
+    paymentMethod: snapshot.paymentMethod,
+    paymentDate: snapshot.paymentDate,
+    paymentNotes: snapshot.paymentNotes,
+    paymentReceivedBy: snapshot.paymentReceivedBy,
+    capturedAt: snapshot.capturedAt ?? new Date().toISOString(),
+  };
+}
+
 function normalizeDocument(raw: Partial<StudioDocument> & { id: string }): StudioDocument {
+  const type: DocumentType =
+    raw.type === "invoice" ? "invoice" : raw.type === "receipt" ? "receipt" : "quotation";
+
   return {
     id: raw.id,
-    type: raw.type === "invoice" ? "invoice" : "quotation",
+    type,
     documentNumber: raw.documentNumber ?? "",
     inquiryId: raw.inquiryId || undefined,
     projectId: raw.projectId || undefined,
+    paymentId: raw.paymentId || undefined,
+    snapshot: normalizeSnapshot(raw.snapshot),
     createdAt: raw.createdAt ?? new Date().toISOString(),
   };
 }
@@ -48,6 +90,47 @@ function persistDocuments(documents: StudioDocument[]): StudioDocument[] {
   return sorted;
 }
 
+function ensureSnapshot(document: StudioDocument): StudioDocument {
+  if (document.snapshot) {
+    return document;
+  }
+
+  const snapshot = buildDocumentSnapshot({
+    projectId: document.projectId,
+    inquiryId: document.inquiryId,
+    paymentId: document.paymentId,
+  });
+
+  if (!snapshot) {
+    return document;
+  }
+
+  const updated = { ...document, snapshot };
+  const documents = loadAllDocuments();
+  const index = documents.findIndex((entry) => entry.id === document.id);
+  if (index !== -1) {
+    documents[index] = updated;
+    persistDocuments(documents);
+  }
+
+  return updated;
+}
+
+function withSnapshot(document: StudioDocument): StudioDocument {
+  const snapshot =
+    buildDocumentSnapshot({
+      projectId: document.projectId,
+      inquiryId: document.inquiryId,
+      paymentId: document.paymentId,
+    }) ?? document.snapshot;
+
+  if (!snapshot) {
+    return document;
+  }
+
+  return { ...document, snapshot };
+}
+
 export function loadAllDocuments(): StudioDocument[] {
   return readDocumentsFromStorage();
 }
@@ -57,7 +140,8 @@ export function listDocuments(): StudioDocument[] {
 }
 
 export function getDocument(id: string): StudioDocument | undefined {
-  return loadAllDocuments().find((document) => document.id === id);
+  const document = loadAllDocuments().find((entry) => entry.id === id);
+  return document ? ensureSnapshot(document) : undefined;
 }
 
 export function listDocumentsForProject(projectId: string): StudioDocument[] {
@@ -76,8 +160,18 @@ function parseDocumentNumber(prefix: string, value: string | undefined): number 
   return match ? Number.parseInt(match[1], 10) : 0;
 }
 
+function documentPrefix(type: DocumentType): string {
+  if (type === "invoice") {
+    return "INV";
+  }
+  if (type === "receipt") {
+    return "RCP";
+  }
+  return "QTN";
+}
+
 function nextDocumentNumber(type: DocumentType, documents: StudioDocument[]): string {
-  const prefix = type === "invoice" ? "INV" : "QTN";
+  const prefix = documentPrefix(type);
   const max = documents
     .filter((document) => document.type === type)
     .reduce((acc, document) => Math.max(acc, parseDocumentNumber(prefix, document.documentNumber)), 0);
@@ -93,18 +187,20 @@ export function getOrCreateQuotation(input: { inquiryId?: string; projectId?: st
         (input.projectId && document.projectId === input.projectId)),
   );
   if (existing) {
-    return existing;
+    return ensureSnapshot(existing);
   }
 
   const documents = loadAllDocuments();
-  const document = normalizeDocument({
-    id: generateId("doc"),
-    type: "quotation",
-    documentNumber: nextDocumentNumber("quotation", documents),
-    inquiryId: input.inquiryId,
-    projectId: input.projectId,
-    createdAt: new Date().toISOString(),
-  });
+  const document = withSnapshot(
+    normalizeDocument({
+      id: generateId("doc"),
+      type: "quotation",
+      documentNumber: nextDocumentNumber("quotation", documents),
+      inquiryId: input.inquiryId,
+      projectId: input.projectId,
+      createdAt: new Date().toISOString(),
+    }),
+  );
 
   persistDocuments([document, ...documents]);
   return document;
@@ -116,17 +212,44 @@ export function getOrCreateInvoice(projectId: string): StudioDocument {
     (document) => document.type === "invoice" && document.projectId === projectId,
   );
   if (existing) {
-    return existing;
+    return ensureSnapshot(existing);
   }
 
   const documents = loadAllDocuments();
-  const document = normalizeDocument({
-    id: generateId("doc"),
-    type: "invoice",
-    documentNumber: nextDocumentNumber("invoice", documents),
-    projectId,
-    createdAt: new Date().toISOString(),
-  });
+  const document = withSnapshot(
+    normalizeDocument({
+      id: generateId("doc"),
+      type: "invoice",
+      documentNumber: nextDocumentNumber("invoice", documents),
+      projectId,
+      createdAt: new Date().toISOString(),
+    }),
+  );
+
+  persistDocuments([document, ...documents]);
+  return document;
+}
+
+/** Idempotent — returns the existing receipt for this payment if one was already generated. */
+export function getOrCreateReceipt(projectId: string, paymentId: string): StudioDocument {
+  const existing = loadAllDocuments().find(
+    (document) => document.type === "receipt" && document.paymentId === paymentId,
+  );
+  if (existing) {
+    return ensureSnapshot(existing);
+  }
+
+  const documents = loadAllDocuments();
+  const document = withSnapshot(
+    normalizeDocument({
+      id: generateId("doc"),
+      type: "receipt",
+      documentNumber: nextDocumentNumber("receipt", documents),
+      projectId,
+      paymentId,
+      createdAt: new Date().toISOString(),
+    }),
+  );
 
   persistDocuments([document, ...documents]);
   return document;
@@ -134,15 +257,21 @@ export function getOrCreateInvoice(projectId: string): StudioDocument {
 
 /** Called when an inquiry converts to a project — backfills projectId on its quotation(s). */
 export function linkDocumentsToProject(inquiryId: string, projectId: string): void {
+  const project = getProject(projectId);
   const documents = loadAllDocuments();
   let changed = false;
 
   const next = documents.map((document) => {
-    if (document.inquiryId === inquiryId && !document.projectId) {
-      changed = true;
-      return { ...document, projectId };
+    if (document.inquiryId !== inquiryId || document.projectId) {
+      return document;
     }
-    return document;
+
+    changed = true;
+    const updated: StudioDocument = { ...document, projectId };
+    if (project && updated.snapshot) {
+      updated.snapshot = mergeProjectIntoSnapshot(updated.snapshot, project);
+    }
+    return updated;
   });
 
   if (changed) {

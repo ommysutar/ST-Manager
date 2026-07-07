@@ -2,6 +2,7 @@ import { generateId } from "@/lib/inquiry/services";
 import { getProject, updateProject } from "@/lib/projects/storage";
 
 import { notifyBookingsUpdated } from "./events";
+import { loadAllSlots } from "./slot-storage";
 import { setBookingsSnapshot } from "./snapshots";
 import type { BookingSlotId, ProjectBooking, ProjectBookingStatus } from "./types";
 import { BOOKINGS_STORAGE_KEY, OCCUPYING_BOOKING_STATUSES } from "./types";
@@ -47,7 +48,7 @@ function normalizeBooking(raw: Partial<ProjectBooking> & { id: string }): Projec
     bookingFor: raw.bookingFor?.trim() || "Studio Session",
     notes: raw.notes?.trim() ?? "",
     date: String(raw.date),
-    slotId: raw.slotId ?? "slot_1",
+    slotId: raw.slotId ?? loadAllSlots()[0]?.id ?? "",
     status: normalizeStatus(raw.status),
     clientName: raw.clientName ?? "",
     projectName: raw.projectName ?? "",
@@ -235,8 +236,9 @@ export function rescheduleBooking(
   id: string,
   date: string,
   slotId: BookingSlotId,
+  studioId?: string,
 ): ProjectBooking {
-  return updateBooking(id, { date, slotId });
+  return updateBooking(id, studioId ? { date, slotId, studioId } : { date, slotId });
 }
 
 export function initializeBookingSnapshots(): void {

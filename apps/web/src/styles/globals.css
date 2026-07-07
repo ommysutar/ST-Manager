@@ -14,3 +14,77 @@ body {
   background-color: var(--background);
   color: var(--foreground);
 }
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+    color: #171717 !important;
+  }
+
+  [data-print-hide],
+  .document-toolbar {
+    display: none !important;
+  }
+
+  .document-page {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    gap: 0 !important;
+  }
+
+  #document-print-root {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .document-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #171717 !important;
+  }
+
+  .document-logo,
+  .document-qr,
+  .document-signature {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .document-row,
+  .document-header,
+  .document-party,
+  .document-totals,
+  .document-payments,
+  .document-footer,
+  .document-notes,
+  .document-receipt {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .document-table thead {
+    display: table-header-group;
+  }
+
+  .document-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

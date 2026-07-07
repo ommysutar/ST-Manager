@@ -10,6 +10,9 @@ export type { ApiEnv } from "./env/api-env.schema";
 export { loginSchema } from "./auth/login.schema";
 export type { LoginInput } from "./auth/login.schema";
 
+export { registerSchema } from "./auth/register.schema";
+export type { RegisterInput } from "./auth/register.schema";
+
 export { refreshSchema } from "./auth/refresh.schema";
 export type { RefreshInput } from "./auth/refresh.schema";
 
@@ -27,6 +30,10 @@ export {
   updateClientSchema,
 } from "./client/client.schema";
 export type { CreateClientInput, UpdateClientInput } from "./client/client.schema";
+export {
+  normalizeOptionalApiString,
+  serializeClientRequestBody,
+} from "./client/normalize-client-fields";
 
 export { listClientsQuerySchema } from "./client/list-clients-query.schema";
 export type { ListClientsQueryInput } from "./client/list-clients-query.schema";

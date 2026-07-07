@@ -4,6 +4,7 @@ import { Button } from "@st-manager/ui";
 import { FolderPlusIcon, PlusCircleIcon } from "lucide-react";
 import Link from "next/link";
 
+import { NewInquiryLink } from "@/components/inquiry/NewInquiryLink";
 import { AssignedTasksWidget } from "@/components/dashboard/AssignedTasksWidget";
 import { BookingsWidget } from "@/components/dashboard/BookingsWidget";
 import { PendingPaymentsWidget } from "@/components/dashboard/PendingPaymentsWidget";
@@ -41,10 +42,10 @@ export function DashboardPageClient() {
             size="lg"
             className="h-auto min-h-24 flex-col gap-2 py-6 text-base"
           >
-            <Link href="/inquiries/new">
+            <NewInquiryLink>
               <PlusCircleIcon className="size-6" />
               + New Inquiry
-            </Link>
+            </NewInquiryLink>
           </Button>
 
           <Button

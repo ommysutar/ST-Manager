@@ -1,57 +1,40 @@
 "use client";
 
-import type { ClientResponseDto } from "@st-manager/contracts";
-import { Badge, Button, Input, Label, Textarea, cn } from "@st-manager/ui";
+import { Badge, Button, Input, Label, Textarea, cn, Checkbox } from "@st-manager/ui";
 import { SearchIcon, UserPlusIcon, UsersIcon } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
 import { WizardStepHeader } from "@/components/inquiry/wizard/WizardStepHeader";
-import { useAuth } from "@/hooks/useAuth";
+import { WhatsAppNotifyIcon } from "@/components/whatsapp/WhatsAppNotifyIcon";
+import { useClients } from "@/hooks/useClients";
+import { getClientWhatsAppNumber } from "@/lib/clients/whatsapp";
 import { filterClientsBySearch } from "@/lib/inquiry/client-search";
-import { findDuplicateClient } from "@/lib/inquiry/client-validation";
 import type { InquiryWizardSchema } from "@/lib/inquiry/schema";
-import { fetchAllClients } from "@/lib/search/global-search";
 
 type ClientMode = "existing" | "new";
 
 export function ClientDetailsStep() {
-  const { isAuthenticated } = useAuth();
+  const clients = useClients();
   const {
     register,
     setValue,
     watch,
-    setError,
+    getValues,
     clearErrors,
     formState: { errors },
   } = useFormContext<InquiryWizardSchema>();
 
-  const [mode, setMode] = useState<ClientMode>("new");
-  const [clients, setClients] = useState<ClientResponseDto[]>([]);
+  const [mode, setMode] = useState<ClientMode>(() =>
+    getValues("existingClientId") ? "existing" : "new",
+  );
   const [searchQuery, setSearchQuery] = useState("");
-  const [loadingClients, setLoadingClients] = useState(false);
-  const [clientsLoaded, setClientsLoaded] = useState(false);
 
   const existingClientId = watch("existingClientId");
   const mobileNumber = watch("mobileNumber");
-  const email = watch("email");
-
-  const loadClients = useCallback(async () => {
-    if (!isAuthenticated || clientsLoaded) {
-      return;
-    }
-
-    setLoadingClients(true);
-    try {
-      const allClients = await fetchAllClients();
-      setClients(allClients);
-      setClientsLoaded(true);
-    } catch {
-      setClients([]);
-    } finally {
-      setLoadingClients(false);
-    }
-  }, [clientsLoaded, isAuthenticated]);
+  const whatsappNumber = watch("whatsappNumber");
+  const clientName = watch("clientName");
+  const [whatsappSameAsPhone, setWhatsappSameAsPhone] = useState(false);
 
   const filteredClients = useMemo(
     () => filterClientsBySearch(clients, searchQuery, 8),
@@ -59,54 +42,39 @@ export function ClientDetailsStep() {
   );
 
   useEffect(() => {
-    if (mode !== "new") {
-      clearErrors("mobileNumber");
-      clearErrors("email");
+    if (clients.length === 0 || !existingClientId) {
       return;
     }
 
-    if (!isAuthenticated || clients.length === 0) {
+    if (clients.some((client) => client.id === existingClientId)) {
       return;
     }
 
-    const duplicate = findDuplicateClient(clients, {
-      mobileNumber: mobileNumber ?? "",
-      email: email ?? "",
-      excludeClientId: existingClientId || undefined,
-    });
-
-    if (duplicate) {
-      setError("mobileNumber", { type: "manual", message: "Client already exists." });
-      if (email?.trim()) {
-        setError("email", { type: "manual", message: "Client already exists." });
-      }
-      return;
-    }
-
-    clearErrors("mobileNumber");
-    clearErrors("email");
-  }, [mode, mobileNumber, email, clients, existingClientId, isAuthenticated, setError, clearErrors]);
+    setValue("existingClientId", "", { shouldDirty: true });
+  }, [clients, existingClientId, setValue]);
 
   function switchMode(nextMode: ClientMode) {
     setMode(nextMode);
-    if (nextMode === "existing") {
-      void loadClients();
-    }
     if (nextMode === "new") {
       setValue("existingClientId", "", { shouldDirty: true });
       setSearchQuery("");
     }
   }
 
-  function selectExistingClient(client: ClientResponseDto) {
+  function selectExistingClient(client: (typeof clients)[number]) {
     setValue("existingClientId", client.id, { shouldDirty: true, shouldValidate: true });
     setValue("clientName", client.name, { shouldDirty: true, shouldValidate: true });
     setValue("mobileNumber", client.phone ?? "", { shouldDirty: true, shouldValidate: true });
+    setValue("whatsappNumber", getClientWhatsAppNumber(client) ?? "", { shouldDirty: true });
     setValue("email", client.email ?? "", { shouldDirty: true, shouldValidate: true });
     setValue("notes", client.notes ?? "", { shouldDirty: true });
+    setWhatsappSameAsPhone(client.whatsappSameAsPhone ?? false);
     setSearchQuery(client.name);
     clearErrors(["clientName", "mobileNumber", "email"]);
   }
+
+  const showEmptyClientList = clients.length === 0;
+  const showNoSearchResults = !showEmptyClientList && filteredClients.length === 0;
 
   return (
     <div>
@@ -148,9 +116,14 @@ export function ClientDetailsStep() {
             />
           </div>
 
-          {loadingClients ? (
-            <p className="text-sm text-muted-foreground">Loading clients...</p>
-          ) : filteredClients.length === 0 ? (
+          {showEmptyClientList ? (
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">No clients available.</p>
+              <p className="text-sm text-muted-foreground">
+                Create a client first or choose &quot;Create New Client&quot;.
+              </p>
+            </div>
+          ) : showNoSearchResults ? (
             <p className="text-sm text-muted-foreground">No matching clients found.</p>
           ) : (
             <ul className="space-y-2">
@@ -196,12 +169,18 @@ export function ClientDetailsStep() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="mobileNumber">Mobile Number *</Label>
+          <Label htmlFor="mobileNumber">Phone Number *</Label>
           <Input
             id="mobileNumber"
-            placeholder="+91 98765 43210"
+            placeholder="+91 9876543210"
             readOnly={mode === "existing" && Boolean(existingClientId)}
-            {...register("mobileNumber")}
+            {...register("mobileNumber", {
+              onChange: (event) => {
+                if (whatsappSameAsPhone) {
+                  setValue("whatsappNumber", event.target.value, { shouldDirty: true });
+                }
+              },
+            })}
           />
           {errors.mobileNumber ? (
             <p className="text-sm text-destructive">{errors.mobileNumber.message}</p>
@@ -209,8 +188,37 @@ export function ClientDetailsStep() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="whatsappNumber">WhatsApp Number</Label>
-          <Input id="whatsappNumber" placeholder="+91 98765 43210" {...register("whatsappNumber")} />
+          <div className="flex items-center gap-2">
+            <Label htmlFor="whatsappNumber">WhatsApp Number</Label>
+            <WhatsAppNotifyIcon
+              whatsappNumber={whatsappSameAsPhone ? mobileNumber : whatsappNumber}
+              type="inquiry_received"
+              variables={{ ClientName: clientName || "Client" }}
+              size="sm"
+            />
+          </div>
+          <Input
+            id="whatsappNumber"
+            placeholder="+91 9123456789"
+            disabled={whatsappSameAsPhone}
+            {...register("whatsappNumber")}
+          />
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="whatsapp-same-as-phone"
+              checked={whatsappSameAsPhone}
+              onCheckedChange={(checked) => {
+                const enabled = checked === true;
+                setWhatsappSameAsPhone(enabled);
+                if (enabled) {
+                  setValue("whatsappNumber", mobileNumber, { shouldDirty: true });
+                }
+              }}
+            />
+            <Label htmlFor="whatsapp-same-as-phone" className="text-sm font-normal">
+              Same as Phone Number
+            </Label>
+          </div>
         </div>
 
         <div className="space-y-2 sm:col-span-2">

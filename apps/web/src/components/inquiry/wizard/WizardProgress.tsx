@@ -25,7 +25,7 @@ export function WizardProgress({ currentStep, maxStep = 5 }: WizardProgressProps
 
       <Progress value={Number.isFinite(progressValue) ? progressValue : 0} className="h-1.5" />
 
-      <ol className="hidden gap-2 sm:grid sm:grid-cols-5 lg:grid-cols-6">
+      <ol className="hidden gap-2 sm:grid sm:grid-cols-5">
         {visibleSteps.map((step) => {
           const isComplete = step.id < currentStep;
           const isCurrent = step.id === currentStep;

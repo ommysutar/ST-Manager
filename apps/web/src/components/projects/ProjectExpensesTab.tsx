@@ -93,7 +93,7 @@ export function ProjectExpensesTab({ projectId }: ProjectExpensesTabProps) {
             <Label htmlFor="expense-name">Expense Name</Label>
             <Input
               id="expense-name"
-              placeholder="Tabla Artist, Travel, Studio Maintenance..."
+              placeholder="Instrument Player, Travel, Studio Maintenance..."
               value={form.name}
               onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
             />

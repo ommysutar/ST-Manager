@@ -10,7 +10,7 @@ import type {
   UpdateClientResponseDto,
 } from "@st-manager/contracts";
 import type { CreateClientDto } from "@st-manager/contracts";
-import { createClientSchema, updateClientSchema } from "@st-manager/validation";
+import { createClientSchema, serializeClientRequestBody, updateClientSchema } from "@st-manager/validation";
 
 import type { HttpClient } from "../client/types";
 
@@ -26,7 +26,10 @@ export function createClientsApi(client: HttpClient): ClientsApi {
   return {
     createClient: async (input) => {
       const validated = createClientSchema.parse(input);
-      const response = await client.post<CreateClientResponseDto>(ROUTES.CLIENTS, validated);
+      const response = await client.post<CreateClientResponseDto>(
+        ROUTES.CLIENTS,
+        serializeClientRequestBody(validated),
+      );
       return response.data;
     },
 
@@ -46,7 +49,7 @@ export function createClientsApi(client: HttpClient): ClientsApi {
       const validated = updateClientSchema.parse(input);
       const response = await client.patch<UpdateClientResponseDto>(
         `${ROUTES.CLIENTS}/${id}`,
-        validated,
+        serializeClientRequestBody(validated),
       );
       return response.data;
     },

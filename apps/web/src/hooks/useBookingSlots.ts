@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 
+import { EMPTY_BOOKING_SLOTS } from "@/hooks/empty-server-snapshots";
 import { BOOKING_SLOTS_UPDATED_EVENT } from "@/lib/bookings/events";
 import { getBookingSlotsSnapshot } from "@/lib/bookings/snapshots";
 import { initializeBookingSlotSnapshots, loadAllSlots } from "@/lib/bookings/slot-storage";
@@ -35,7 +36,7 @@ export function useBookingSlots(): BookingSlot[] {
       ensureSlotSnapshotsReady();
       return getBookingSlotsSnapshot();
     },
-    () => [],
+    () => EMPTY_BOOKING_SLOTS,
   );
 }
 

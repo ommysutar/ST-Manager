@@ -30,7 +30,9 @@ export function FinalDecisionStep({
     <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
       <QuotationSummary
         quotation={quotation}
+        discountType={values.studioDiscountType}
         discountPercent={values.studioDiscountPercent}
+        discountAmountInput={values.studioDiscountAmount}
         compact
       />
 

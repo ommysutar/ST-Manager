@@ -23,12 +23,13 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { ReceivePayment, type ReceivePaymentInput } from "@/components/payments/ReceivePayment";
+import { ProjectWhatsAppNotify } from "@/components/whatsapp/ProjectWhatsAppNotify";
 import { useAuth } from "@/hooks/useAuth";
 import { usePaymentsForProject } from "@/hooks/usePayments";
 import { useProfile } from "@/hooks/useProfile";
 import { useProject } from "@/hooks/useProjects";
 import { formatINR } from "@/lib/currency";
-import { getOrCreateInvoice, getOrCreateQuotation } from "@/lib/documents/storage";
+import { getOrCreateInvoice, getOrCreateQuotation, getOrCreateReceipt } from "@/lib/documents/storage";
 import { addPayment, updateProjectServiceLineAmount, type ServiceLineType } from "@/lib/payments/storage";
 import { PAYMENT_STATUS_LABELS, getPaymentStatus } from "@/lib/payments/status";
 
@@ -159,6 +160,11 @@ export function PaymentOverviewPageClient({ projectId }: { projectId: string }) 
     router.push(`/documents/${document.id}`);
   }
 
+  function handleReceipt(paymentId: string) {
+    const document = getOrCreateReceipt(projectId, paymentId);
+    router.push(`/documents/${document.id}`);
+  }
+
   return (
     <div className="mx-auto flex flex-col gap-6" style={{ maxWidth: layout.contentMaxWidth }}>
       <div>
@@ -206,6 +212,7 @@ export function PaymentOverviewPageClient({ projectId }: { projectId: string }) 
         <Button type="button" onClick={() => setReceiveOpen(true)}>
           Receive Payment
         </Button>
+        <ProjectWhatsAppNotify project={project} type="payment_reminder" size="sm" />
         <Button type="button" variant="outline" onClick={handleQuotation}>
           <FileTextIcon className="size-4" />
           View / Make Quotation
@@ -280,7 +287,8 @@ export function PaymentOverviewPageClient({ projectId }: { projectId: string }) 
                     <th className="py-2 pr-4 font-medium">Amount</th>
                     <th className="py-2 pr-4 font-medium">Notes</th>
                     <th className="py-2 pr-4 font-medium">Received By</th>
-                    <th className="py-2 font-medium">Status</th>
+                    <th className="py-2 pr-4 font-medium">Status</th>
+                    <th className="py-2 font-medium">Receipt</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -293,6 +301,11 @@ export function PaymentOverviewPageClient({ projectId }: { projectId: string }) 
                       <td className="py-2 pr-4 text-muted-foreground">{payment.receivedBy || "—"}</td>
                       <td className="py-2">
                         <Badge variant="success">Received</Badge>
+                      </td>
+                      <td className="py-2">
+                        <Button type="button" size="sm" variant="outline" onClick={() => handleReceipt(payment.id)}>
+                          Receipt
+                        </Button>
                       </td>
                     </tr>
                   ))}

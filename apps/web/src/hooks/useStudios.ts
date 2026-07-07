@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 
+import { EMPTY_STUDIOS } from "@/hooks/empty-server-snapshots";
 import { STUDIOS_UPDATED_EVENT } from "@/lib/studios/events";
 import {
   getActiveStudiosSnapshot,
@@ -24,46 +25,36 @@ function ensureStudioSnapshotsReady(): void {
   snapshotsReady = true;
 }
 
+function subscribeToStudios(onStoreChange: () => void): () => void {
+  ensureStudioSnapshotsReady();
+
+  const handler = () => {
+    initializeStudioSnapshots();
+    onStoreChange();
+  };
+
+  window.addEventListener(STUDIOS_UPDATED_EVENT, handler);
+  return () => window.removeEventListener(STUDIOS_UPDATED_EVENT, handler);
+}
+
+/** Stable getSnapshot for useSyncExternalStore — returns cached module snapshot only. */
+function readStudiosSnapshot(): StudioRoom[] {
+  ensureStudioSnapshotsReady();
+  return getStudiosSnapshot();
+}
+
+/** Stable getSnapshot for useSyncExternalStore — returns cached active subset only. */
+function readActiveStudiosSnapshot(): StudioRoom[] {
+  ensureStudioSnapshotsReady();
+  return getActiveStudiosSnapshot();
+}
+
 export function useStudios(): StudioRoom[] {
-  return useSyncExternalStore(
-    (onStoreChange) => {
-      ensureStudioSnapshotsReady();
-
-      const handler = () => {
-        initializeStudioSnapshots();
-        onStoreChange();
-      };
-
-      window.addEventListener(STUDIOS_UPDATED_EVENT, handler);
-      return () => window.removeEventListener(STUDIOS_UPDATED_EVENT, handler);
-    },
-    () => {
-      ensureStudioSnapshotsReady();
-      return getStudiosSnapshot();
-    },
-    () => [],
-  );
+  return useSyncExternalStore(subscribeToStudios, readStudiosSnapshot, () => EMPTY_STUDIOS);
 }
 
 export function useActiveStudios(): StudioRoom[] {
-  return useSyncExternalStore(
-    (onStoreChange) => {
-      ensureStudioSnapshotsReady();
-
-      const handler = () => {
-        initializeStudioSnapshots();
-        onStoreChange();
-      };
-
-      window.addEventListener(STUDIOS_UPDATED_EVENT, handler);
-      return () => window.removeEventListener(STUDIOS_UPDATED_EVENT, handler);
-    },
-    () => {
-      ensureStudioSnapshotsReady();
-      return getActiveStudiosSnapshot();
-    },
-    () => [],
-  );
+  return useSyncExternalStore(subscribeToStudios, readActiveStudiosSnapshot, () => EMPTY_STUDIOS);
 }
 
 export function refreshStudiosSnapshot(): StudioRoom[] {

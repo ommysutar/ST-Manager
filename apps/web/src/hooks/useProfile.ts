@@ -47,7 +47,7 @@ export function useProfile(user: AuthUserDto | null): StudioProfile | null {
       }
 
       ensureProfileReady(user);
-      return getProfileSnapshot() ?? loadProfile(user);
+      return getProfileSnapshot();
     },
     () => null,
   );

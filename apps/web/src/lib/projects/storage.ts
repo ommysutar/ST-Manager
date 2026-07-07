@@ -320,7 +320,6 @@ export function createProjectFromInquiry(input: {
     clientName: input.form.clientName,
     assignedEngineer: "",
     selectedServiceIds: input.form.selectedServiceIds,
-    planId: input.form.planId || undefined,
     projectCategory: input.form.projectCategory,
     quotation: input.quotation,
     advanceReceived: input.advanceAmount,

@@ -6,8 +6,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useClients } from "@/hooks/useClients";
 import {
-  fetchAllClients,
   mergeSearchResults,
   searchClients,
   searchLocalEntities,
@@ -26,33 +26,10 @@ const TYPE_LABELS: Record<SearchResult["type"], string> = {
 
 export function GlobalSearch() {
   const { isAuthenticated } = useAuth();
+  const clients = useClients();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
-  const [clientCache, setClientCache] = useState<Awaited<ReturnType<typeof fetchAllClients>>>([]);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      return;
-    }
-
-    let cancelled = false;
-    fetchAllClients()
-      .then((clients) => {
-        if (!cancelled) {
-          setClientCache(clients);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setClientCache([]);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated]);
 
   const results = useMemo(() => {
     if (!query.trim()) {
@@ -60,9 +37,9 @@ export function GlobalSearch() {
     }
 
     const local = searchLocalEntities(query);
-    const clients = isAuthenticated ? searchClients(clientCache, query) : [];
-    return mergeSearchResults(clients, local);
-  }, [query, clientCache, isAuthenticated]);
+    const clientResults = isAuthenticated ? searchClients(clients, query) : [];
+    return mergeSearchResults(clientResults, local);
+  }, [query, clients, isAuthenticated]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -80,7 +57,7 @@ export function GlobalSearch() {
   }
 
   return (
-    <div ref={containerRef} className="relative mx-4 hidden max-w-md flex-1 md:block">
+    <div ref={containerRef} className="relative hidden min-w-0 max-w-md flex-1 md:block">
       <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         value={query}

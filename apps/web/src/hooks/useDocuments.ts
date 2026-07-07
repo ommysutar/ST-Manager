@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 
+import { EMPTY_DOCUMENTS } from "@/hooks/empty-server-snapshots";
 import { DOCUMENTS_UPDATED_EVENT } from "@/lib/documents/events";
 import { getDocumentsSnapshot, initializeDocumentSnapshots } from "@/lib/documents/storage";
 import type { StudioDocument } from "@/lib/documents/types";
@@ -34,7 +35,7 @@ export function useDocuments(): StudioDocument[] {
       ensureDocumentSnapshotsReady();
       return getDocumentsSnapshot();
     },
-    () => [],
+    () => EMPTY_DOCUMENTS,
   );
 }
 

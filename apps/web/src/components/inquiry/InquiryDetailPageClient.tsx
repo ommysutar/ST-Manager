@@ -6,16 +6,23 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 
 import { QuotationSummary } from "@/components/inquiry/wizard/QuotationSummary";
+import { WhatsAppNotifyIcon } from "@/components/whatsapp/WhatsAppNotifyIcon";
 import { useAuth } from "@/hooks/useAuth";
+import { useClients } from "@/hooks/useClients";
 import { useInquiry } from "@/hooks/useInquiryStorage";
+import { useProfile } from "@/hooks/useProfile";
 import { formatINR } from "@/lib/currency";
+import { resolveClientWhatsAppNumber } from "@/hooks/useClientWhatsApp";
 import { getOrCreateQuotation } from "@/lib/documents/storage";
+import { buildInquiryWhatsAppVariables } from "@/lib/whatsapp/context";
 import { layout } from "@st-manager/theme";
 
 export function InquiryDetailPageClient() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const profile = useProfile(user);
+  const clients = useClients();
   const inquiry = useInquiry(params.id);
 
   function handleMakeQuotation() {
@@ -42,6 +49,11 @@ export function InquiryDetailPageClient() {
       </Card>
     );
   }
+
+  const whatsappNumber = inquiry.form.existingClientId
+    ? resolveClientWhatsAppNumber(inquiry.form.existingClientId, clients)
+    : inquiry.form.whatsappNumber || null;
+  const inquiryVariables = buildInquiryWhatsAppVariables(inquiry, profile);
 
   return (
     <div
@@ -71,7 +83,15 @@ export function InquiryDetailPageClient() {
           <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
             <div>
               <p className="text-muted-foreground">Client</p>
-              <p className="font-medium">{inquiry.form.clientName}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium">{inquiry.form.clientName}</p>
+                <WhatsAppNotifyIcon
+                  whatsappNumber={whatsappNumber}
+                  type="inquiry_received"
+                  variables={inquiryVariables}
+                  size="sm"
+                />
+              </div>
             </div>
             <div>
               <p className="text-muted-foreground">Mobile</p>
@@ -94,7 +114,12 @@ export function InquiryDetailPageClient() {
 
         <QuotationSummary
           quotation={inquiry.quotation}
+          discountType={inquiry.form.studioDiscountType ?? "percent"}
           discountPercent={inquiry.form.studioDiscountPercent}
+          discountAmountInput={inquiry.form.studioDiscountAmount ?? 0}
+          whatsappNumber={whatsappNumber}
+          whatsappType="quotation_ready"
+          whatsappVariables={inquiryVariables}
         />
       </div>
 
@@ -136,6 +161,11 @@ export function InquiryDetailPageClient() {
           <FileTextIcon className="size-4" />
           Make Quotation
         </Button>
+        <WhatsAppNotifyIcon
+          whatsappNumber={whatsappNumber}
+          type="quotation_ready"
+          variables={inquiryVariables}
+        />
         <Button asChild variant="outline">
           <Link href="/">Back To Dashboard</Link>
         </Button>

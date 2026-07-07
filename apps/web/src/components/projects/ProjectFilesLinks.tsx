@@ -29,6 +29,8 @@ import { CLOUD_PROVIDER_LABELS as PROJECT_CLOUD_LABELS } from "@/lib/projects/co
 import type { CloudProvider, ProjectLinkProvider } from "@/lib/projects/types";
 import { CLOUD_PROVIDER_LABELS } from "@/lib/cloud-storage/types";
 
+import { ProjectWhatsAppNotify } from "@/components/whatsapp/ProjectWhatsAppNotify";
+
 const CLOUD_PROVIDERS: { value: CloudProvider; label: string }[] = [
   { value: "google_drive", label: "Google Drive" },
   { value: "dropbox", label: "Dropbox" },
@@ -276,8 +278,17 @@ export function ProjectFilesLinks({ projectId }: ProjectFilesLinksProps) {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
           <CardTitle className="text-base">Files &amp; Links ({project.files.length + project.links.length})</CardTitle>
+          <ProjectWhatsAppNotify
+            project={project}
+            type="files_shared"
+            extras={{
+              GoogleDriveLink:
+                project.files[0]?.cloudUrl ?? project.links[0]?.url ?? "",
+            }}
+            size="sm"
+          />
         </CardHeader>
         <CardContent>
           {project.files.length === 0 && project.links.length === 0 ? (
@@ -317,6 +328,12 @@ export function ProjectFilesLinks({ projectId }: ProjectFilesLinksProps) {
                       <CopyIcon className="size-4" />
                       Copy Link
                     </Button>
+                    <ProjectWhatsAppNotify
+                      project={project}
+                      type="files_shared"
+                      extras={{ GoogleDriveLink: file.cloudUrl }}
+                      size="sm"
+                    />
                     <Button
                       type="button"
                       variant="outline"
@@ -358,6 +375,12 @@ export function ProjectFilesLinks({ projectId }: ProjectFilesLinksProps) {
                       <CopyIcon className="size-4" />
                       Copy Link
                     </Button>
+                    <ProjectWhatsAppNotify
+                      project={project}
+                      type="files_shared"
+                      extras={{ GoogleDriveLink: link.url }}
+                      size="sm"
+                    />
                     <Button
                       type="button"
                       variant="outline"

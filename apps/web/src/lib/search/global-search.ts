@@ -1,6 +1,6 @@
 import type { ClientResponseDto } from "@st-manager/contracts";
 
-import { clientsApi } from "@/lib/api-client";
+import { loadProductionClients } from "@/lib/clients/store";
 import { listBookings } from "@/lib/bookings/storage";
 import { getBookingSlotLabel } from "@/lib/bookings/slots";
 import { filterClientsBySearch } from "@/lib/inquiry/client-search";
@@ -11,20 +11,7 @@ import { getStudio } from "@/lib/studios/storage";
 import type { SearchResult } from "./types";
 
 export async function fetchAllClients(): Promise<ClientResponseDto[]> {
-  const pageSize = 100;
-  let page = 1;
-  const all: ClientResponseDto[] = [];
-
-  while (page <= 20) {
-    const response = await clientsApi.listClients({ page, pageSize });
-    all.push(...response.data);
-    if (response.data.length < pageSize) {
-      break;
-    }
-    page += 1;
-  }
-
-  return all;
+  return loadProductionClients();
 }
 
 export function searchLocalEntities(query: string): SearchResult[] {

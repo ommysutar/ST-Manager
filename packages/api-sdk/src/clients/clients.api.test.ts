@@ -39,9 +39,54 @@ describe("createClientsApi", () => {
     expect(post).toHaveBeenCalledWith(ROUTES.CLIENTS, {
       name: "Acme Records",
       email: "contact@acme.test",
-      phone: null,
+      phone: "",
+      whatsappNumber: "",
+      whatsappSameAsPhone: false,
       company: "Acme",
+      notes: "",
+    });
+  });
+
+  it("serializes null optional fields to empty strings on create", async () => {
+    const post = vi.fn().mockResolvedValue({
+      success: true,
+      data: {
+        id: "client-2",
+        name: "Jane Client",
+        email: null,
+        phone: null,
+        company: null,
+        notes: null,
+        createdAt: "2026-07-03T00:00:00.000Z",
+        updatedAt: "2026-07-03T00:00:00.000Z",
+      },
+    });
+
+    const client: HttpClient = {
+      get: vi.fn(),
+      getText: vi.fn(),
+      post,
+      patch: vi.fn(),
+      delete: vi.fn(),
+    };
+
+    const clientsApi = createClientsApi(client);
+    await clientsApi.createClient({
+      name: "Jane Client",
+      company: null,
+      email: null,
+      phone: null,
       notes: null,
+    });
+
+    expect(post).toHaveBeenCalledWith(ROUTES.CLIENTS, {
+      name: "Jane Client",
+      email: "",
+      phone: "",
+      whatsappNumber: "",
+      whatsappSameAsPhone: false,
+      company: "",
+      notes: "",
     });
   });
 

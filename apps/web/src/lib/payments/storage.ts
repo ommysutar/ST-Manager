@@ -67,6 +67,10 @@ export function listPaymentsByProject(projectId: string): PaymentRecord[] {
   return loadAllPayments().filter((payment) => payment.projectId === projectId);
 }
 
+export function getPayment(paymentId: string): PaymentRecord | undefined {
+  return loadAllPayments().find((payment) => payment.id === paymentId);
+}
+
 export function getProjectReceivedTotal(projectId: string): number {
   return listPaymentsByProject(projectId).reduce((sum, payment) => sum + payment.amount, 0);
 }

@@ -9,6 +9,11 @@ export type { ListStudiosQueryDto, ListStudiosResponseDto } from "./studio/list-
 
 export type { AuthUserDto } from "./auth/auth-user.dto";
 export type { LoginRequestDto, LoginResponseDataDto, LoginResponseDto } from "./auth/login.dto";
+export type {
+  RegisterRequestDto,
+  RegisterResponseDataDto,
+  RegisterResponseDto,
+} from "./auth/register.dto";
 export type { RefreshRequestDto, RefreshResponseDataDto, RefreshResponseDto } from "./auth/refresh.dto";
 
 export type {

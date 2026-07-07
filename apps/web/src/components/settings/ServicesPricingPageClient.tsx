@@ -11,6 +11,7 @@ import { ServiceFormDialog } from "@/components/settings/ServiceFormDialog";
 import { ServicesTable } from "@/components/settings/ServicesTable";
 import { useAuth } from "@/hooks/useAuth";
 import { useAllStudioServices } from "@/hooks/useInquiryStorage";
+import { ENABLE_DEMO_DATA } from "@/lib/app-config";
 import { layout } from "@st-manager/theme";
 import type { ServiceFormValues } from "@/lib/inquiry/service.schema";
 import {
@@ -189,9 +190,9 @@ export function ServicesPricingPageClient() {
                 className="pl-9"
               />
             </div>
-            <Button type="button" variant="outline" size="icon" onClick={handleResetDefaults}>
+            <Button type="button" variant="outline" size="icon" onClick={handleResetDefaults} disabled={!ENABLE_DEMO_DATA}>
               <RotateCcwIcon className="size-4" />
-              <span className="sr-only">Reset defaults</span>
+              <span className="sr-only">Reset demo defaults</span>
             </Button>
           </div>
         </CardHeader>
@@ -201,6 +202,11 @@ export function ServicesPricingPageClient() {
             services={visibleServices}
             sortField={sortField}
             sortDirection={sortDirection}
+            emptyMessage={
+              allServices.length === 0
+                ? 'No services configured yet. Click "Add New Service" to create your first service.'
+                : "No services match your search."
+            }
             onSortFieldChange={handleSortFieldChange}
             onToggleActive={handleToggleActive}
             onToggleMandatory={handleToggleMandatory}

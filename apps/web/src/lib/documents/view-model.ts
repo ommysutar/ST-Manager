@@ -1,11 +1,10 @@
-import { formatINR } from "@/lib/currency";
 import { getInquiry } from "@/lib/inquiry/storage";
 import { getProjectReceivedTotal, listPaymentsByProject } from "@/lib/payments/storage";
 import type { PaymentRecord } from "@/lib/payments/types";
 import type { StudioProfile } from "@/lib/profile/types";
 import { getProject } from "@/lib/projects/storage";
 
-import type { DocumentType, StudioDocument } from "./types";
+import type { DocumentSnapshot, DocumentType, StudioDocument } from "./types";
 
 export interface DocumentLineItemVM {
   id: string;
@@ -36,12 +35,14 @@ export interface DocumentViewModel {
     thankYouMessage: string;
   };
   client: {
+    id: string;
     name: string;
     mobile: string;
     email: string;
     address: string;
   };
   project: {
+    id: string;
     projectNumber: string;
     projectName: string;
     category: string;
@@ -55,98 +56,80 @@ export interface DocumentViewModel {
     remaining: number;
     history: PaymentRecord[];
   };
-}
-
-const EMPTY_STUDIO: DocumentViewModel["studio"] = {
-  logoDataUrl: "",
-  studioName: "Studio Name",
-  address: "",
-  mobile: "",
-  email: "",
-  website: "",
-  gstNumber: "",
-  bankDetails: { accountName: "", accountNumber: "", ifsc: "", bankName: "" },
-  upiId: "",
-  upiQrDataUrl: "",
-  signatureDataUrl: "",
-  footerText: "",
-  termsAndConditions: "",
-  thankYouMessage: "",
-};
-
-interface ResolvedSource {
-  clientName: string;
-  clientMobile: string;
-  clientEmail: string;
-  clientAddress: string;
-  projectNumber: string;
-  projectName: string;
-  category: string;
-  lineItems: DocumentLineItemVM[];
-  subtotal: number;
-  discountAmount: number;
-  grandTotal: number;
-}
-
-function resolveFromProject(projectId: string): ResolvedSource | null {
-  const project = getProject(projectId);
-  if (!project?.quotation) {
-    return null;
-  }
-
-  return {
-    clientName: project.clientName,
-    clientMobile: project.clientMobile ?? "",
-    clientEmail: project.clientEmail ?? "",
-    clientAddress: "",
-    projectNumber: project.projectNumber,
-    projectName: project.projectName,
-    category: project.projectCategory ?? "",
-    ...flattenQuotation(project.quotation),
+  receipt?: {
+    amount: number;
+    method: string;
+    date: string;
+    notes: string;
+    receivedBy: string;
   };
 }
 
-function resolveFromInquiry(inquiryId: string): ResolvedSource | null {
-  const inquiry = getInquiry(inquiryId);
-  if (!inquiry) {
-    return null;
+function studioFromProfile(profile: StudioProfile | null): DocumentViewModel["studio"] {
+  if (!profile?.studioName?.trim()) {
+    return {
+      logoDataUrl: profile?.logoDataUrl ?? "",
+      studioName: "",
+      address: profile?.address ?? "",
+      mobile: profile?.mobile ?? "",
+      email: profile?.email ?? "",
+      website: profile?.website ?? "",
+      gstNumber: profile?.gstNumber ?? "",
+      bankDetails: profile?.bankDetails ?? {
+        accountName: "",
+        accountNumber: "",
+        ifsc: "",
+        bankName: "",
+      },
+      upiId: profile?.upiId ?? "",
+      upiQrDataUrl: profile?.upiQrDataUrl ?? "",
+      signatureDataUrl: profile?.signatureDataUrl ?? "",
+      footerText: profile?.footerText ?? "",
+      termsAndConditions: profile?.termsAndConditions ?? "",
+      thankYouMessage: profile?.thankYouMessage ?? "",
+    };
   }
 
   return {
-    clientName: inquiry.form.clientName,
-    clientMobile: inquiry.form.mobileNumber,
-    clientEmail: inquiry.form.email,
-    clientAddress: inquiry.form.address,
-    projectNumber: inquiry.inquiryNumber,
-    projectName: inquiry.form.projectName,
-    category: inquiry.form.projectCategory,
-    ...flattenQuotation(inquiry.quotation),
+    logoDataUrl: profile.logoDataUrl,
+    studioName: profile.studioName,
+    address: profile.address,
+    mobile: profile.mobile,
+    email: profile.email,
+    website: profile.website,
+    gstNumber: profile.gstNumber,
+    bankDetails: profile.bankDetails,
+    upiId: profile.upiId,
+    upiQrDataUrl: profile.upiQrDataUrl,
+    signatureDataUrl: profile.signatureDataUrl,
+    footerText: profile.footerText,
+    termsAndConditions: profile.termsAndConditions,
+    thankYouMessage: profile.thankYouMessage,
   };
 }
 
-export function buildDocumentViewModel(
+function viewModelFromSnapshot(
   document: StudioDocument,
+  snapshot: DocumentSnapshot,
   profile: StudioProfile | null,
-): DocumentViewModel | null {
-  const resolved = document.projectId
-    ? resolveFromProject(document.projectId)
-    : document.inquiryId
-      ? resolveFromInquiry(document.inquiryId)
-      : null;
-
-  if (!resolved) {
-    return null;
-  }
-
-  const { clientName, clientMobile, clientEmail, clientAddress, projectNumber, projectName, category, lineItems, subtotal, discountAmount, grandTotal } =
-    resolved;
-
+): DocumentViewModel {
   const paymentSummary: DocumentViewModel["paymentSummary"] =
     document.type === "invoice" && document.projectId
       ? {
           received: getProjectReceivedTotal(document.projectId),
-          remaining: Math.max(0, grandTotal - getProjectReceivedTotal(document.projectId)),
+          remaining: Math.max(0, snapshot.grandTotal - getProjectReceivedTotal(document.projectId)),
           history: listPaymentsByProject(document.projectId),
+        }
+      : undefined;
+
+  const receipt =
+    document.type === "receipt" && snapshot.paymentAmount !== undefined
+      ? {
+          amount: snapshot.paymentAmount,
+          method: snapshot.paymentMethod ?? "",
+          date: snapshot.paymentDate ?? document.createdAt,
+          notes: snapshot.paymentNotes ?? "",
+          receivedBy: snapshot.paymentReceivedBy ?? "",
         }
       : undefined;
 
@@ -154,75 +137,97 @@ export function buildDocumentViewModel(
     type: document.type,
     documentNumber: document.documentNumber,
     date: document.createdAt,
-    studio: profile
-      ? {
-          logoDataUrl: profile.logoDataUrl,
-          studioName: profile.studioName || EMPTY_STUDIO.studioName,
-          address: profile.address,
-          mobile: profile.mobile,
-          email: profile.email,
-          website: profile.website,
-          gstNumber: profile.gstNumber,
-          bankDetails: profile.bankDetails,
-          upiId: profile.upiId,
-          upiQrDataUrl: profile.upiQrDataUrl,
-          signatureDataUrl: profile.signatureDataUrl,
-          footerText: profile.footerText,
-          termsAndConditions: profile.termsAndConditions,
-          thankYouMessage: profile.thankYouMessage,
-        }
-      : EMPTY_STUDIO,
-    client: { name: clientName, mobile: clientMobile, email: clientEmail, address: clientAddress },
-    project: { projectNumber, projectName, category },
-    lineItems,
-    subtotal,
-    discountAmount,
-    grandTotal,
+    studio: studioFromProfile(profile),
+    client: {
+      id: snapshot.clientDisplayNumber,
+      name: snapshot.clientName,
+      mobile: snapshot.clientMobile,
+      email: snapshot.clientEmail,
+      address: snapshot.clientAddress,
+    },
+    project: {
+      id: snapshot.projectNumber,
+      projectNumber: snapshot.projectNumber,
+      projectName: snapshot.projectName,
+      category: snapshot.projectCategory,
+    },
+    lineItems: snapshot.lineItems,
+    subtotal: snapshot.subtotal,
+    discountAmount: snapshot.discountAmount,
+    grandTotal: snapshot.grandTotal,
     paymentSummary,
+    receipt,
   };
 }
 
-function flattenQuotation(quotation: {
-  serviceLines: { id: string; name: string; price: number }[];
-  customServiceLines: { id: string; name: string; price: number }[];
-  studioRentHours: number;
-  studioRentRate: number;
-  studioRentAmount: number;
-  subtotal: number;
-  discountAmount: number;
-  grandTotal: number;
-}): { lineItems: DocumentLineItemVM[]; subtotal: number; discountAmount: number; grandTotal: number } {
-  const lineItems: DocumentLineItemVM[] = [
-    ...quotation.serviceLines.map((line) => ({
-      id: line.id,
-      name: line.name,
-      quantity: 1,
-      price: line.price,
-      amount: line.price,
-    })),
-    ...quotation.customServiceLines.map((line) => ({
-      id: line.id,
-      name: line.name,
-      quantity: 1,
-      price: line.price,
-      amount: line.price,
-    })),
-  ];
+function resolveLiveSnapshot(document: StudioDocument): DocumentSnapshot | null {
+  if (document.projectId) {
+    const project = getProject(document.projectId);
+    if (!project?.quotation && document.type !== "receipt") {
+      return null;
+    }
 
-  if (quotation.studioRentAmount > 0) {
-    lineItems.push({
-      id: "studio-rent",
-      name: `Studio Rent (${quotation.studioRentHours}h × ${formatINR(quotation.studioRentRate)})`,
-      quantity: quotation.studioRentHours,
-      price: quotation.studioRentRate,
-      amount: quotation.studioRentAmount,
-    });
+    if (project) {
+      return {
+        clientId: project.clientId ?? "",
+        clientDisplayNumber: "",
+        clientName: project.clientName,
+        clientMobile: project.clientMobile ?? "",
+        clientEmail: project.clientEmail ?? "",
+        clientAddress: "",
+        projectId: project.id,
+        projectNumber: project.projectNumber,
+        projectName: project.projectName,
+        projectCategory: project.projectCategory ?? "",
+        lineItems: [],
+        subtotal: project.grandTotal,
+        discountAmount: 0,
+        grandTotal: project.grandTotal,
+        capturedAt: document.createdAt,
+      };
+    }
   }
 
-  return {
-    lineItems,
-    subtotal: quotation.subtotal,
-    discountAmount: quotation.discountAmount,
-    grandTotal: quotation.grandTotal,
-  };
+  if (document.inquiryId) {
+    const inquiry = getInquiry(document.inquiryId);
+    if (!inquiry) {
+      return null;
+    }
+
+    return {
+      clientId: inquiry.form.existingClientId ?? "",
+      clientDisplayNumber: "",
+      clientName: inquiry.form.clientName,
+      clientMobile: inquiry.form.mobileNumber,
+      clientEmail: inquiry.form.email,
+      clientAddress: inquiry.form.address,
+      projectId: inquiry.projectId ?? "",
+      projectNumber: inquiry.inquiryNumber,
+      projectName: inquiry.form.projectName,
+      projectCategory: inquiry.form.projectCategory,
+      lineItems: [],
+      subtotal: inquiry.quotation.grandTotal,
+      discountAmount: inquiry.quotation.discountAmount,
+      grandTotal: inquiry.quotation.grandTotal,
+      capturedAt: document.createdAt,
+    };
+  }
+
+  return null;
+}
+
+export function buildDocumentViewModel(
+  document: StudioDocument,
+  profile: StudioProfile | null,
+): DocumentViewModel | null {
+  if (document.snapshot) {
+    return viewModelFromSnapshot(document, document.snapshot, profile);
+  }
+
+  const live = resolveLiveSnapshot(document);
+  if (!live) {
+    return null;
+  }
+
+  return viewModelFromSnapshot(document, live, profile);
 }

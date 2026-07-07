@@ -10,6 +10,8 @@ describe("createClientSchema", () => {
       name: "Acme Records",
       email: null,
       phone: null,
+      whatsappNumber: null,
+      whatsappSameAsPhone: false,
       company: null,
       notes: null,
     });
@@ -18,6 +20,26 @@ describe("createClientSchema", () => {
   it("rejects empty names", () => {
     const result = createClientSchema.safeParse({ name: "   " });
     expect(result.success).toBe(false);
+  });
+
+  it("accepts null optional fields and normalizes them to null internally", () => {
+    expect(
+      createClientSchema.parse({
+        name: "Jane Client",
+        email: null,
+        phone: null,
+        company: null,
+        notes: null,
+      }),
+    ).toEqual({
+      name: "Jane Client",
+      email: null,
+      phone: null,
+      whatsappNumber: null,
+      whatsappSameAsPhone: false,
+      company: null,
+      notes: null,
+    });
   });
 
   it("accepts optional contact fields and normalizes empty strings to null", () => {
@@ -33,6 +55,8 @@ describe("createClientSchema", () => {
       name: "Jane Client",
       email: null,
       phone: "555-0100",
+      whatsappNumber: null,
+      whatsappSameAsPhone: false,
       company: "Acme",
       notes: "VIP",
     });

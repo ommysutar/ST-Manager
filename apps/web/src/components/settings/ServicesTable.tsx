@@ -22,6 +22,7 @@ interface ServicesTableProps {
   services: StudioService[];
   sortField: ServiceSortField;
   sortDirection: ServiceSortDirection;
+  emptyMessage?: string;
   onSortFieldChange: (field: ServiceSortField) => void;
   onToggleActive: (service: StudioService, active: boolean) => void;
   onToggleMandatory: (service: StudioService, mandatory: boolean) => void;
@@ -66,6 +67,7 @@ export function ServicesTable({
   services,
   sortField,
   sortDirection,
+  emptyMessage = "No services configured yet. Click \"Add New Service\" to create your first service.",
   onSortFieldChange,
   onToggleActive,
   onToggleMandatory,
@@ -79,7 +81,7 @@ export function ServicesTable({
   if (services.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border/70 px-6 py-12 text-center text-sm text-muted-foreground">
-        No services match your search.
+        {emptyMessage}
       </div>
     );
   }

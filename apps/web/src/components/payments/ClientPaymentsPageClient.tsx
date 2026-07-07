@@ -9,8 +9,11 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useClientPaymentsSummary } from "@/hooks/useClientPaymentsSummary";
 import { formatINR } from "@/lib/currency";
+import { getClientWhatsAppNumber } from "@/lib/clients/whatsapp";
 import { PAYMENT_STATUS_LABELS, getPaymentStatus } from "@/lib/payments/status";
 import { fetchAllClients } from "@/lib/search/global-search";
+
+import { WhatsAppNotifyIcon } from "@/components/whatsapp/WhatsAppNotifyIcon";
 
 export function ClientPaymentsPageClient({ clientId }: { clientId: string }) {
   const { isAuthenticated } = useAuth();
@@ -41,7 +44,17 @@ export function ClientPaymentsPageClient({ clientId }: { clientId: string }) {
         <Link href="/payments" className="text-sm text-primary underline-offset-4 hover:underline">
           Back to payments
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight">{displayName}</h1>
+        <div className="mt-2 flex items-center gap-2">
+          <h1 className="text-2xl font-semibold tracking-tight">{displayName}</h1>
+          {client ? (
+            <WhatsAppNotifyIcon
+              whatsappNumber={getClientWhatsAppNumber(client)}
+              type="payment_reminder"
+              variables={{ ClientName: displayName, BalanceAmount: formatINR(totalPending) }}
+              size="sm"
+            />
+          ) : null}
+        </div>
         <p className="text-sm text-muted-foreground">
           {[displayMobile, displayEmail].filter(Boolean).join(" · ") || "No contact info"}
         </p>

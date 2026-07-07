@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 
+import { EMPTY_PROJECTS } from "@/hooks/empty-server-snapshots";
 import { PROJECTS_UPDATED_EVENT } from "@/lib/inquiry/events";
 import {
   getProject as getProjectById,
@@ -39,7 +40,7 @@ export function useProjects(): StudioProject[] {
       ensureProjectSnapshotsReady();
       return getProjectsSnapshot();
     },
-    () => [],
+    () => EMPTY_PROJECTS,
   );
 }
 

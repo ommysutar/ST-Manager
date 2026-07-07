@@ -4,14 +4,26 @@ import { ApiError } from "@st-manager/api-sdk";
 import type { ClientResponseDto } from "@st-manager/contracts";
 import { layout } from "@st-manager/theme";
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from "@st-manager/ui";
+import { Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
+import { ClientDeleteDialog } from "@/components/clients/ClientDeleteDialog";
 import { ClientForm, type ClientFormValues } from "@/components/clients/ClientForm";
 import { useAuth } from "@/hooks/useAuth";
 import { useClientPaymentsSummary } from "@/hooks/useClientPaymentsSummary";
 import { clientsApi } from "@/lib/api-client";
+import {
+  clientHasLinkedRecords,
+  deleteClientWithLinkedData,
+} from "@/lib/clients/delete-client";
+import { propagateClientDetailsToLocalRecords } from "@/lib/clients/sync";
+import { toClientUpdatePayload } from "@/lib/clients/normalize-client-payload";
+import { isTestOrDemoClient } from "@/lib/clients/smoke-clients";
+import { notifyClientsUpdated } from "@/lib/clients/events";
+import { upsertClientInSnapshot } from "@/lib/clients/store";
 import { formatINR } from "@/lib/currency";
 import { PAYMENT_STATUS_LABELS, getPaymentStatus } from "@/lib/payments/status";
 
@@ -20,19 +32,15 @@ function toFormValues(client: ClientResponseDto): ClientFormValues {
     name: client.name,
     email: client.email ?? "",
     phone: client.phone ?? "",
+    whatsappNumber: client.whatsappNumber ?? "",
+    whatsappSameAsPhone: client.whatsappSameAsPhone ?? false,
     company: client.company ?? "",
     notes: client.notes ?? "",
   };
 }
 
 function toPayload(values: ClientFormValues) {
-  return {
-    name: values.name,
-    email: values.email || null,
-    phone: values.phone || null,
-    company: values.company || null,
-    notes: values.notes || null,
-  };
+  return toClientUpdatePayload(values);
 }
 
 export function ClientEditPageClient({ clientId }: { clientId: string }) {
@@ -41,6 +49,7 @@ export function ClientEditPageClient({ clientId }: { clientId: string }) {
   const [client, setClient] = useState<ClientResponseDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const canFetch = isAuthenticated;
   const paymentsSummary = useClientPaymentsSummary(clientId);
@@ -56,6 +65,15 @@ export function ClientEditPageClient({ clientId }: { clientId: string }) {
       .getClient(clientId)
       .then((data) => {
         if (!cancelled) {
+          if (isTestOrDemoClient(data)) {
+            void clientsApi.deleteClient(data.id).finally(() => {
+              if (!cancelled) {
+                router.replace("/clients");
+              }
+            });
+            return;
+          }
+
           setClient(data);
           setError(null);
         }
@@ -70,7 +88,7 @@ export function ClientEditPageClient({ clientId }: { clientId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [canFetch, clientId]);
+  }, [canFetch, clientId, router]);
 
   async function handleSubmit(values: ClientFormValues) {
     setIsSubmitting(true);
@@ -78,7 +96,11 @@ export function ClientEditPageClient({ clientId }: { clientId: string }) {
 
     try {
       const updated = await clientsApi.updateClient(clientId, toPayload(values));
+      propagateClientDetailsToLocalRecords(updated);
+      upsertClientInSnapshot(updated);
+      notifyClientsUpdated();
       setClient(updated);
+      toast.success("Client updated");
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Failed to update client";
       setError(message);
@@ -87,16 +109,23 @@ export function ClientEditPageClient({ clientId }: { clientId: string }) {
     }
   }
 
-  async function handleArchive() {
+  async function handleConfirmDelete() {
+    if (!client) {
+      return;
+    }
+
     setIsDeleting(true);
     setError(null);
 
     try {
-      await clientsApi.deleteClient(clientId);
+      await deleteClientWithLinkedData(client);
+      toast.success(`${client.name} deleted`);
+      setDeleteOpen(false);
       router.push("/clients");
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Failed to archive client";
+      const message = err instanceof ApiError ? err.message : "Failed to delete client";
       setError(message);
+      toast.error(message);
     } finally {
       setIsDeleting(false);
     }
@@ -196,9 +225,23 @@ export function ClientEditPageClient({ clientId }: { clientId: string }) {
             </CardContent>
           </Card>
 
-          <Button variant="destructive" disabled={isDeleting} onClick={() => void handleArchive()}>
-            {isDeleting ? "Archiving..." : "Archive client"}
+          <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+            <Trash2Icon className="size-4" />
+            Delete Client
           </Button>
+
+          <ClientDeleteDialog
+            open={deleteOpen}
+            client={client}
+            hasLinkedRecords={clientHasLinkedRecords(client.id, client)}
+            isDeleting={isDeleting}
+            onOpenChange={(open) => {
+              if (!isDeleting) {
+                setDeleteOpen(open);
+              }
+            }}
+            onConfirm={handleConfirmDelete}
+          />
         </>
       )}
     </div>

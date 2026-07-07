@@ -3,6 +3,7 @@ import type { InquiryWizardFormValues } from "./schema";
 export type InquiryStatus = "inquiry" | "project";
 export type ProjectPriority = "low" | "medium" | "high";
 export type ServicePricingTier = "basic" | "standard" | "premium";
+export type DiscountType = "percent" | "amount";
 
 export interface ServicePrices {
   basic: number;
@@ -29,23 +30,27 @@ export interface StudioService {
   isStudioRent?: boolean;
 }
 
-export interface ProjectPlan {
+export type { InquiryWizardFormValues } from "./schema";
+
+export interface QuotationServiceLine {
   id: string;
   name: string;
+  /** Line total (flat price or hourly rate × hours). */
   price: number;
-  features: string[];
-  highlighted?: boolean;
-  active: boolean;
+  /** Set when the service uses per-hour pricing. */
+  hourlyRate?: number;
+  hours?: number;
 }
-
-export type { InquiryWizardFormValues } from "./schema";
 
 export interface QuotationBreakdown {
   planAmount: number;
-  serviceLines: { id: string; name: string; price: number }[];
+  serviceLines: QuotationServiceLine[];
   customServiceLines: { id: string; name: string; price: number }[];
+  /** @deprecated Aggregated from hourly service lines — kept for legacy snapshots. */
   studioRentHours: number;
+  /** @deprecated Aggregated from hourly service lines — kept for legacy snapshots. */
   studioRentRate: number;
+  /** @deprecated Sum of hourly line totals — kept for legacy snapshots. */
   studioRentAmount: number;
   servicesSubtotal: number;
   subtotal: number;
@@ -82,4 +87,3 @@ export const INQUIRIES_STORAGE_KEY = "st-manager-inquiries";
 /** @deprecated Use PROJECTS_STORAGE_KEY from @/lib/projects/types */
 export const PROJECTS_STORAGE_KEY = "st-manager-projects";
 export const SERVICE_PRICING_STORAGE_KEY = "st-manager-service-pricing";
-export const PROJECT_PLANS_STORAGE_KEY = "st-manager-project-plans";

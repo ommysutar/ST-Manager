@@ -43,6 +43,8 @@ export interface BookingSlot {
   endHour: number;
   endMinute: number;
   isCustom: boolean;
+  /** Display order in Week/Month calendars and day schedule (lower = earlier in list). */
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
 }

@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 
+import { EMPTY_BOOKINGS } from "@/hooks/empty-server-snapshots";
 import { BOOKINGS_UPDATED_EVENT } from "@/lib/bookings/events";
 import {
   getBookingsSnapshot,
@@ -43,7 +44,7 @@ export function useBookings(): ProjectBooking[] {
       ensureBookingSnapshotsReady();
       return getBookingsSnapshot();
     },
-    () => [],
+    () => EMPTY_BOOKINGS,
   );
 }
 

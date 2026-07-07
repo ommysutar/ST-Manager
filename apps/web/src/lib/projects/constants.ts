@@ -40,7 +40,7 @@ export const CLOUD_PROVIDER_LABELS: Record<string, string> = {
 
 export const PROJECT_EXPENSE_CATEGORIES = [
   "Assistant Engineer",
-  "Tabla Artist",
+  "Instrument Player",
   "Singer",
   "Video Shoot",
   "Travel",

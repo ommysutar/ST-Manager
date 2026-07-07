@@ -6,13 +6,17 @@ import type {
   RefreshRequestDto,
   RefreshResponseDataDto,
   RefreshResponseDto,
+  RegisterRequestDto,
+  RegisterResponseDataDto,
+  RegisterResponseDto,
 } from "@st-manager/contracts";
-import { loginSchema, refreshSchema } from "@st-manager/validation";
+import { loginSchema, refreshSchema, registerSchema } from "@st-manager/validation";
 
 import type { HttpClient } from "../client/types";
 
 export interface AuthApi {
   login(input: LoginRequestDto): Promise<LoginResponseDataDto>;
+  register(input: RegisterRequestDto): Promise<RegisterResponseDataDto>;
   refresh(input: RefreshRequestDto): Promise<RefreshResponseDataDto>;
 }
 
@@ -21,6 +25,12 @@ export function createAuthApi(client: HttpClient): AuthApi {
     login: async (input) => {
       const validated = loginSchema.parse(input);
       const response = await client.post<LoginResponseDto>(`${ROUTES.AUTH}/login`, validated);
+      return response.data;
+    },
+
+    register: async (input) => {
+      const validated = registerSchema.parse(input);
+      const response = await client.post<RegisterResponseDto>(`${ROUTES.AUTH}/register`, validated);
       return response.data;
     },
 

@@ -2,26 +2,37 @@
 
 import { cn, Separator } from "@st-manager/ui";
 
+import { WhatsAppNotifyIcon } from "@/components/whatsapp/WhatsAppNotifyIcon";
 import { formatINR } from "@/lib/currency";
-import type { QuotationBreakdown } from "@/lib/inquiry/types";
+import type { DiscountType, QuotationBreakdown } from "@/lib/inquiry/types";
+import type { WhatsAppMessageVariables, WhatsAppNotificationType } from "@/lib/whatsapp/types";
 
 interface QuotationSummaryProps {
   quotation: QuotationBreakdown;
+  discountType: DiscountType;
   discountPercent: number;
+  discountAmountInput: number;
   className?: string;
   compact?: boolean;
+  whatsappNumber?: string | null;
+  whatsappType?: WhatsAppNotificationType;
+  whatsappVariables?: WhatsAppMessageVariables;
 }
 
 export function QuotationSummary({
   quotation,
+  discountType,
   discountPercent,
+  discountAmountInput,
   className,
   compact = false,
+  whatsappNumber,
+  whatsappType = "quotation_ready",
+  whatsappVariables = {},
 }: QuotationSummaryProps) {
   const hasLines =
     quotation.serviceLines.length > 0 ||
-    quotation.customServiceLines.length > 0 ||
-    quotation.studioRentAmount > 0;
+    quotation.customServiceLines.length > 0;
 
   return (
     <div
@@ -32,15 +43,29 @@ export function QuotationSummary({
     >
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-sm font-semibold tracking-wide uppercase">Rough Quotation</h3>
-        {!compact ? (
-          <span className="text-xs text-muted-foreground">Live preview</span>
-        ) : null}
+        <div className="flex items-center gap-2">
+          {whatsappNumber !== undefined ? (
+            <WhatsAppNotifyIcon
+              whatsappNumber={whatsappNumber}
+              type={whatsappType}
+              variables={whatsappVariables}
+              size="sm"
+            />
+          ) : null}
+          {!compact ? (
+            <span className="text-xs text-muted-foreground">Live preview</span>
+          ) : null}
+        </div>
       </div>
 
       <div className="space-y-2 text-sm">
         {quotation.serviceLines.map((line) => (
           <div key={line.id} className="flex justify-between gap-4">
-            <span className="text-muted-foreground">{line.name}</span>
+            <span className="text-muted-foreground">
+              {line.hours != null && line.hours > 0 && line.hourlyRate != null
+                ? `${line.name} (${line.hours}h × ${formatINR(line.hourlyRate)})`
+                : line.name}
+            </span>
             <span className="font-medium">{formatINR(line.price)}</span>
           </div>
         ))}
@@ -51,15 +76,6 @@ export function QuotationSummary({
             <span className="font-medium">{formatINR(line.price)}</span>
           </div>
         ))}
-
-        {quotation.studioRentAmount > 0 ? (
-          <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">
-              Studio Rent ({quotation.studioRentHours}h × {formatINR(quotation.studioRentRate)})
-            </span>
-            <span className="font-medium">{formatINR(quotation.studioRentAmount)}</span>
-          </div>
-        ) : null}
 
         {!hasLines ? (
           <p className="text-muted-foreground">Select services to preview quotation.</p>
@@ -73,9 +89,15 @@ export function QuotationSummary({
           <span className="text-muted-foreground">Subtotal</span>
           <span className="font-medium">{formatINR(quotation.subtotal)}</span>
         </div>
-        {discountPercent > 0 ? (
+        {quotation.discountAmount > 0 ? (
           <div className="flex justify-between gap-4 text-emerald-600 dark:text-emerald-400">
-            <span>Discount ({discountPercent}%)</span>
+            <span>
+              Discount
+              {discountType === "percent" && discountPercent > 0 ? ` (${discountPercent}%)` : null}
+              {discountType === "amount" && discountAmountInput > 0
+                ? ` (${formatINR(discountAmountInput)})`
+                : null}
+            </span>
             <span>-{formatINR(quotation.discountAmount)}</span>
           </div>
         ) : null}

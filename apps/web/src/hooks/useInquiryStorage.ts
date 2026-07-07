@@ -2,28 +2,21 @@
 
 import { useSyncExternalStore } from "react";
 
-import { DEFAULT_PROJECT_PLANS, DEFAULT_STUDIO_SERVICES } from "@/lib/inquiry/constants";
+import { EMPTY_INQUIRIES, EMPTY_STUDIO_SERVICES } from "@/hooks/empty-server-snapshots";
 import {
   INQUIRIES_UPDATED_EVENT,
-  PROJECT_PLANS_UPDATED_EVENT,
   SERVICE_PRICING_UPDATED_EVENT,
 } from "@/lib/inquiry/events";
-import { initializeProjectPlanSnapshots } from "@/lib/inquiry/plans";
 import { initializeServiceSnapshots } from "@/lib/inquiry/services";
 import {
-  getActivePlansSnapshot,
   getActiveServicesSnapshot,
-  getAllPlansSnapshot,
   getAllServicesSnapshot,
   getInquiriesSnapshot,
   getInquirySnapshot,
 } from "@/lib/inquiry/snapshots";
 import { initializeInquirySnapshots } from "@/lib/inquiry/storage";
 import { initializeProjectSnapshots } from "@/lib/projects/storage";
-import type { ProjectPlan, SavedInquiry, StudioService } from "@/lib/inquiry/types";
-
-const defaultActiveServices = DEFAULT_STUDIO_SERVICES.filter((service) => service.active);
-const defaultActivePlans = DEFAULT_PROJECT_PLANS.filter((plan) => plan.active);
+import type { SavedInquiry, StudioService } from "@/lib/inquiry/types";
 
 let snapshotsReady = false;
 
@@ -34,7 +27,6 @@ function ensureSnapshotsReady(): void {
 
   initializeInquirySnapshots();
   initializeServiceSnapshots();
-  initializeProjectPlanSnapshots();
   initializeProjectSnapshots();
   snapshotsReady = true;
 }
@@ -56,7 +48,7 @@ export function useInquiries(): SavedInquiry[] {
       ensureSnapshotsReady();
       return getInquiriesSnapshot();
     },
-    () => [],
+    () => EMPTY_INQUIRIES,
   );
 }
 
@@ -102,7 +94,7 @@ export function useAllStudioServices(): StudioService[] {
       ensureSnapshotsReady();
       return getAllServicesSnapshot();
     },
-    () => DEFAULT_STUDIO_SERVICES,
+    () => EMPTY_STUDIO_SERVICES,
   );
 }
 
@@ -124,51 +116,7 @@ export function useStudioServices(): StudioService[] {
       ensureSnapshotsReady();
       return getActiveServicesSnapshot();
     },
-    () => defaultActiveServices,
-  );
-}
-
-/** All project plans for Owner/Admin management (includes inactive). */
-export function useAllProjectPlans(): ProjectPlan[] {
-  return useSyncExternalStore(
-    (onStoreChange) => {
-      ensureSnapshotsReady();
-
-      const handler = () => {
-        initializeProjectPlanSnapshots();
-        onStoreChange();
-      };
-
-      window.addEventListener(PROJECT_PLANS_UPDATED_EVENT, handler);
-      return () => window.removeEventListener(PROJECT_PLANS_UPDATED_EVENT, handler);
-    },
-    () => {
-      ensureSnapshotsReady();
-      return getAllPlansSnapshot();
-    },
-    () => DEFAULT_PROJECT_PLANS,
-  );
-}
-
-/** Active project plans only — used by the New Inquiry Wizard. */
-export function useProjectPlans(): ProjectPlan[] {
-  return useSyncExternalStore(
-    (onStoreChange) => {
-      ensureSnapshotsReady();
-
-      const handler = () => {
-        initializeProjectPlanSnapshots();
-        onStoreChange();
-      };
-
-      window.addEventListener(PROJECT_PLANS_UPDATED_EVENT, handler);
-      return () => window.removeEventListener(PROJECT_PLANS_UPDATED_EVENT, handler);
-    },
-    () => {
-      ensureSnapshotsReady();
-      return getActivePlansSnapshot();
-    },
-    () => defaultActivePlans,
+    () => EMPTY_STUDIO_SERVICES,
   );
 }
 

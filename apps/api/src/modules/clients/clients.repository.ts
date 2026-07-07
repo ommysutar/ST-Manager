@@ -40,6 +40,8 @@ export class ClientsRepository {
     name: string;
     email: string | null;
     phone: string | null;
+    whatsappNumber: string | null;
+    whatsappSameAsPhone: boolean;
     company: string | null;
     notes: string | null;
   }): Promise<Client> {
@@ -87,6 +89,8 @@ export class ClientsRepository {
       name: string;
       email: string | null;
       phone: string | null;
+      whatsappNumber: string | null;
+      whatsappSameAsPhone: boolean;
       company: string | null;
       notes: string | null;
     }>,

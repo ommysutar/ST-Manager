@@ -13,6 +13,9 @@ import {
 import { CopyIcon, LockIcon, Trash2Icon } from "lucide-react";
 
 import type { ProjectTask } from "@/lib/projects/types";
+import type { WhatsAppMessageVariables, WhatsAppNotificationType } from "@/lib/whatsapp/types";
+
+import { WhatsAppNotifyIcon } from "@/components/whatsapp/WhatsAppNotifyIcon";
 
 interface ProjectTaskCardProps {
   task: ProjectTask;
@@ -20,6 +23,9 @@ interface ProjectTaskCardProps {
   onUpdate: (patch: Partial<ProjectTask>) => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  whatsappNumber?: string | null;
+  whatsappType?: WhatsAppNotificationType;
+  whatsappVariables?: WhatsAppMessageVariables;
 }
 
 function formatCompletedDate(value?: string): string | null {
@@ -35,7 +41,16 @@ function formatCompletedDate(value?: string): string | null {
   });
 }
 
-export function ProjectTaskCard({ task, isCurrent, onUpdate, onDelete, onDuplicate }: ProjectTaskCardProps) {
+export function ProjectTaskCard({
+  task,
+  isCurrent,
+  onUpdate,
+  onDelete,
+  onDuplicate,
+  whatsappNumber,
+  whatsappType = "files_shared",
+  whatsappVariables = {},
+}: ProjectTaskCardProps) {
   const statusLabel = task.completed
     ? "Completed"
     : isCurrent
@@ -97,6 +112,14 @@ export function ProjectTaskCard({ task, isCurrent, onUpdate, onDelete, onDuplica
           </div>
 
           <div className="flex items-center gap-1">
+            {task.mandatoryKey === "files_shared" && whatsappNumber !== undefined ? (
+              <WhatsAppNotifyIcon
+                whatsappNumber={whatsappNumber}
+                type={whatsappType}
+                variables={whatsappVariables}
+                size="sm"
+              />
+            ) : null}
             <Button
               type="button"
               variant="ghost"

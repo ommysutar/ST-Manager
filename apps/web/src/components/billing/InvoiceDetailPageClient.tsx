@@ -9,8 +9,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { InvoiceForm, InvoiceTotalsPreview, type InvoiceFormValues } from "@/components/billing/InvoiceForm";
+import { WhatsAppNotifyIcon } from "@/components/whatsapp/WhatsAppNotifyIcon";
 import { useAuth } from "@/hooks/useAuth";
 import { clientsApi, invoicesApi } from "@/lib/api-client";
+import { getClientWhatsAppNumber } from "@/lib/clients/whatsapp";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
@@ -226,6 +228,20 @@ export function InvoiceDetailPageClient({ invoiceId }: { invoiceId: string }) {
                 Send invoice
               </Button>
             ) : null}
+            {(() => {
+              const client = clients.find((entry) => entry.id === invoice.clientId);
+              return client ? (
+                <WhatsAppNotifyIcon
+                  whatsappNumber={getClientWhatsAppNumber(client)}
+                  type="invoice_ready"
+                  variables={{
+                    ClientName: client.name,
+                    InvoiceNumber: invoice.number,
+                    ProjectName: invoice.clientName,
+                  }}
+                />
+              ) : null;
+            })()}
             {invoice.status === "sent" ? (
               <Button disabled={isSubmitting} onClick={() => void handleMarkPaid()}>
                 Mark paid

@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { ConflictException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService, type JwtSignOptions } from "@nestjs/jwt";
 import type {
@@ -6,7 +6,7 @@ import type {
   LoginResponseDataDto,
   RefreshResponseDataDto,
 } from "@st-manager/contracts";
-import type { ApiEnv, LoginInput, RefreshInput } from "@st-manager/validation";
+import type { ApiEnv, LoginInput, RefreshInput, RegisterInput } from "@st-manager/validation";
 import * as bcrypt from "bcrypt";
 
 import { AuthRepository } from "./auth.repository";
@@ -33,6 +33,23 @@ export class AuthService {
     }
 
     const tokens = await this.issueTokenPair(user.id, user.email, user.role);
+    return {
+      ...tokens,
+      user: this.toAuthUserDto(user),
+    };
+  }
+
+  async register(input: RegisterInput): Promise<LoginResponseDataDto> {
+    const email = input.email.toLowerCase();
+    const existing = await this.authRepository.findByEmail(email);
+    if (existing) {
+      throw new ConflictException("Email already registered");
+    }
+
+    const passwordHash = await bcrypt.hash(input.password, 10);
+    const user = await this.authRepository.createUser(email, passwordHash, "owner");
+    const tokens = await this.issueTokenPair(user.id, user.email, user.role);
+
     return {
       ...tokens,
       user: this.toAuthUserDto(user),

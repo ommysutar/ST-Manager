@@ -14,10 +14,16 @@ export class ClientsService {
   constructor(private readonly clientsRepository: ClientsRepository) {}
 
   async create(input: CreateClientInput): Promise<Client> {
+    const whatsappSameAsPhone = input.whatsappSameAsPhone ?? false;
+    const phone = input.phone ?? null;
+    const whatsappNumber = whatsappSameAsPhone ? phone : (input.whatsappNumber ?? null);
+
     return this.clientsRepository.create({
       name: input.name,
       email: input.email ?? null,
-      phone: input.phone ?? null,
+      phone,
+      whatsappNumber,
+      whatsappSameAsPhone,
       company: input.company ?? null,
       notes: input.notes ?? null,
     });
@@ -46,7 +52,24 @@ export class ClientsService {
 
   async update(id: string, input: UpdateClientInput): Promise<Client> {
     await this.getById(id);
-    return this.clientsRepository.update(id, input);
+    const existing = await this.getById(id);
+
+    const whatsappSameAsPhone =
+      input.whatsappSameAsPhone !== undefined
+        ? input.whatsappSameAsPhone
+        : existing.whatsappSameAsPhone;
+    const phone = input.phone !== undefined ? input.phone : existing.phone;
+
+    const updateData: UpdateClientInput = { ...input };
+
+    if (input.whatsappSameAsPhone !== undefined || input.phone !== undefined) {
+      updateData.whatsappNumber = whatsappSameAsPhone ? phone : (input.whatsappNumber ?? existing.whatsappNumber);
+      updateData.whatsappSameAsPhone = whatsappSameAsPhone;
+    } else if (input.whatsappNumber !== undefined && !whatsappSameAsPhone) {
+      updateData.whatsappNumber = input.whatsappNumber;
+    }
+
+    return this.clientsRepository.update(id, updateData);
   }
 
   async softDelete(id: string): Promise<void> {

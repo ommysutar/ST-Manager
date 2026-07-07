@@ -2,6 +2,7 @@
 
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@st-manager/ui";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { useProjectBookings } from "@/hooks/useBookings";
 import { useStudios } from "@/hooks/useStudios";
@@ -13,6 +14,7 @@ interface ProjectBookingsTabProps {
 }
 
 export function ProjectBookingsTab({ projectId }: ProjectBookingsTabProps) {
+  const router = useRouter();
   const bookings = useProjectBookings(projectId);
   const studios = useStudios();
 
@@ -22,8 +24,8 @@ export function ProjectBookingsTab({ projectId }: ProjectBookingsTabProps) {
         <p className="text-sm text-muted-foreground">
           All bookings linked to this project appear here automatically.
         </p>
-        <Button asChild size="sm">
-          <Link href={`/bookings/new?projectId=${projectId}`}>Add Booking</Link>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/bookings">Open Calendar</Link>
         </Button>
       </div>
 
@@ -44,7 +46,6 @@ export function ProjectBookingsTab({ projectId }: ProjectBookingsTabProps) {
                   <TableHead>Booking For</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Notes</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -52,7 +53,11 @@ export function ProjectBookingsTab({ projectId }: ProjectBookingsTabProps) {
                   const studio = studios.find((entry) => entry.id === booking.studioId);
 
                   return (
-                    <TableRow key={booking.id}>
+                    <TableRow
+                      key={booking.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => router.push(`/bookings/${booking.id}`)}
+                    >
                       <TableCell>
                         <span className="flex items-center gap-2">
                           {studio ? (
@@ -77,11 +82,6 @@ export function ProjectBookingsTab({ projectId }: ProjectBookingsTabProps) {
                       </TableCell>
                       <TableCell className="max-w-[16rem] truncate text-muted-foreground">
                         {booking.notes || "—"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button asChild variant="outline" size="sm">
-                          <Link href={`/bookings/${booking.id}`}>Open Booking</Link>
-                        </Button>
                       </TableCell>
                     </TableRow>
                   );

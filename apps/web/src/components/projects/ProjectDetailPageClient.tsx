@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 
 import { ProjectOverviewSections } from "@/components/projects/ProjectOverviewSections";
+import { ProjectWhatsAppNotify } from "@/components/whatsapp/ProjectWhatsAppNotify";
 import { useAuth } from "@/hooks/useAuth";
 import { useProject } from "@/hooks/useProjects";
 import { layout } from "@st-manager/theme";
@@ -60,6 +61,7 @@ export function ProjectDetailPageClient() {
               <Badge variant={project.status === "active" ? "success" : "secondary"}>
                 {PROJECT_STATUS_LABELS[project.status] ?? project.status}
               </Badge>
+              <ProjectWhatsAppNotify project={project} type="project_ready" size="sm" />
             </div>
 
             <div className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
@@ -69,7 +71,10 @@ export function ProjectDetailPageClient() {
               </div>
               <div>
                 <p className="text-muted-foreground">Client</p>
-                <p className="font-medium">{project.clientName}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">{project.clientName}</p>
+                  <ProjectWhatsAppNotify project={project} type="project_ready" size="sm" />
+                </div>
               </div>
               <div>
                 <p className="text-muted-foreground">Category</p>

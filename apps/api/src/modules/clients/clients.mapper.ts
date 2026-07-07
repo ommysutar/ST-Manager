@@ -8,6 +8,8 @@ export function toClientResponseDto(client: Client): ClientResponseDto {
     name: client.name,
     email: client.email,
     phone: client.phone,
+    whatsappNumber: client.whatsappNumber,
+    whatsappSameAsPhone: client.whatsappSameAsPhone,
     company: client.company,
     notes: client.notes,
     createdAt: client.createdAt.toISOString(),

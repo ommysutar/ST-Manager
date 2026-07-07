@@ -1,19 +1,18 @@
 "use client";
 
+import { ApiError } from "@st-manager/api-sdk";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { layout } from "@st-manager/theme";
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@st-manager/ui";
-import { SaveIcon } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@st-manager/ui";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { AdvancePaymentStep } from "@/components/inquiry/wizard/steps/AdvancePaymentStep";
 import { ClientDetailsStep } from "@/components/inquiry/wizard/steps/ClientDetailsStep";
 import { FinalDecisionStep } from "@/components/inquiry/wizard/steps/FinalDecisionStep";
-import { PlanSelectionStep } from "@/components/inquiry/wizard/steps/PlanSelectionStep";
 import { ProjectDetailsStep } from "@/components/inquiry/wizard/steps/ProjectDetailsStep";
 import { ServicesSelectionStep } from "@/components/inquiry/wizard/steps/ServicesSelectionStep";
 import { SuccessStep } from "@/components/inquiry/wizard/steps/SuccessStep";
@@ -34,11 +33,10 @@ import {
   clearWizardDraft,
   getInquiry,
   linkInquiryToProject,
-  loadWizardDraft,
   saveInquiryRecord,
-  saveWizardDraft,
 } from "@/lib/inquiry/storage";
 import { linkDocumentsToProject } from "@/lib/documents/storage";
+import { ensureInquiryClientSynced } from "@/lib/clients/sync";
 import { addPayment } from "@/lib/payments/storage";
 import { createProjectFromInquiry } from "@/lib/projects/storage";
 import type { StudioProject } from "@/lib/projects/types";
@@ -46,9 +44,9 @@ import type { StudioProject } from "@/lib/projects/types";
 interface WizardBootstrap {
   step: number;
   form: InquiryWizardSchema;
-  hadDraft: boolean;
   editingInquiryId?: string;
   convertMode: boolean;
+  sessionKey: string;
 }
 
 function buildInitialFormValues(): InquiryWizardSchema {
@@ -62,6 +60,7 @@ function buildInitialFormValues(): InquiryWizardSchema {
 function readWizardBootstrap(searchParams: URLSearchParams): WizardBootstrap {
   const inquiryId = searchParams.get("inquiryId");
   const convertMode = searchParams.get("mode") === "convert";
+  const sessionKey = searchParams.get("session") ?? inquiryId ?? "new";
 
   if (inquiryId) {
     const inquiry = getInquiry(inquiryId);
@@ -70,28 +69,29 @@ function readWizardBootstrap(searchParams: URLSearchParams): WizardBootstrap {
         return {
           step: 1,
           form: normalizeInquiryForm(inquiry.form),
-          hadDraft: false,
           editingInquiryId: inquiry.id,
           convertMode: false,
+          sessionKey,
         };
       }
 
       return {
-        step: convertMode ? 6 : 1,
+        step: convertMode ? 5 : 1,
         form: normalizeInquiryForm(inquiry.form),
-        hadDraft: false,
         editingInquiryId: inquiry.id,
         convertMode,
+        sessionKey,
       };
     }
   }
 
-  const draft = loadWizardDraft();
-  if (draft) {
-    return { step: draft.step, form: normalizeInquiryForm(draft.form), hadDraft: true, convertMode: false };
-  }
-
-  return { step: 1, form: buildInitialFormValues(), hadDraft: false, convertMode: false };
+  clearWizardDraft();
+  return {
+    step: 1,
+    form: buildInitialFormValues(),
+    convertMode: false,
+    sessionKey,
+  };
 }
 
 function InquiryWizardForm({ initialState }: { initialState: WizardBootstrap }) {
@@ -100,9 +100,10 @@ function InquiryWizardForm({ initialState }: { initialState: WizardBootstrap }) 
   const [step, setStep] = useState(initialState.step);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdProject, setCreatedProject] = useState<StudioProject | null>(null);
-  const [editingInquiryId, setEditingInquiryId] = useState(initialState.editingInquiryId);
-  const draftToastShown = useRef(false);
+  const editingInquiryId = initialState.editingInquiryId;
+  const isEditSession = Boolean(initialState.editingInquiryId);
   const convertMode = initialState.convertMode;
+  const draftToastShown = useRef(false);
 
   const form = useForm<InquiryWizardSchema>({
     resolver: zodResolver(inquiryWizardSchema),
@@ -110,18 +111,9 @@ function InquiryWizardForm({ initialState }: { initialState: WizardBootstrap }) 
     mode: "onChange",
   });
 
-  const { control, trigger, getValues } = form;
+  const { control, trigger, getValues, clearErrors } = form;
   const values = useWatch({ control }) as InquiryWizardSchema;
   const services = useStudioServices();
-
-  useEffect(() => {
-    if (initialState.hadDraft && !draftToastShown.current) {
-      draftToastShown.current = true;
-      toast.info("Draft restored", {
-        description: "Your previous inquiry progress was loaded.",
-      });
-    }
-  }, [initialState.hadDraft]);
 
   useEffect(() => {
     if (editingInquiryId && !draftToastShown.current) {
@@ -134,39 +126,19 @@ function InquiryWizardForm({ initialState }: { initialState: WizardBootstrap }) 
     }
   }, [editingInquiryId, convertMode]);
 
-  const persistDraft = useCallback(
-    (nextStep: number) => {
-      if (editingInquiryId) {
-        return;
-      }
-
-      saveWizardDraft({
-        step: nextStep,
-        form: getValues(),
-        updatedAt: new Date().toISOString(),
-      });
-    },
-    [getValues, editingInquiryId],
-  );
-
-  useEffect(() => {
-    if (editingInquiryId) {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      persistDraft(step);
-    }, 400);
-
-    return () => window.clearTimeout(timeout);
-  }, [values, step, persistDraft, editingInquiryId]);
-
   const quotation = useMemo(
     () => calculateQuotation(values ?? defaultWizardValues, services),
     [values, services],
   );
 
+  const activeCatalogServices = useMemo(() => services.filter((service) => service.active), [services]);
+
   async function validateStep(currentStep: number): Promise<boolean> {
+    if (currentStep === 3 && activeCatalogServices.length === 0) {
+      toast.error("Please create at least one Service in Settings before creating an Inquiry.");
+      return false;
+    }
+
     const fields = STEP_FIELD_MAP[currentStep] ?? [];
     if (fields.length === 0) {
       return true;
@@ -194,21 +166,30 @@ function InquiryWizardForm({ initialState }: { initialState: WizardBootstrap }) 
       return;
     }
 
-    const nextStep = Math.min(step + 1, 6);
+    const nextStep = Math.min(step + 1, 5);
     setStep(nextStep);
-    persistDraft(nextStep);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function goBack() {
     const prevStep = Math.max(step - 1, 1);
     setStep(prevStep);
-    persistDraft(prevStep);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function describeError(error: unknown): string {
+    if (error instanceof ApiError) {
+      return error.message;
+    }
+    if (error instanceof Error) {
+      return error.message;
+    }
+    return "Please try again.";
+  }
+
   async function handleSaveInquiry() {
-    const valid = await validateThroughStep(4);
+    clearErrors(["mobileNumber", "email"]);
+    const valid = await validateThroughStep(3);
     if (!valid) {
       return;
     }
@@ -216,41 +197,41 @@ function InquiryWizardForm({ initialState }: { initialState: WizardBootstrap }) 
     setIsSubmitting(true);
     try {
       const formValues = getValues();
-      const inquiry = saveInquiryRecord({
-        id: editingInquiryId,
-        form: formValues,
-        quotation: calculateQuotation(formValues, services),
+      const { form: syncedForm } = await ensureInquiryClientSynced(formValues);
+
+      saveInquiryRecord({
+        id: isEditSession ? editingInquiryId : undefined,
+        form: syncedForm,
+        quotation: calculateQuotation(syncedForm, services),
         status: "inquiry",
       });
 
-      setEditingInquiryId(inquiry.id);
       clearWizardDraft();
       toast.success("Inquiry saved", {
         description: "The inquiry is now available in the Inquiry list.",
       });
       router.push("/inquiries");
+    } catch (error) {
+      toast.error("Could not save inquiry", {
+        description: describeError(error),
+      });
     } finally {
       setIsSubmitting(false);
     }
   }
 
   async function handleAddToProject() {
-    const valid = await validateThroughStep(4);
+    clearErrors(["mobileNumber", "email"]);
+    const valid = await validateThroughStep(3);
     if (!valid) {
       return;
     }
 
-    setStep(6);
-    persistDraft(6);
+    setStep(5);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  async function handleCreateProject() {
-    const valid = await validateThroughStep(6);
-    if (!valid) {
-      return;
-    }
-
+  async function createProjectFromWizard() {
     const existingInquiry = editingInquiryId ? getInquiry(editingInquiryId) : undefined;
     if (existingInquiry?.projectId) {
       toast.info("Project already exists for this inquiry.");
@@ -258,57 +239,68 @@ function InquiryWizardForm({ initialState }: { initialState: WizardBootstrap }) 
       return;
     }
 
+    const formValues = getValues();
+    const { form: syncedForm } = await ensureInquiryClientSynced(formValues);
+
+    const quote = calculateQuotation(syncedForm, services);
+    const { advanceAmount, remainingBalance } = calculateAdvance(
+      quote.grandTotal,
+      syncedForm.advancePercent,
+    );
+
+    const inquiry = saveInquiryRecord({
+      id: isEditSession ? editingInquiryId : undefined,
+      form: syncedForm,
+      quotation: quote,
+      status: "project",
+      advanceAmount,
+      remainingBalance,
+    });
+
+    const project = createProjectFromInquiry({
+      inquiryId: inquiry.id,
+      form: syncedForm,
+      quotation: quote,
+      advanceAmount,
+      remainingBalance,
+    });
+
+    linkInquiryToProject(inquiry.id, project.id);
+    linkDocumentsToProject(inquiry.id, project.id);
+
+    if (advanceAmount > 0) {
+      addPayment({
+        projectId: project.id,
+        amount: advanceAmount,
+        method: syncedForm.advanceMethod,
+        notes: syncedForm.advanceNotes || "Advance payment",
+        receivedBy: user?.email ?? "",
+        source: "advance",
+      });
+    }
+
+    clearWizardDraft();
+    setCreatedProject(project);
+    toast.success("Project created successfully");
+  }
+
+  async function handleCreateProject() {
+    clearErrors(["mobileNumber", "email"]);
+    const valid = await validateThroughStep(5);
+    if (!valid) {
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const formValues = getValues();
-      const quote = calculateQuotation(formValues, services);
-      const { advanceAmount, remainingBalance } = calculateAdvance(
-        quote.grandTotal,
-        formValues.advancePercent,
-      );
-
-      const inquiry = saveInquiryRecord({
-        id: editingInquiryId,
-        form: formValues,
-        quotation: quote,
-        status: "project",
-        advanceAmount,
-        remainingBalance,
+      await createProjectFromWizard();
+    } catch (error) {
+      toast.error("Could not create project", {
+        description: describeError(error),
       });
-
-      const project = createProjectFromInquiry({
-        inquiryId: inquiry.id,
-        form: formValues,
-        quotation: quote,
-        advanceAmount,
-        remainingBalance,
-      });
-
-      linkInquiryToProject(inquiry.id, project.id);
-      linkDocumentsToProject(inquiry.id, project.id);
-
-      if (advanceAmount > 0) {
-        addPayment({
-          projectId: project.id,
-          amount: advanceAmount,
-          method: formValues.advanceMethod,
-          notes: formValues.advanceNotes || "Advance payment",
-          receivedBy: user?.email ?? "",
-          source: "advance",
-        });
-      }
-
-      clearWizardDraft();
-      setCreatedProject(project);
-      toast.success("Project created successfully");
     } finally {
       setIsSubmitting(false);
     }
-  }
-
-  function handleManualSaveDraft() {
-    persistDraft(step);
-    toast.success("Draft saved", { description: "You can continue this inquiry later." });
   }
 
   if (createdProject) {
@@ -319,9 +311,9 @@ function InquiryWizardForm({ initialState }: { initialState: WizardBootstrap }) 
     );
   }
 
-  const showPaymentActions = step === 6;
-  const showDecisionActions = step === 5;
-  const progressMaxStep = step >= 6 ? 6 : 5;
+  const showPaymentActions = step === 5;
+  const showDecisionActions = step === 4;
+  const progressMaxStep = step >= 5 ? 5 : 4;
   const pageTitle = editingInquiryId
     ? convertMode
       ? "Convert Inquiry to Project"
@@ -340,22 +332,16 @@ function InquiryWizardForm({ initialState }: { initialState: WizardBootstrap }) 
           </Link>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight">{pageTitle}</h1>
           <p className="text-sm text-muted-foreground">
-            Client → Project → Plan comparison → Services → Quotation → Project
+            Client → Project → Services → Quotation → Project
           </p>
         </div>
-        {!editingInquiryId ? (
-          <Button type="button" variant="outline" size="sm" onClick={handleManualSaveDraft}>
-            <SaveIcon className="size-4" />
-            Save draft
-          </Button>
-        ) : null}
       </div>
 
       <Card className="overflow-hidden border-border/60 bg-background/70 shadow-xl backdrop-blur-xl dark:bg-background/40">
         <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 via-transparent to-transparent">
           <CardTitle className="text-lg">Studio Inquiry Workflow</CardTitle>
           <CardDescription>
-            Plans are for comparison only. Quotation uses selected services and manual inputs.
+            Quotation uses selected services and manual inputs.
           </CardDescription>
           <div className="pt-4">
             <WizardProgress currentStep={step} maxStep={progressMaxStep} />
@@ -367,16 +353,15 @@ function InquiryWizardForm({ initialState }: { initialState: WizardBootstrap }) 
             <div className="transition-all duration-300">
               {step === 1 ? <ClientDetailsStep /> : null}
               {step === 2 ? <ProjectDetailsStep /> : null}
-              {step === 3 ? <PlanSelectionStep /> : null}
-              {step === 4 ? <ServicesSelectionStep /> : null}
-              {step === 5 ? (
+              {step === 3 ? <ServicesSelectionStep /> : null}
+              {step === 4 ? (
                 <FinalDecisionStep
                   onSaveInquiry={handleSaveInquiry}
                   onAddToProject={handleAddToProject}
                   isSubmitting={isSubmitting}
                 />
               ) : null}
-              {step === 6 ? <AdvancePaymentStep /> : null}
+              {step === 5 ? <AdvancePaymentStep /> : null}
             </div>
           </FormProvider>
 
@@ -392,7 +377,7 @@ function InquiryWizardForm({ initialState }: { initialState: WizardBootstrap }) 
         </CardContent>
       </Card>
 
-      {step >= 4 && step <= 6 ? (
+      {step >= 3 && step <= 5 ? (
         <p className="text-center text-xs text-muted-foreground">
           Grand total preview: ₹{quotation.grandTotal.toLocaleString("en-IN")}
         </p>
@@ -436,7 +421,7 @@ export function InquiryWizardPageClient() {
 
   return (
     <InquiryWizardForm
-      key={`${initialState.editingInquiryId ?? "new"}-${initialState.convertMode}`}
+      key={initialState.sessionKey}
       initialState={initialState}
     />
   );

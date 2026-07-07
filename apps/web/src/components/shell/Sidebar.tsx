@@ -5,7 +5,6 @@ import { cn } from "@st-manager/ui";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 
 import { navItems } from "./nav-items";
@@ -20,17 +19,15 @@ function isNavActive(pathname: string, href: string): boolean {
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { isAuthenticated } = useAuth();
   const { navHrefAllowed } = usePermissions();
 
-  const visibleItems = isAuthenticated
-    ? navItems.filter((item) => navHrefAllowed(item.href))
-    : navItems.filter((item) => item.href === "/");
+  const visibleItems = navItems.filter((item) => navHrefAllowed(item.href));
 
   return (
     <aside
-      className="flex shrink-0 flex-col border-r border-border bg-card"
+      className="flex shrink-0 flex-col border-r border-border bg-card print:hidden"
       style={{ width: layout.sidebarWidth }}
+      data-print-hide
     >
       <nav className="flex flex-col gap-1 p-3">
         {visibleItems.map((item) => {
