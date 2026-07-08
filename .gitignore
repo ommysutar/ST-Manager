@@ -11,8 +11,12 @@ target/
 
 # Environment
 .env
+.env.*
 .env.local
 .env.*.local
+!.env.example
+!**/.env.example
+!**/.env.test.example
 
 # IDE
 .idea/

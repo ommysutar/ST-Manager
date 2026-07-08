@@ -12,6 +12,7 @@ export const apiEnvSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     API_PORT: z.coerce.number().int().positive().default(4000),
+    CORS_ORIGIN: z.string().trim().optional(),
     DATABASE_URL: z.string().trim().min(1).optional(),
     SQLITE_URL: z.string().trim().min(1).optional(),
     AUTH_SECRET: z.string().trim().min(32),
