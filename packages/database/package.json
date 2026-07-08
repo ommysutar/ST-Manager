@@ -13,6 +13,7 @@
     "db:migrate:postgresql:deploy": "prisma migrate deploy --config prisma.config.postgresql.ts",
     "db:migrate:sqlite:dev": "prisma migrate dev --config prisma.config.sqlite.ts",
     "db:seed:dev": "tsx scripts/seed-dev-user.ts",
+    "db:production-reset": "tsx scripts/production-reset.ts",
     "build": "pnpm run db:generate && tsc -p tsconfig.json",
     "typecheck": "pnpm run db:generate && tsc --noEmit"
   },
