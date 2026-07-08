@@ -87,7 +87,7 @@ export function BillingPageClient() {
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Billing</h1>
+          <h1 className="page-title">Billing</h1>
           <p className="text-sm text-muted-foreground">
             Create invoices, track sent and paid status, and print client bills.
           </p>

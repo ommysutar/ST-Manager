@@ -1,6 +1,5 @@
 "use client";
 
-import { layout } from "@st-manager/theme";
 import {
   Badge,
   Button,
@@ -166,13 +165,13 @@ export function PaymentOverviewPageClient({ projectId }: { projectId: string }) 
   }
 
   return (
-    <div className="mx-auto flex flex-col gap-6" style={{ maxWidth: layout.contentMaxWidth }}>
+    <div className="page-container flex flex-col gap-6">
       <div>
         <Link href="/payments" className="text-sm text-primary underline-offset-4 hover:underline">
           Back to payments
         </Link>
         <div className="mt-2 flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">{project.projectName}</h1>
+          <h1 className="page-title">{project.projectName}</h1>
           <Badge variant={status === "paid" ? "success" : "secondary"}>{PAYMENT_STATUS_LABELS[status]}</Badge>
         </div>
         <p className="text-sm text-muted-foreground">

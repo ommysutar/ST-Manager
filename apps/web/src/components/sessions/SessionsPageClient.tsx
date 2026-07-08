@@ -157,7 +157,7 @@ export function SessionsPageClient() {
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Sessions</h1>
+          <h1 className="page-title">Sessions</h1>
           <p className="text-sm text-muted-foreground">
             Track studio use from scheduled start through completion.
           </p>

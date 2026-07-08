@@ -9,7 +9,6 @@ import { toast } from "sonner";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useStudioServices } from "@/hooks/useInquiryStorage";
-import { layout } from "@st-manager/theme";
 import { resolveOrCreateClient } from "@/lib/clients/sync";
 import {
   defaultManualProjectValues,
@@ -78,7 +77,7 @@ export function ProjectCreatePageClient() {
   }
 
   return (
-    <div className="mx-auto flex flex-col gap-6" style={{ maxWidth: layout.contentMaxWidth }}>
+    <div className="page-container flex flex-col gap-6">
       <div>
         <Link href="/projects" className="text-sm text-primary underline-offset-4 hover:underline">
           Back to projects

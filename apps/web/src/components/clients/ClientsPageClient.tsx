@@ -85,7 +85,7 @@ export function ClientsPageClient() {
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Clients</h1>
+          <h1 className="page-title">Clients</h1>
           <p className="text-sm text-muted-foreground">
             Manage client contacts for bookings, sessions, and billing.
           </p>

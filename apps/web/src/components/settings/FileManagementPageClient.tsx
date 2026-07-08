@@ -20,7 +20,6 @@ import { AccessDenied } from "@/components/roles/AccessDenied";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useCloudStorageSettings } from "@/hooks/useCloudStorage";
-import { layout } from "@st-manager/theme";
 import { updateCloudProviderConfig } from "@/lib/cloud-storage/storage";
 import {
   CLOUD_PROVIDER_LABELS,
@@ -84,7 +83,7 @@ export function FileManagementPageClient() {
   }
 
   return (
-    <div className="mx-auto flex flex-col gap-6" style={{ maxWidth: layout.contentMaxWidth }}>
+    <div className="page-container flex flex-col gap-6">
       <div>
         <Link href="/settings" className="text-sm text-primary underline-offset-4 hover:underline">
           Back to settings

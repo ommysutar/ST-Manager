@@ -1,6 +1,5 @@
 "use client";
 
-import { layout } from "@st-manager/theme";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label, Textarea } from "@st-manager/ui";
 import Link from "next/link";
 import { useRef, useState } from "react";
@@ -125,7 +124,7 @@ export function TemplateEditorPageClient() {
   }
 
   return (
-    <div className="mx-auto flex flex-col gap-6" style={{ maxWidth: layout.contentMaxWidth }}>
+    <div className="page-container flex flex-col gap-6">
       <div>
         <Link href="/settings" className="text-sm text-primary underline-offset-4 hover:underline">
           Back to settings

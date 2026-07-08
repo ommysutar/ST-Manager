@@ -10,7 +10,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBookings } from "@/hooks/useBookings";
 import { useProject } from "@/hooks/useProjects";
 import { useStudios } from "@/hooks/useStudios";
-import { layout } from "@st-manager/theme";
 import { BOOKING_STATUS_LABELS, BOOKING_STATUS_OPTIONS } from "@/lib/bookings/constants";
 import { cancelBooking, updateBooking } from "@/lib/bookings/storage";
 import { getBookingSlotLabel } from "@/lib/bookings/slots";
@@ -107,13 +106,13 @@ export function BookingDetailPageClient() {
   }
 
   return (
-    <div className="mx-auto flex flex-col gap-6" style={{ maxWidth: layout.contentMaxWidth }}>
+    <div className="page-container flex flex-col gap-6">
       <div>
         <Link href="/bookings" className="text-sm text-primary underline-offset-4 hover:underline">
           Back to bookings
         </Link>
         <div className="mt-2 flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">{booking.bookingFor}</h1>
+          <h1 className="page-title">{booking.bookingFor}</h1>
           <Badge variant={statusBadgeVariant(booking.status)}>
             {BOOKING_STATUS_LABELS[booking.status]}
           </Badge>

@@ -50,7 +50,7 @@ export function CreateAccountPageClient() {
     <div className="flex min-h-screen items-center justify-center bg-background p-6">
       <Card className="w-full max-w-md border-border/60 shadow-xl">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-semibold tracking-tight">Create Account</CardTitle>
+          <CardTitle className="page-title">Create Account</CardTitle>
           <CardDescription>Set up your studio on ST Manager v1.0</CardDescription>
         </CardHeader>
         <CardContent>

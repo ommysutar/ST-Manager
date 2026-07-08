@@ -6,7 +6,6 @@ import Link from "next/link";
 import { AccessDenied } from "@/components/roles/AccessDenied";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
-import { layout } from "@st-manager/theme";
 
 const settingsLinks = [
   {
@@ -62,9 +61,9 @@ export function SettingsPageClient() {
   }
 
   return (
-    <div className="mx-auto flex flex-col gap-6" style={{ maxWidth: layout.contentMaxWidth }}>
+    <div className="page-container flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+        <h1 className="page-title">Settings</h1>
         <p className="text-sm text-muted-foreground">Owner panel configuration.</p>
       </div>
 

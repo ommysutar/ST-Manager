@@ -1,6 +1,5 @@
 "use client";
 
-import { layout } from "@st-manager/theme";
 import { Badge, Card, CardContent, CardHeader, CardTitle, cn, Input } from "@st-manager/ui";
 import { SearchIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -121,9 +120,9 @@ export function PaymentsPageClient() {
 
   return (
     <RequireModule module="payments">
-    <div className="mx-auto flex flex-col gap-6" style={{ maxWidth: layout.contentMaxWidth }}>
+    <div className="page-container flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Payments</h1>
+        <h1 className="page-title">Payments</h1>
         <p className="text-sm text-muted-foreground">
           Financial center — search by project name/number, client name, or client ID.
         </p>

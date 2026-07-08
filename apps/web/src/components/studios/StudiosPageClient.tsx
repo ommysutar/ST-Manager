@@ -115,7 +115,7 @@ export function StudiosPageClient() {
       style={{ maxWidth: layout.contentMaxWidth }}
     >
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Studios</h1>
+        <h1 className="page-title">Studios</h1>
         <p className="text-sm text-muted-foreground">Manage your studio workspaces.</p>
       </div>
 

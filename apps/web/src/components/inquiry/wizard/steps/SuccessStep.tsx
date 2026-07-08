@@ -20,7 +20,7 @@ export function SuccessStep({ project }: SuccessStepProps) {
 
       <div className="space-y-2">
         <Badge variant="success">Project Created</Badge>
-        <h2 className="text-2xl font-semibold tracking-tight">Added Successfully To Project</h2>
+        <h2 className="page-title">Added Successfully To Project</h2>
         <p className="text-sm text-muted-foreground">
           The inquiry has been converted into a project with advance payment recorded.
         </p>

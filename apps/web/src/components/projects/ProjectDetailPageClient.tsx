@@ -57,7 +57,7 @@ export function ProjectDetailPageClient() {
         <Card className="mt-2 border-border/60 bg-background/60 backdrop-blur-md dark:bg-background/30">
           <CardContent className="space-y-4 pt-6">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl font-semibold tracking-tight">{project.projectName}</h1>
+              <h1 className="page-title">{project.projectName}</h1>
               <Badge variant={project.status === "active" ? "success" : "secondary"}>
                 {PROJECT_STATUS_LABELS[project.status] ?? project.status}
               </Badge>

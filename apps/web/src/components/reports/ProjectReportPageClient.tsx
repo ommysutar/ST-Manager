@@ -7,7 +7,6 @@ import { useMemo } from "react";
 import { RequireModule } from "@/components/roles/AccessDenied";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useProject } from "@/hooks/useProjects";
-import { layout } from "@st-manager/theme";
 import { formatINR } from "@/lib/currency";
 import { buildProjectReport } from "@/lib/reports/aggregators";
 import { getDefaultReportFilters } from "@/lib/reports/filters";
@@ -44,7 +43,7 @@ export function ProjectReportPageClient({ projectId }: { projectId: string }) {
 
   return (
     <RequireModule module="reports">
-      <div className="mx-auto flex flex-col gap-6" style={{ maxWidth: layout.contentMaxWidth }}>
+      <div className="page-container flex flex-col gap-6">
         <div>
           <Link href="/reports" className="text-sm text-primary underline-offset-4 hover:underline">
             Back to reports

@@ -18,7 +18,6 @@ import { toast } from "sonner";
 import { useBookingSlots } from "@/hooks/useBookingSlots";
 import { useActiveStudios } from "@/hooks/useStudios";
 import { useProjects } from "@/hooks/useProjects";
-import { layout } from "@st-manager/theme";
 import { BOOKING_STATUS_OPTIONS } from "@/lib/bookings/constants";
 import { createBooking, isSlotAvailable } from "@/lib/bookings/storage";
 import { getBookingSlotLabel } from "@/lib/bookings/slots";
@@ -303,7 +302,7 @@ export function BookingCreatePageClient() {
   }
 
   return (
-    <div className="mx-auto flex flex-col gap-6" style={{ maxWidth: layout.contentMaxWidth }}>
+    <div className="page-container flex flex-col gap-6">
       <div>
         <Link href="/bookings" className="text-sm text-primary underline-offset-4 hover:underline">
           Back to bookings

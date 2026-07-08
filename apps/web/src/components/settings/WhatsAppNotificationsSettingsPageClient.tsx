@@ -19,7 +19,6 @@ import { AccessDenied } from "@/components/roles/AccessDenied";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useWhatsAppSettings } from "@/hooks/useWhatsAppSettings";
-import { layout } from "@st-manager/theme";
 import { createDefaultTemplates } from "@/lib/whatsapp/constants";
 import { WHATSAPP_PLACEHOLDER_LABELS } from "@/lib/whatsapp/types";
 import { saveWhatsAppSettings } from "@/lib/whatsapp/storage";
@@ -75,7 +74,7 @@ export function WhatsAppNotificationsSettingsPageClient() {
   }
 
   return (
-    <div className="mx-auto flex flex-col gap-6" style={{ maxWidth: layout.contentMaxWidth }}>
+    <div className="page-container flex flex-col gap-6">
       <div>
         <Link href="/settings" className="text-sm text-primary underline-offset-4 hover:underline">
           Back to settings

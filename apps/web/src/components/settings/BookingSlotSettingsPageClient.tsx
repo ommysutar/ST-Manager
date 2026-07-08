@@ -24,7 +24,6 @@ import { AccessDenied } from "@/components/roles/AccessDenied";
 import { useAuth } from "@/hooks/useAuth";
 import { useBookingSlots } from "@/hooks/useBookingSlots";
 import { usePermissions } from "@/hooks/usePermissions";
-import { layout } from "@st-manager/theme";
 import {
   createSlot,
   deleteSlot,
@@ -223,7 +222,7 @@ export function BookingSlotSettingsPageClient() {
   }
 
   return (
-    <div className="mx-auto flex flex-col gap-6" style={{ maxWidth: layout.contentMaxWidth }}>
+    <div className="page-container flex flex-col gap-6">
       <div>
         <Link href="/settings" className="text-sm text-primary underline-offset-4 hover:underline">
           Back to settings

@@ -1,7 +1,6 @@
 "use client";
 
 import type { ClientResponseDto } from "@st-manager/contracts";
-import { layout } from "@st-manager/theme";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@st-manager/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -39,13 +38,13 @@ export function ClientPaymentsPageClient({ clientId }: { clientId: string }) {
   }
 
   return (
-    <div className="mx-auto flex flex-col gap-6" style={{ maxWidth: layout.contentMaxWidth }}>
+    <div className="page-container flex flex-col gap-6">
       <div>
         <Link href="/payments" className="text-sm text-primary underline-offset-4 hover:underline">
           Back to payments
         </Link>
         <div className="mt-2 flex items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight">{displayName}</h1>
+          <h1 className="page-title">{displayName}</h1>
           {client ? (
             <WhatsAppNotifyIcon
               whatsappNumber={getClientWhatsAppNumber(client)}

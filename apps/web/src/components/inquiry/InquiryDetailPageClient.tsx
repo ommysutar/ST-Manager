@@ -65,7 +65,7 @@ export function InquiryDetailPageClient() {
           Back to inquiries
         </Link>
         <div className="mt-2 flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">{inquiry.form.projectName}</h1>
+          <h1 className="page-title">{inquiry.form.projectName}</h1>
           <Badge variant={inquiry.status === "project" ? "success" : "secondary"}>
             {inquiry.status === "project" ? "Project" : "Inquiry"}
           </Badge>
