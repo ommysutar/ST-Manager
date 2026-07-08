@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Toaster } from "sonner";
 
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsClientMounted } from "@/hooks/useInquiryStorage";
 
 import { Header } from "./Header";
+import { MobileNavDrawer } from "./MobileNavDrawer";
 import { Sidebar } from "./Sidebar";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -17,6 +18,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const mounted = useIsClientMounted();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const isAuthRoute = pathname === "/login" || pathname.startsWith("/login/");
 
   useEffect(() => {
@@ -43,7 +45,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (isAuthRoute) {
     return (
       <ThemeProvider>
-        {children}
+        <div className="safe-area-insets min-h-screen">{children}</div>
         <Toaster richColors closeButton position="top-right" />
       </ThemeProvider>
     );
@@ -55,11 +57,14 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <ThemeProvider>
-      <div className="flex min-h-screen">
+      <div className="safe-area-insets flex min-h-screen min-h-[100dvh] overflow-x-hidden">
         <Sidebar />
+        <MobileNavDrawer open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
         <div className="flex min-w-0 flex-1 flex-col">
-          <Header />
-          <main className="flex-1 overflow-y-auto p-6 print:overflow-visible print:p-0">{children}</main>
+          <Header onMenuClick={() => setMobileNavOpen(true)} />
+          <main className="page-main flex-1 overflow-x-hidden overflow-y-auto print:overflow-visible print:p-0">
+            {children}
+          </main>
         </div>
       </div>
       <div className="print:hidden" data-print-hide>

@@ -35,7 +35,8 @@ export function ServicesSelectionStep() {
   const studioDiscountPercent = watch("studioDiscountPercent");
   const studioDiscountAmount = watch("studioDiscountAmount");
   const customServices = watch("customServices");
-  const serviceHours = watch("serviceHours") ?? {};
+  const watchedServiceHours = watch("serviceHours");
+  const serviceHours = useMemo(() => watchedServiceHours ?? {}, [watchedServiceHours]);
 
   const [customName, setCustomName] = useState("");
   const [customPrice, setCustomPrice] = useState("");

@@ -13,20 +13,16 @@ import { ProjectStatusWidget } from "@/components/dashboard/ProjectStatusWidget"
 import { RecentProjectsWidget } from "@/components/dashboard/RecentProjectsWidget";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
-import { layout } from "@st-manager/theme";
 
 export function DashboardPageClient() {
   const { isAuthenticated } = useAuth();
   const { role, canAccessPayments } = usePermissions();
 
   return (
-    <div
-      className="mx-auto flex flex-col gap-8"
-      style={{ maxWidth: layout.contentMaxWidth }}
-    >
+    <div className="page-container flex flex-col gap-6 sm:gap-8">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h1 className="page-title">Dashboard</h1>
+        <p className="page-description">
           {isAuthenticated
             ? role === "engineer"
               ? "Your assigned projects and tasks."
@@ -40,7 +36,7 @@ export function DashboardPageClient() {
           <Button
             asChild
             size="lg"
-            className="h-auto min-h-24 flex-col gap-2 py-6 text-base"
+            className="h-auto min-h-[5.5rem] w-full flex-col gap-2 py-6 text-base"
           >
             <NewInquiryLink>
               <PlusCircleIcon className="size-6" />
@@ -52,7 +48,7 @@ export function DashboardPageClient() {
             asChild
             size="lg"
             variant="outline"
-            className="h-auto min-h-24 flex-col gap-2 py-6 text-base"
+            className="h-auto min-h-[5.5rem] w-full flex-col gap-2 py-6 text-base"
           >
             <Link href="/projects/new">
               <FolderPlusIcon className="size-6" />
@@ -63,7 +59,7 @@ export function DashboardPageClient() {
       ) : null}
 
       {isAuthenticated ? (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
           <ProjectStatusWidget />
           {canAccessPayments() ? <PendingPaymentsWidget /> : <AssignedTasksWidget />}
           <BookingsWidget />

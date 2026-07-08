@@ -1,5 +1,6 @@
 import base from "@st-manager/config-eslint/base";
 import react from "@st-manager/config-eslint/react";
+import nextPlugin from "@next/eslint-plugin-next";
 
 export default [
   ...base,
@@ -21,6 +22,17 @@ export default [
     ...config,
     files: ["packages/ui/**/*.{ts,tsx}", "apps/desktop/**/*.{ts,tsx}", "apps/web/**/*.{ts,tsx}"],
   })),
+  {
+    files: ["apps/web/**/*.{ts,tsx}"],
+    plugins: {
+      "@next/next": nextPlugin,
+    },
+    rules: {
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs["core-web-vitals"].rules,
+      "@next/next/no-img-element": "off",
+    },
+  },
   {
     ignores: [
       "**/dist/**",

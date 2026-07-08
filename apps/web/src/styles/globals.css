@@ -3,16 +3,101 @@
 @source "../../../../packages/ui/src/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";
 
-html,
-body {
+html {
   height: 100%;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
+  min-height: 100%;
+  min-height: 100dvh;
   margin: 0;
+  overflow-x: hidden;
   font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.5;
   background-color: var(--background);
   color: var(--foreground);
+}
+
+@layer utilities {
+  .safe-area-insets {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  .page-main {
+    padding: 1rem;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 640px) {
+    .page-main {
+      padding: 1.25rem;
+      padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .page-main {
+      padding: 1.5rem;
+      padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+    }
+  }
+
+  .page-container {
+    width: 100%;
+    max-width: 72rem;
+    margin-inline: auto;
+  }
+
+  .page-title {
+    font-size: clamp(1.375rem, 2.5vw, 1.75rem);
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+  }
+
+  .page-description {
+    margin-top: 0.25rem;
+    font-size: clamp(0.875rem, 1.5vw, 0.9375rem);
+    line-height: 1.5;
+    color: var(--muted-foreground);
+  }
+
+  .form-stack {
+    display: flex;
+    width: 100%;
+    max-width: 36rem;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .form-grid-2 {
+    display: grid;
+    width: 100%;
+    gap: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .form-grid-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .table-scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .touch-target {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
 }
 
 @media print {

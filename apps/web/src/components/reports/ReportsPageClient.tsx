@@ -18,10 +18,18 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { RequireModule } from "@/components/roles/AccessDenied";
+import {
+  MobileDataCard,
+  MobileDataField,
+} from "@/components/ui/ResponsiveDataView";
+import {
+  ReportLinkTitle,
+  ReportSectionTable,
+  SimpleAmountTable,
+} from "@/components/reports/ReportMobileViews";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useProjects } from "@/hooks/useProjects";
 import { useStudios } from "@/hooks/useStudios";
-import { layout } from "@st-manager/theme";
 import { formatINR } from "@/lib/currency";
 import {
   buildBookingReports,
@@ -150,10 +158,10 @@ export function ReportsPageClient() {
 
   return (
     <RequireModule module="reports">
-      <div className="mx-auto flex flex-col gap-6" style={{ maxWidth: layout.contentMaxWidth }}>
+      <div className="page-container flex flex-col gap-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Reports</h1>
+            <h1 className="page-title">Reports</h1>
             <p className="text-sm text-muted-foreground">
               Studio-native analytics from projects, payments, expenses, and bookings (INR).
             </p>
@@ -366,55 +374,92 @@ export function ReportsPageClient() {
               {projectReports.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No projects match these filters.</p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Project</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Value</TableHead>
-                      <TableHead>Received</TableHead>
-                      <TableHead>Pending</TableHead>
-                      {canViewProfit() ? <TableHead>Expenses</TableHead> : null}
-                      {canViewProfit() ? <TableHead>Net Profit</TableHead> : null}
-                      <TableHead>Engineer</TableHead>
-                      <TableHead>Bookings</TableHead>
-                      <TableHead>Files</TableHead>
-                      <TableHead>Completed</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {projectReports.map((row) => (
-                      <TableRow key={row.projectId}>
-                        <TableCell>
-                          <Link
-                            href={`/reports/projects/${row.projectId}`}
-                            className="font-medium text-primary underline-offset-4 hover:underline"
-                          >
-                            {row.projectNumber} · {row.projectName}
-                          </Link>
-                        </TableCell>
-                        <TableCell>{row.clientName}</TableCell>
-                        <TableCell>{formatINR(row.projectValue)}</TableCell>
-                        <TableCell>{formatINR(row.paymentsReceived)}</TableCell>
-                        <TableCell>{formatINR(row.pendingPayments)}</TableCell>
-                        {canViewProfit() ? (
-                          <TableCell>{formatINR(row.projectExpenses)}</TableCell>
-                        ) : null}
-                        {canViewProfit() ? (
-                          <TableCell>{formatINR(row.netProfit)}</TableCell>
-                        ) : null}
-                        <TableCell>{row.assignedEngineer}</TableCell>
-                        <TableCell>{row.bookingCount}</TableCell>
-                        <TableCell>{row.filesShared ? "Yes" : "No"}</TableCell>
-                        <TableCell>
-                          {row.completionDate
+                <ReportSectionTable
+                  mobile={projectReports.map((row) => (
+                    <MobileDataCard
+                      key={row.projectId}
+                      title={
+                        <ReportLinkTitle href={`/reports/projects/${row.projectId}`}>
+                          {row.projectNumber} · {row.projectName}
+                        </ReportLinkTitle>
+                      }
+                      subtitle={row.clientName}
+                    >
+                      <MobileDataField label="Value" value={formatINR(row.projectValue)} />
+                      <MobileDataField label="Received" value={formatINR(row.paymentsReceived)} />
+                      <MobileDataField label="Pending" value={formatINR(row.pendingPayments)} />
+                      {canViewProfit() ? (
+                        <MobileDataField label="Expenses" value={formatINR(row.projectExpenses)} />
+                      ) : null}
+                      {canViewProfit() ? (
+                        <MobileDataField label="Net Profit" value={formatINR(row.netProfit)} />
+                      ) : null}
+                      <MobileDataField label="Engineer" value={row.assignedEngineer} />
+                      <MobileDataField label="Bookings" value={row.bookingCount} />
+                      <MobileDataField label="Files" value={row.filesShared ? "Yes" : "No"} />
+                      <MobileDataField
+                        label="Completed"
+                        value={
+                          row.completionDate
                             ? new Date(`${row.completionDate}T12:00:00`).toLocaleDateString()
-                            : "—"}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                            : "—"
+                        }
+                        className="col-span-2"
+                      />
+                    </MobileDataCard>
+                  ))}
+                  desktop={
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Project</TableHead>
+                          <TableHead>Client</TableHead>
+                          <TableHead>Value</TableHead>
+                          <TableHead>Received</TableHead>
+                          <TableHead>Pending</TableHead>
+                          {canViewProfit() ? <TableHead>Expenses</TableHead> : null}
+                          {canViewProfit() ? <TableHead>Net Profit</TableHead> : null}
+                          <TableHead>Engineer</TableHead>
+                          <TableHead>Bookings</TableHead>
+                          <TableHead>Files</TableHead>
+                          <TableHead>Completed</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {projectReports.map((row) => (
+                          <TableRow key={row.projectId}>
+                            <TableCell>
+                              <Link
+                                href={`/reports/projects/${row.projectId}`}
+                                className="font-medium text-primary underline-offset-4 hover:underline"
+                              >
+                                {row.projectNumber} · {row.projectName}
+                              </Link>
+                            </TableCell>
+                            <TableCell>{row.clientName}</TableCell>
+                            <TableCell>{formatINR(row.projectValue)}</TableCell>
+                            <TableCell>{formatINR(row.paymentsReceived)}</TableCell>
+                            <TableCell>{formatINR(row.pendingPayments)}</TableCell>
+                            {canViewProfit() ? (
+                              <TableCell>{formatINR(row.projectExpenses)}</TableCell>
+                            ) : null}
+                            {canViewProfit() ? (
+                              <TableCell>{formatINR(row.netProfit)}</TableCell>
+                            ) : null}
+                            <TableCell>{row.assignedEngineer}</TableCell>
+                            <TableCell>{row.bookingCount}</TableCell>
+                            <TableCell>{row.filesShared ? "Yes" : "No"}</TableCell>
+                            <TableCell>
+                              {row.completionDate
+                                ? new Date(`${row.completionDate}T12:00:00`).toLocaleDateString()
+                                : "—"}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  }
+                />
               )}
             </CardContent>
           </Card>
@@ -443,43 +488,29 @@ export function ReportsPageClient() {
               {revenueReport.monthlyRevenue.length > 0 ? (
                 <div>
                   <p className="mb-2 text-sm font-medium">Monthly revenue</p>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Month</TableHead>
-                        <TableHead>Amount</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {revenueReport.monthlyRevenue.map((row) => (
-                        <TableRow key={row.key}>
-                          <TableCell>{row.label}</TableCell>
-                          <TableCell>{formatINR(row.amount)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  <SimpleAmountTable
+                    labelHeader="Month"
+                    amountHeader="Amount"
+                    rows={revenueReport.monthlyRevenue.map((row) => ({
+                      id: row.key,
+                      label: row.label,
+                      amount: row.amount,
+                    }))}
+                  />
                 </div>
               ) : null}
               {revenueReport.yearlyRevenue.length > 0 ? (
                 <div>
                   <p className="mb-2 text-sm font-medium">Yearly revenue</p>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Year</TableHead>
-                        <TableHead>Amount</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {revenueReport.yearlyRevenue.map((row) => (
-                        <TableRow key={row.year}>
-                          <TableCell>{row.year}</TableCell>
-                          <TableCell>{formatINR(row.amount)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  <SimpleAmountTable
+                    labelHeader="Year"
+                    amountHeader="Amount"
+                    rows={revenueReport.yearlyRevenue.map((row) => ({
+                      id: String(row.year),
+                      label: String(row.year),
+                      amount: row.amount,
+                    }))}
+                  />
                 </div>
               ) : null}
             </CardContent>
@@ -495,28 +526,39 @@ export function ReportsPageClient() {
               {paymentReports.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No payments in this period.</p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Project</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Method</TableHead>
-                      <TableHead>Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paymentReports.map((row) => (
-                      <TableRow key={row.paymentId}>
-                        <TableCell>{row.projectName}</TableCell>
-                        <TableCell>{row.clientName}</TableCell>
-                        <TableCell>{formatINR(row.amount)}</TableCell>
-                        <TableCell>{row.method}</TableCell>
-                        <TableCell>{row.date}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <ReportSectionTable
+                  mobile={paymentReports.map((row) => (
+                    <MobileDataCard key={row.paymentId} title={row.projectName} subtitle={row.clientName}>
+                      <MobileDataField label="Amount" value={formatINR(row.amount)} />
+                      <MobileDataField label="Method" value={row.method} />
+                      <MobileDataField label="Date" value={row.date} className="col-span-2" />
+                    </MobileDataCard>
+                  ))}
+                  desktop={
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Project</TableHead>
+                          <TableHead>Client</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Method</TableHead>
+                          <TableHead>Date</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paymentReports.map((row) => (
+                          <TableRow key={row.paymentId}>
+                            <TableCell>{row.projectName}</TableCell>
+                            <TableCell>{row.clientName}</TableCell>
+                            <TableCell>{formatINR(row.amount)}</TableCell>
+                            <TableCell>{row.method}</TableCell>
+                            <TableCell>{row.date}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  }
+                />
               )}
             </CardContent>
           </Card>
@@ -532,26 +574,36 @@ export function ReportsPageClient() {
               {expenseReport.rows.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No expenses in this period.</p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Project</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {expenseReport.rows.map((row) => (
-                      <TableRow key={row.expenseId}>
-                        <TableCell>{row.category}</TableCell>
-                        <TableCell>{row.projectName}</TableCell>
-                        <TableCell>{formatINR(row.amount)}</TableCell>
-                        <TableCell>{row.expenseDate}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <ReportSectionTable
+                  mobile={expenseReport.rows.map((row) => (
+                    <MobileDataCard key={row.expenseId} title={row.projectName} subtitle={row.category}>
+                      <MobileDataField label="Amount" value={formatINR(row.amount)} />
+                      <MobileDataField label="Date" value={row.expenseDate} />
+                    </MobileDataCard>
+                  ))}
+                  desktop={
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Category</TableHead>
+                          <TableHead>Project</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Date</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {expenseReport.rows.map((row) => (
+                          <TableRow key={row.expenseId}>
+                            <TableCell>{row.category}</TableCell>
+                            <TableCell>{row.projectName}</TableCell>
+                            <TableCell>{formatINR(row.amount)}</TableCell>
+                            <TableCell>{row.expenseDate}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  }
+                />
               )}
             </CardContent>
           </Card>
@@ -589,28 +641,40 @@ export function ReportsPageClient() {
               {clientReports.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No client data for these filters.</p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Projects</TableHead>
-                      <TableHead>Revenue</TableHead>
-                      <TableHead>Received</TableHead>
-                      <TableHead>Bookings</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {clientReports.map((row) => (
-                      <TableRow key={row.clientName}>
-                        <TableCell className="font-medium">{row.clientName}</TableCell>
-                        <TableCell>{row.projectCount}</TableCell>
-                        <TableCell>{formatINR(row.totalRevenue)}</TableCell>
-                        <TableCell>{formatINR(row.totalReceived)}</TableCell>
-                        <TableCell>{row.bookingCount}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <ReportSectionTable
+                  mobile={clientReports.map((row) => (
+                    <MobileDataCard key={row.clientName} title={row.clientName}>
+                      <MobileDataField label="Projects" value={row.projectCount} />
+                      <MobileDataField label="Revenue" value={formatINR(row.totalRevenue)} />
+                      <MobileDataField label="Received" value={formatINR(row.totalReceived)} />
+                      <MobileDataField label="Bookings" value={row.bookingCount} />
+                    </MobileDataCard>
+                  ))}
+                  desktop={
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Client</TableHead>
+                          <TableHead>Projects</TableHead>
+                          <TableHead>Revenue</TableHead>
+                          <TableHead>Received</TableHead>
+                          <TableHead>Bookings</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {clientReports.map((row) => (
+                          <TableRow key={row.clientName}>
+                            <TableCell className="font-medium">{row.clientName}</TableCell>
+                            <TableCell>{row.projectCount}</TableCell>
+                            <TableCell>{formatINR(row.totalRevenue)}</TableCell>
+                            <TableCell>{formatINR(row.totalReceived)}</TableCell>
+                            <TableCell>{row.bookingCount}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  }
+                />
               )}
             </CardContent>
           </Card>
@@ -625,32 +689,45 @@ export function ReportsPageClient() {
               {bookingReports.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No bookings in this period.</p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Project</TableHead>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Studio</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Slot</TableHead>
-                      <TableHead>Booking For</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {bookingReports.map((row) => (
-                      <TableRow key={row.bookingId}>
-                        <TableCell>{row.projectName}</TableCell>
-                        <TableCell>{row.clientName}</TableCell>
-                        <TableCell>{row.studioName}</TableCell>
-                        <TableCell>{row.date}</TableCell>
-                        <TableCell>{row.slotLabel}</TableCell>
-                        <TableCell>{row.bookingFor}</TableCell>
-                        <TableCell>{row.status}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <ReportSectionTable
+                  mobile={bookingReports.map((row) => (
+                    <MobileDataCard key={row.bookingId} title={row.projectName} subtitle={row.clientName}>
+                      <MobileDataField label="Studio" value={row.studioName} />
+                      <MobileDataField label="Date" value={row.date} />
+                      <MobileDataField label="Slot" value={row.slotLabel} />
+                      <MobileDataField label="Booking For" value={row.bookingFor} />
+                      <MobileDataField label="Status" value={row.status} className="col-span-2" />
+                    </MobileDataCard>
+                  ))}
+                  desktop={
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Project</TableHead>
+                          <TableHead>Client</TableHead>
+                          <TableHead>Studio</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Slot</TableHead>
+                          <TableHead>Booking For</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {bookingReports.map((row) => (
+                          <TableRow key={row.bookingId}>
+                            <TableCell>{row.projectName}</TableCell>
+                            <TableCell>{row.clientName}</TableCell>
+                            <TableCell>{row.studioName}</TableCell>
+                            <TableCell>{row.date}</TableCell>
+                            <TableCell>{row.slotLabel}</TableCell>
+                            <TableCell>{row.bookingFor}</TableCell>
+                            <TableCell>{row.status}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  }
+                />
               )}
             </CardContent>
           </Card>

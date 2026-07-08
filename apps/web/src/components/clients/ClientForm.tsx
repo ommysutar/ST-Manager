@@ -61,7 +61,7 @@ export function ClientForm({
   const effectiveWhatsApp = values.whatsappSameAsPhone ? values.phone : values.whatsappNumber;
 
   return (
-    <form onSubmit={handleSubmit} className="flex max-w-xl flex-col gap-4">
+    <form onSubmit={handleSubmit} className="form-stack w-full max-w-xl">
       <div className="flex flex-col gap-2">
         <label htmlFor="client-name" className="text-sm font-medium">
           Name

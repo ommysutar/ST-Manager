@@ -5,7 +5,7 @@
   "description": "Next.js Studio Web Portal for ST Manager (V1 scope)",
   "scripts": {
     "clean": "rm -rf .next",
-    "prebuild": "pnpm clean",
+    "prebuild": "pnpm clean && node scripts/generate-pwa-assets.mjs",
     "predev": "node scripts/ensure-dev-cache.mjs",
     "dev": "next dev --turbopack",
     "build": "next build",
@@ -15,6 +15,7 @@
     "production:verify": "node scripts/verify-production-reset.mjs"
   },
   "dependencies": {
+    "@ducanh2912/next-pwa": "^10.2.9",
     "@hookform/resolvers": "^5.4.0",
     "@st-manager/api-sdk": "workspace:*",
     "@st-manager/constants": "workspace:*",
@@ -40,6 +41,7 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "postcss": "^8.5.6",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "webpack": "^5.108.4"
   }
 }

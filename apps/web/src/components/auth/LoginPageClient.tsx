@@ -26,10 +26,10 @@ export function LoginPageClient() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-6">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-background p-4 sm:p-6">
       <Card className="w-full max-w-md border-border/60 shadow-xl">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-semibold tracking-tight">ST Manager v1.0</CardTitle>
+          <CardTitle className="page-title">ST Manager v1.0</CardTitle>
           <CardDescription>Sign in to manage your studio</CardDescription>
         </CardHeader>
         <CardContent>

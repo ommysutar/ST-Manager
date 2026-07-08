@@ -14,6 +14,11 @@ import {
 } from "@st-manager/ui";
 import { ArrowDownUpIcon, PencilIcon, Trash2Icon } from "lucide-react";
 
+import {
+  MobileDataCard,
+  MobileDataField,
+  ResponsiveDataView,
+} from "@/components/ui/ResponsiveDataView";
 import { formatINR } from "@/lib/currency";
 import type { ServiceSortDirection, ServiceSortField } from "@/lib/inquiry/services";
 import type { StudioService } from "@/lib/inquiry/types";
@@ -63,6 +68,91 @@ function SortButton({
   );
 }
 
+function ServiceMobileCard({
+  service,
+  onToggleActive,
+  onToggleMandatory,
+  onEdit,
+  onDelete,
+}: {
+  service: StudioService;
+  onToggleActive: (service: StudioService, active: boolean) => void;
+  onToggleMandatory: (service: StudioService, mandatory: boolean) => void;
+  onEdit: (service: StudioService) => void;
+  onDelete: (service: StudioService) => void;
+}) {
+  return (
+    <MobileDataCard
+      title={service.name}
+      subtitle={
+        <div className="flex flex-wrap items-center gap-2">
+          {service.category ? <span>{service.category}</span> : null}
+          {service.isStudioRent ? (
+            <Badge variant="secondary" className="text-[10px]">
+              Hourly rent
+            </Badge>
+          ) : null}
+        </div>
+      }
+      actions={
+        <Badge variant={service.active ? "success" : "secondary"}>
+          {service.active ? "Active" : "Inactive"}
+        </Badge>
+      }
+    >
+      <MobileDataField label="Basic" value={formatINR(service.prices.basic)} />
+      <MobileDataField label="Standard" value={formatINR(service.prices.standard)} />
+      <MobileDataField label="Premium" value={formatINR(service.prices.premium)} />
+      <MobileDataField
+        label="Mandatory"
+        value={service.mandatory ? "Required" : "Optional"}
+        className="col-span-2"
+      />
+      {service.description ? (
+        <MobileDataField
+          label="Description"
+          value={service.description}
+          className="col-span-2"
+        />
+      ) : null}
+      <div className="col-span-2 mt-2 flex flex-col gap-3 border-t border-border/60 pt-3">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm">Active</span>
+          <Switch
+            checked={service.active}
+            onCheckedChange={(checked) => onToggleActive(service, checked)}
+            aria-label={`Toggle ${service.name} active status`}
+          />
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm">Mandatory</span>
+          <Switch
+            checked={service.mandatory}
+            disabled={!service.active || service.isStudioRent}
+            onCheckedChange={(checked) => onToggleMandatory(service, checked)}
+            aria-label={`Toggle ${service.name} mandatory status`}
+          />
+        </div>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" className="flex-1" onClick={() => onEdit(service)}>
+            <PencilIcon className="size-4" />
+            Edit
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1 text-destructive hover:text-destructive"
+            onClick={() => onDelete(service)}
+          >
+            <Trash2Icon className="size-4" />
+            Delete
+          </Button>
+        </div>
+      </div>
+    </MobileDataCard>
+  );
+}
+
 export function ServicesTable({
   services,
   sortField,
@@ -87,8 +177,18 @@ export function ServicesTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border/60 bg-background/40 backdrop-blur-md">
-      <div className="overflow-x-auto">
+    <ResponsiveDataView
+      mobile={services.map((service) => (
+        <ServiceMobileCard
+          key={service.id}
+          service={service}
+          onToggleActive={onToggleActive}
+          onToggleMandatory={onToggleMandatory}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
+      ))}
+      desktop={
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
@@ -182,7 +282,7 @@ export function ServicesTable({
             ))}
           </TableBody>
         </Table>
-      </div>
-    </div>
+      }
+    />
   );
 }

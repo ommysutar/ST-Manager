@@ -28,9 +28,14 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import {
+  MobileDataCard,
+  MobileDataField,
+  ResponsiveDataView,
+} from "@/components/ui/ResponsiveDataView";
+
 import { useAuth } from "@/hooks/useAuth";
 import { useStudios } from "@/hooks/useStudios";
-import { layout } from "@st-manager/theme";
 import { createStudio, deleteStudio, updateStudio } from "@/lib/studios/storage";
 import { DEFAULT_STUDIO_COLOR } from "@/lib/studios/types";
 import type { StudioRoom } from "@/lib/studios/types";
@@ -162,7 +167,7 @@ export function StudiosSettingsPageClient() {
   }
 
   return (
-    <div className="mx-auto flex flex-col gap-6" style={{ maxWidth: layout.contentMaxWidth }}>
+    <div className="page-container flex flex-col gap-6">
       <div>
         <Link href="/settings" className="text-sm text-primary underline-offset-4 hover:underline">
           Back to settings
@@ -236,70 +241,129 @@ export function StudiosSettingsPageClient() {
           <CardDescription>{studios.length} rooms configured</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Room</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {studios.map((studio) => (
-                <TableRow key={studio.id}>
-                  <TableCell className="font-medium">
-                    <span className="flex items-center gap-2">
-                      <span
-                        className="size-3 shrink-0 rounded-full border border-border/60"
-                        style={{ backgroundColor: studio.color }}
-                        aria-hidden
-                      />
-                      {studio.name}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{studio.roomName || "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {studio.description || "—"}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Switch
-                        checked={studio.active}
-                        onCheckedChange={(checked) => handleToggleActive(studio, checked)}
-                      />
-                      <Badge variant={studio.active ? "success" : "secondary"}>
-                        {studio.active ? "Active" : "Inactive"}
-                      </Badge>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setEditingStudio(studio)}
-                        aria-label="Edit studio"
-                      >
-                        <PencilIcon className="size-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleDelete(studio)}
-                        aria-label="Delete studio"
-                      >
-                        <Trash2Icon className="size-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <ResponsiveDataView
+            mobile={studios.map((studio) => (
+              <MobileDataCard
+                key={studio.id}
+                title={
+                  <span className="flex items-center gap-2">
+                    <span
+                      className="size-3 shrink-0 rounded-full border border-border/60"
+                      style={{ backgroundColor: studio.color }}
+                      aria-hidden
+                    />
+                    {studio.name}
+                  </span>
+                }
+                actions={
+                  <Badge variant={studio.active ? "success" : "secondary"}>
+                    {studio.active ? "Active" : "Inactive"}
+                  </Badge>
+                }
+              >
+                <MobileDataField label="Room" value={studio.roomName || "—"} />
+                <MobileDataField label="Status" value={studio.active ? "Active" : "Inactive"} />
+                <MobileDataField
+                  label="Description"
+                  value={studio.description || "—"}
+                  className="col-span-2"
+                />
+                <div className="col-span-2 mt-2 flex items-center justify-between gap-3 border-t border-border/60 pt-3">
+                  <span className="text-sm">Active</span>
+                  <Switch
+                    checked={studio.active}
+                    onCheckedChange={(checked) => handleToggleActive(studio, checked)}
+                  />
+                </div>
+                <div className="col-span-2 flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setEditingStudio(studio)}
+                  >
+                    <PencilIcon className="size-4" />
+                    Edit
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1 text-destructive hover:text-destructive"
+                    onClick={() => handleDelete(studio)}
+                  >
+                    <Trash2Icon className="size-4" />
+                    Delete
+                  </Button>
+                </div>
+              </MobileDataCard>
+            ))}
+            desktop={
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Room</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {studios.map((studio) => (
+                    <TableRow key={studio.id}>
+                      <TableCell className="font-medium">
+                        <span className="flex items-center gap-2">
+                          <span
+                            className="size-3 shrink-0 rounded-full border border-border/60"
+                            style={{ backgroundColor: studio.color }}
+                            aria-hidden
+                          />
+                          {studio.name}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{studio.roomName || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {studio.description || "—"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Switch
+                            checked={studio.active}
+                            onCheckedChange={(checked) => handleToggleActive(studio, checked)}
+                          />
+                          <Badge variant={studio.active ? "success" : "secondary"}>
+                            {studio.active ? "Active" : "Inactive"}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setEditingStudio(studio)}
+                            aria-label="Edit studio"
+                          >
+                            <PencilIcon className="size-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => handleDelete(studio)}
+                            aria-label="Delete studio"
+                          >
+                            <Trash2Icon className="size-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            }
+          />
         </CardContent>
       </Card>
 

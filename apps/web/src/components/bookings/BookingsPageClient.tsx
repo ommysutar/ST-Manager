@@ -2,7 +2,7 @@
 
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, cn } from "@st-manager/ui";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { useMemo, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useState, type DragEvent } from "react";
 import { toast } from "sonner";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -10,7 +10,6 @@ import { useBookings } from "@/hooks/useBookings";
 import { useBookingSlots } from "@/hooks/useBookingSlots";
 import { useStudios } from "@/hooks/useStudios";
 import { addDays, formatMonthYear, startOfWeek, toDateKey } from "@/lib/calendar-utils";
-import { layout } from "@st-manager/theme";
 import { BOOKING_STATUS_LABELS } from "@/lib/bookings/constants";
 import { isSlotAvailable, rescheduleBooking } from "@/lib/bookings/storage";
 import type { BookingSlotId, ProjectBooking } from "@/lib/bookings/types";
@@ -46,11 +45,26 @@ function viewLabel(view: CalendarView): string {
   return "Month";
 }
 
+function useIsMobileViewport(): boolean {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mediaQuery.matches);
+    update();
+    mediaQuery.addEventListener("change", update);
+    return () => mediaQuery.removeEventListener("change", update);
+  }, []);
+
+  return isMobile;
+}
+
 export function BookingsPageClient() {
   const { isAuthenticated } = useAuth();
   const bookings = useBookings();
   const studios = useStudios();
   const slots = useBookingSlots();
+  const isMobileViewport = useIsMobileViewport();
   const [view, setView] = useState<CalendarView>("week");
   const [anchorDate, setAnchorDate] = useState(() => new Date());
   const [studioFilter, setStudioFilter] = useState<string>("all");
@@ -63,6 +77,9 @@ export function BookingsPageClient() {
   const [dayPanelDate, setDayPanelDate] = useState<string | null>(null);
   const [monthDropTargetDate, setMonthDropTargetDate] = useState<string | null>(null);
 
+  const effectiveView: CalendarView =
+    isMobileViewport && view === "week" ? "today" : view;
+
   const activeStudios = useMemo(() => studios.filter((studio) => studio.active), [studios]);
 
   const weekStart = useMemo(() => startOfWeek(anchorDate), [anchorDate]);
@@ -72,14 +89,14 @@ export function BookingsPageClient() {
   );
 
   const displayDays = useMemo(() => {
-    if (view === "today") {
+    if (effectiveView === "today") {
       return [anchorDate];
     }
-    if (view === "week") {
+    if (effectiveView === "week") {
       return weekDays;
     }
     return [];
-  }, [view, anchorDate, weekDays]);
+  }, [effectiveView, anchorDate, weekDays]);
 
   const visibleBookings = useMemo(
     () =>
@@ -419,14 +436,14 @@ export function BookingsPageClient() {
   }
 
   const periodLabel =
-    view === "today"
+    effectiveView === "today"
       ? formatDayLabel(anchorDate)
-      : view === "month"
+      : effectiveView === "month"
         ? formatMonthYear(anchorDate)
         : `${formatDayLabel(weekDays[0])} – ${formatDayLabel(weekDays[6])}`;
 
   const jumpLabel =
-    view === "today" ? "Today" : view === "month" ? "This month" : "This week";
+    effectiveView === "today" ? "Today" : effectiveView === "month" ? "This month" : "This week";
 
   if (!isAuthenticated) {
     return (
@@ -439,9 +456,9 @@ export function BookingsPageClient() {
   }
 
   return (
-    <div className="mx-auto flex flex-col gap-6" style={{ maxWidth: layout.contentMaxWidth }}>
+    <div className="page-container flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Bookings</h1>
+        <h1 className="page-title">Bookings</h1>
         <p className="text-sm text-muted-foreground">
           Project-owned studio bookings. Click an empty slot to book, or drag to reschedule.
         </p>
@@ -452,12 +469,14 @@ export function BookingsPageClient() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="inline-flex rounded-lg border border-border/60 p-1">
-          {(["today", "week", "month"] as CalendarView[]).map((option) => (
+          {(["today", "week", "month"] as CalendarView[])
+            .filter((option) => !isMobileViewport || option !== "week")
+            .map((option) => (
             <Button
               key={option}
               type="button"
               size="sm"
-              variant={view === option ? "default" : "ghost"}
+              variant={effectiveView === option ? "default" : "ghost"}
               onClick={() => setView(option)}
             >
               {viewLabel(option)}
@@ -495,7 +514,7 @@ export function BookingsPageClient() {
         </Button>
       </div>
 
-      {view === "month" ? (
+      {effectiveView === "month" ? (
         <BookingsMonthView
           anchorDate={anchorDate}
           bookings={visibleBookings}
@@ -531,8 +550,8 @@ export function BookingsPageClient() {
           }}
         />
       ) : (
-        <div className="overflow-x-auto pb-2">
-          <div className={cn("flex gap-4", view === "week" && "min-w-[1120px]")}>
+        <div className="table-scroll pb-2">
+          <div className={cn("flex gap-4", effectiveView === "week" && "min-w-[1120px]")}>
             {displayDays.map((day) => renderDayColumn(day))}
           </div>
         </div>
