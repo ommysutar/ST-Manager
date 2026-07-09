@@ -73,7 +73,15 @@ export function toRoleDefinitionDto(role: RoleDefinitionRecord): RoleDefinitionR
   };
 }
 
-export function toInvitationPreviewDto(invitation: InvitationRecord): InvitationPreviewDto {
+export function toInvitationPreviewDto(
+  invitation: InvitationRecord,
+  options?: { status?: string; accountExists?: boolean; canAccept?: boolean },
+): InvitationPreviewDto {
+  const status = options?.status ?? invitation.status;
+  const canAccept =
+    options?.canAccept ??
+    (status === "pending" && invitation.expiresAt.getTime() >= Date.now());
+
   return {
     studioName: invitation.studio?.name ?? "Studio",
     invitedByName: invitation.invitedBy?.fullName ?? null,
@@ -82,6 +90,8 @@ export function toInvitationPreviewDto(invitation: InvitationRecord): Invitation
     email: invitation.email,
     fullName: invitation.fullName,
     expiresAt: invitation.expiresAt.toISOString(),
-    status: invitation.status,
+    status,
+    accountExists: options?.accountExists ?? false,
+    canAccept,
   };
 }

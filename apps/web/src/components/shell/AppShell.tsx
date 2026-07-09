@@ -31,7 +31,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
     if (isAuthRoute) {
       if (isAuthenticated) {
-        router.replace("/");
+        const hasPendingInvitation =
+          typeof window !== "undefined" &&
+          new URLSearchParams(window.location.search).has("invitation");
+        if (!hasPendingInvitation) {
+          router.replace("/");
+        }
       }
       return;
     }

@@ -2,6 +2,7 @@ import { ROUTES } from "@st-manager/constants";
 import type {
   AcceptInvitationRequestDto,
   AcceptInvitationResponseDto,
+  CompleteInvitationResponseDto,
   CancelInvitationResponseDto,
   DisableTeamMemberResponseDto,
   EnableTeamMemberResponseDto,
@@ -43,6 +44,7 @@ export interface TeamMembersApi {
   listRoles(): Promise<ListRolesResponseDto["data"]>;
   verifyInvitation(token: string): Promise<VerifyInvitationResponseDto["data"]>;
   acceptInvitation(token: string, input: AcceptInvitationRequestDto): Promise<AcceptInvitationResponseDto["data"]>;
+  acceptInvitationForExistingUser(token: string): Promise<CompleteInvitationResponseDto["data"]>;
 }
 
 export function createTeamMembersApi(client: HttpClient): TeamMembersApi {
@@ -125,6 +127,14 @@ export function createTeamMembersApi(client: HttpClient): TeamMembersApi {
       const response = await client.post<AcceptInvitationResponseDto>(
         `${ROUTES.INVITATIONS}/${encodeURIComponent(token)}/accept`,
         validated,
+      );
+      return response.data;
+    },
+
+    acceptInvitationForExistingUser: async (token) => {
+      const response = await client.post<CompleteInvitationResponseDto>(
+        `${ROUTES.INVITATIONS}/${encodeURIComponent(token)}/accept-existing`,
+        {},
       );
       return response.data;
     },

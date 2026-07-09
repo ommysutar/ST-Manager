@@ -15,7 +15,7 @@ const BASE_URL = process.env.API_BASE_URL ?? "http://localhost:4000";
 const OWNER_EMAIL = process.env.DEV_OWNER_EMAIL ?? "owner@st-manager.local";
 const PASSWORD = process.env.DEV_AUTH_PASSWORD ?? "devpassword";
 const INVITE_EMAIL = `invite-flow-${Date.now()}@st-manager.local`;
-const ACCEPT_PASSWORD = "testpass123";
+const ACCEPT_PASSWORD = "Testpass123";
 const PLAIN_TOKEN = `smoke-token-${Date.now()}`;
 
 async function login(email, password) {
@@ -66,6 +66,9 @@ async function main() {
   if (!verifyRes.ok || verifyBody.data?.email !== INVITE_EMAIL) {
     throw new Error(`Verify failed: ${JSON.stringify(verifyBody)}`);
   }
+  if (verifyBody.data?.accountExists !== false || verifyBody.data?.canAccept !== true) {
+    throw new Error(`Verify preview unexpected: ${JSON.stringify(verifyBody.data)}`);
+  }
 
   const acceptRes = await fetch(`${BASE_URL}/invitations/${encodeURIComponent(PLAIN_TOKEN)}/accept`, {
     method: "POST",
@@ -76,8 +79,24 @@ async function main() {
     }),
   });
   const acceptBody = await acceptRes.json();
-  if (!acceptRes.ok || !acceptBody.data?.accessToken) {
+  if (!acceptRes.ok || !acceptBody.data?.message) {
     throw new Error(`Accept failed: ${JSON.stringify(acceptBody)}`);
+  }
+  if (acceptBody.data.accessToken) {
+    throw new Error("Accept must not return auth tokens (no auto-login)");
+  }
+
+  const reuseRes = await fetch(`${BASE_URL}/invitations/${encodeURIComponent(PLAIN_TOKEN)}/accept`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      password: ACCEPT_PASSWORD,
+      confirmPassword: ACCEPT_PASSWORD,
+    }),
+  });
+  const reuseBody = await reuseRes.json();
+  if (reuseRes.ok) {
+    throw new Error(`Reused invitation should fail: ${JSON.stringify(reuseBody)}`);
   }
 
   const memberToken = await login(INVITE_EMAIL, ACCEPT_PASSWORD);
@@ -93,7 +112,7 @@ async function main() {
     throw new Error(`Assistant should not access team list, got ${listRes.status}: ${JSON.stringify(listBody)}`);
   }
 
-  console.log("Team invite flow passed: invite → verify → accept → login → assistant blocked from team management");
+  console.log("Team invite flow passed: invite → verify → create account → login → assistant blocked from team management");
 }
 
 main().catch((error) => {

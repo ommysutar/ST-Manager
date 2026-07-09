@@ -12,6 +12,7 @@ import {
 import { ROUTES } from "@st-manager/constants";
 import type {
   AcceptInvitationResponseDto,
+  CompleteInvitationResponseDto,
   DisableTeamMemberResponseDto,
   EnableTeamMemberResponseDto,
   InviteTeamMemberResponseDto,
@@ -157,6 +158,16 @@ export class InvitationsController {
   ): Promise<AcceptInvitationResponseDto> {
     const data = await this.teamService.acceptInvitation(token, body);
     return { success: true, data };
+  }
+
+  @Post(":token/accept-existing")
+  @UseGuards(JwtAuthGuard)
+  async acceptExisting(
+    @Param("token") token: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<CompleteInvitationResponseDto> {
+    await this.teamService.acceptInvitationForExistingUser(token, user);
+    return { success: true, data: { message: "Invitation accepted successfully." } };
   }
 }
 

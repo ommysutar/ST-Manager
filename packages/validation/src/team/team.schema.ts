@@ -1,6 +1,13 @@
 import { INVITABLE_TEAM_ROLES, TEAM_ROLES } from "@st-manager/constants";
 import { z } from "zod";
 
+const invitationPasswordSchema = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .regex(/[a-z]/, "Password must include a lowercase letter")
+  .regex(/[A-Z]/, "Password must include an uppercase letter")
+  .regex(/[0-9]/, "Password must include a number");
+
 const teamRoleSchema = z.enum([
   TEAM_ROLES.OWNER,
   TEAM_ROLES.MANAGER,
@@ -39,7 +46,7 @@ export type UpdateTeamMemberInput = z.infer<typeof updateTeamMemberSchema>;
 
 export const acceptInvitationSchema = z
   .object({
-    password: z.string().min(8, "Password must be at least 8 characters"),
+    password: invitationPasswordSchema,
     confirmPassword: z.string().min(8),
   })
   .refine((data) => data.password === data.confirmPassword, {

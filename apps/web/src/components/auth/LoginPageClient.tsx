@@ -2,14 +2,21 @@
 
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@st-manager/ui";
 import Link from "next/link";
-import { type FormEvent, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, type FormEvent, useState } from "react";
 
-import { useAuth } from "@/hooks/useAuth";
+import { authApi, teamMembersApi } from "@/lib/api-client";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { tokenStore } from "@/lib/token-store";
 
-export function LoginPageClient() {
-  const { isSubmitting, error, login } = useAuth();
+function LoginForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const invitationToken = searchParams.get("invitation");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -17,11 +24,23 @@ export function LoginPageClient() {
       return;
     }
 
+    setIsSubmitting(true);
+    setError(null);
+
     try {
-      await login(email.trim(), password);
+      const session = await authApi.login({ email: email.trim(), password });
+      tokenStore.setSession(session.accessToken, session.refreshToken, session.user);
+
+      if (invitationToken) {
+        await teamMembersApi.acceptInvitationForExistingUser(invitationToken);
+      }
+
       setPassword("");
-    } catch {
-      // Error state is owned by useAuth.
+      router.replace("/");
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Sign in failed"));
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -30,7 +49,11 @@ export function LoginPageClient() {
       <Card className="w-full max-w-md border-border/60 shadow-xl">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="page-title">ST Manager v1.0</CardTitle>
-          <CardDescription>Sign in to manage your studio</CardDescription>
+          <CardDescription>
+            {invitationToken
+              ? "Sign in to accept your team invitation"
+              : "Sign in to manage your studio"}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={handleSubmit}>
@@ -65,13 +88,29 @@ export function LoginPageClient() {
               {isSubmitting ? "Signing in..." : "Sign In"}
             </Button>
           </form>
-          <div className="mt-4 text-center">
-            <Button asChild variant="link" className="text-sm">
-              <Link href="/login/create-account">Create Account</Link>
-            </Button>
-          </div>
+          {!invitationToken ? (
+            <div className="mt-4 text-center">
+              <Button asChild variant="link" className="text-sm">
+                <Link href="/login/create-account">Create Account</Link>
+              </Button>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export function LoginPageClient() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[100dvh] items-center justify-center bg-background p-4">
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

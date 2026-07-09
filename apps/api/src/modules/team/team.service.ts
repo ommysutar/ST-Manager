@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import type { LoginResponseDataDto } from "@st-manager/contracts";
+import type { AcceptInvitationResultDto } from "@st-manager/contracts";
 import {
   INVITATION_STATUSES,
   MEMBER_STATUSES,
@@ -20,10 +20,9 @@ import type {
 import * as bcrypt from "bcrypt";
 import { createHash, randomBytes } from "node:crypto";
 
-import type { AuthenticatedUser } from "../auth/auth.types";
-import { AuthService } from "../auth/auth.service";
 import { AUDIT_ACTIONS, AuditService } from "../audit/audit.service";
 import { EmailService } from "../email/email.service";
+import type { AuthenticatedUser } from "../auth/auth.types";
 import {
   toInvitationPreviewDto,
   toPendingInvitationDto,
@@ -42,7 +41,6 @@ export class TeamService {
     private readonly teamRepository: TeamRepository,
     private readonly emailService: EmailService,
     private readonly auditService: AuditService,
-    private readonly authService: AuthService,
   ) {}
 
   async listMembers(actor: AuthenticatedUser) {
@@ -339,20 +337,47 @@ export class TeamService {
   }
 
   async verifyInvitation(token: string) {
-    const invitation = await this.findValidInvitationByToken(token);
-    return toInvitationPreviewDto(invitation);
+    const invitation = await this.findInvitationByToken(token);
+
+    if (!invitation) {
+      throw new NotFoundException("Invitation not found");
+    }
+
+    let status = invitation.status;
+    if (
+      status === INVITATION_STATUSES.PENDING &&
+      invitation.expiresAt.getTime() < Date.now()
+    ) {
+      await this.teamRepository.updateInvitation(invitation.id, {
+        status: INVITATION_STATUSES.EXPIRED,
+      });
+      status = INVITATION_STATUSES.EXPIRED;
+    }
+
+    const existingUser = await this.teamRepository.findUserByEmail(invitation.email);
+    const accountExists = Boolean(existingUser);
+    const canAccept =
+      status === INVITATION_STATUSES.PENDING && invitation.expiresAt.getTime() >= Date.now();
+
+    return toInvitationPreviewDto(invitation, {
+      status,
+      accountExists,
+      canAccept,
+    });
   }
 
-  async acceptInvitation(token: string, input: AcceptInvitationInput): Promise<LoginResponseDataDto> {
+  async acceptInvitation(
+    token: string,
+    input: AcceptInvitationInput,
+  ): Promise<AcceptInvitationResultDto> {
     const invitation = await this.findValidInvitationByToken(token);
     const email = invitation.email.toLowerCase();
 
     const existingUser = await this.teamRepository.findUserByEmail(email);
     if (existingUser) {
-      if (existingUser.studioId === invitation.studioId) {
-        throw new ConflictException("You are already a member of this studio");
-      }
-      throw new ConflictException("This email is already registered with another studio");
+      throw new ConflictException(
+        "An account already exists for this email. Please log in to accept the invitation.",
+      );
     }
 
     const passwordHash = await bcrypt.hash(input.password, 10);
@@ -368,33 +393,79 @@ export class TeamService {
         : null,
     });
 
-    await this.teamRepository.updateInvitation(invitation.id, {
+    await this.markInvitationAccepted(invitation.id, member.id, invitation.studioId);
+
+    return { message: "Account created successfully." };
+  }
+
+  async acceptInvitationForExistingUser(token: string, actor: AuthenticatedUser): Promise<void> {
+    const invitation = await this.findValidInvitationByToken(token);
+    const email = invitation.email.toLowerCase();
+
+    if (actor.email.toLowerCase() !== email) {
+      throw new ForbiddenException("This invitation was sent to a different email address");
+    }
+
+    const user = await this.teamRepository.findUserById(actor.userId);
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    if (user.studioId === invitation.studioId) {
+      throw new ConflictException("You are already a member of this studio");
+    }
+
+    if (user.studioId && user.studioId !== invitation.studioId) {
+      throw new ConflictException("This email belongs to another studio workspace");
+    }
+
+    const member = await this.teamRepository.attachUserFromInvitation(user.id, {
+      studioId: invitation.studioId,
+      role: invitation.role,
+      fullName: invitation.fullName,
+      phone: invitation.phone,
+      customPermissions: Array.isArray(invitation.customPermissions)
+        ? (invitation.customPermissions as string[])
+        : null,
+    });
+
+    await this.markInvitationAccepted(invitation.id, member.id, invitation.studioId);
+  }
+
+  private async markInvitationAccepted(
+    invitationId: string,
+    memberId: string,
+    studioId: string,
+  ): Promise<void> {
+    await this.teamRepository.updateInvitation(invitationId, {
       status: INVITATION_STATUSES.ACCEPTED,
       acceptedAt: new Date(),
     });
 
     await this.auditService.log({
-      studioId: invitation.studioId,
-      actorUserId: member.id,
+      studioId,
+      actorUserId: memberId,
       action: AUDIT_ACTIONS.MEMBER_ACCEPTED,
       targetType: "user",
-      targetId: member.id,
-      metadata: { invitationId: invitation.id },
+      targetId: memberId,
+      metadata: { invitationId },
     });
+  }
 
-    return this.authService.loginWithUser(member.id);
+  private async findInvitationByToken(token: string) {
+    const tokenHash = this.hashToken(token);
+    return this.teamRepository.findInvitationByTokenHash(tokenHash);
   }
 
   private async findValidInvitationByToken(token: string) {
-    const tokenHash = this.hashToken(token);
-    const invitation = await this.teamRepository.findInvitationByTokenHash(tokenHash);
+    const invitation = await this.findInvitationByToken(token);
 
     if (!invitation) {
       throw new NotFoundException("Invitation not found");
     }
 
     if (invitation.status === INVITATION_STATUSES.ACCEPTED) {
-      throw new BadRequestException("This invitation has already been used");
+      throw new BadRequestException("Invitation already used.");
     }
 
     if (invitation.status !== INVITATION_STATUSES.PENDING) {
@@ -405,7 +476,7 @@ export class TeamService {
       await this.teamRepository.updateInvitation(invitation.id, {
         status: INVITATION_STATUSES.EXPIRED,
       });
-      throw new BadRequestException("This invitation has expired");
+      throw new BadRequestException("Invitation expired.");
     }
 
     return invitation;

@@ -11,20 +11,29 @@ import {
   Input,
   Label,
 } from "@st-manager/ui";
-import { TEAM_ROLE_LABELS } from "@st-manager/constants";
+import { INVITATION_STATUSES } from "@st-manager/constants";
 import type { InvitationPreviewDto } from "@st-manager/contracts";
 import { acceptInvitationSchema, type AcceptInvitationInput } from "@st-manager/validation";
-import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { teamMembersApi } from "@/lib/api-client";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { tokenStore } from "@/lib/token-store";
+
+function invitationStatusMessage(status: string): string {
+  if (status === INVITATION_STATUSES.ACCEPTED) {
+    return "Invitation already used.";
+  }
+  if (status === INVITATION_STATUSES.EXPIRED) {
+    return "Invitation expired.";
+  }
+  return "This invitation is no longer valid.";
+}
 
 function AcceptInvitationContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
   const invalidLink = !token;
@@ -33,6 +42,7 @@ function AcceptInvitationContent() {
   const [error, setError] = useState<string | null>(
     invalidLink ? "Invalid invitation link" : null,
   );
+  const [accountCreated, setAccountCreated] = useState(false);
 
   const form = useForm<AcceptInvitationInput>({
     resolver: zodResolver(acceptInvitationSchema),
@@ -61,14 +71,14 @@ function AcceptInvitationContent() {
 
   async function onSubmit(values: AcceptInvitationInput) {
     try {
-      const session = await teamMembersApi.acceptInvitation(token, values);
-      tokenStore.setSession(session.accessToken, session.refreshToken, session.user);
-      toast.success("Welcome to the team!");
-      router.replace("/");
+      await teamMembersApi.acceptInvitation(token, values);
+      setAccountCreated(true);
     } catch (err) {
-      toast.error(getApiErrorMessage(err, "Failed to accept invitation"));
+      toast.error(getApiErrorMessage(err, "Failed to create account"));
     }
   }
+
+  const loginHref = `/login?invitation=${encodeURIComponent(token)}`;
 
   if (loading) {
     return (
@@ -91,29 +101,75 @@ function AcceptInvitationContent() {
     );
   }
 
-  return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>Join {preview.studioName}</CardTitle>
-        <CardDescription>
-          You were invited by {preview.invitedByName ?? preview.invitedByEmail} as{" "}
-          {TEAM_ROLE_LABELS[preview.role as keyof typeof TEAM_ROLE_LABELS] ?? preview.role}.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form className="grid gap-4" onSubmit={handleSubmit(onSubmit)}>
+  if (!preview.canAccept) {
+    return (
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Invitation unavailable</CardTitle>
+          <CardDescription>{invitationStatusMessage(preview.status)}</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (accountCreated) {
+    return (
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Account created successfully</CardTitle>
+          <CardDescription>
+            Your account has been created. Sign in to access ST Manager.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild className="w-full">
+            <Link href="/login">Go to Login</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (preview.accountExists) {
+    return (
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Join {preview.studioName}</CardTitle>
+          <CardDescription>
+            You already have an ST Manager account. Please log in to accept this invitation.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
           <div className="rounded-md border bg-muted/40 p-3 text-sm">
             <p>
               <span className="text-muted-foreground">Email:</span> {preview.email}
             </p>
-            <p>
-              <span className="text-muted-foreground">Expires:</span>{" "}
-              {new Date(preview.expiresAt).toLocaleDateString()}
-            </p>
+          </div>
+          <Button asChild className="w-full">
+            <Link href={loginHref}>Go to Login</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <CardTitle>Create Your Account</CardTitle>
+        <CardDescription>
+          You have been invited to join {preview.studioName} on ST Manager.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form className="grid gap-4" onSubmit={handleSubmit(onSubmit)}>
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input id="email" type="email" value={preview.email} readOnly disabled />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Create Password</Label>
+            <Label htmlFor="password">Password</Label>
             <Input id="password" type="password" autoComplete="new-password" {...register("password")} />
             {errors.password ? (
               <p className="text-sm text-destructive">{errors.password.message}</p>
@@ -134,7 +190,7 @@ function AcceptInvitationContent() {
           </div>
 
           <Button type="submit" disabled={isSubmitting} className="w-full">
-            {isSubmitting ? "Joining…" : "Accept Invitation & Join Studio"}
+            {isSubmitting ? "Creating account…" : "Create Account"}
           </Button>
         </form>
       </CardContent>

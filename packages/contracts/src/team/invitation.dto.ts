@@ -1,5 +1,4 @@
 import type { ApiSuccessResponseDto } from "../common/success-response.dto";
-import type { LoginResponseDataDto } from "../auth/login.dto";
 
 export interface InvitationPreviewDto {
   studioName: string;
@@ -10,6 +9,8 @@ export interface InvitationPreviewDto {
   fullName: string;
   expiresAt: string;
   status: string;
+  accountExists: boolean;
+  canAccept: boolean;
 }
 
 export type VerifyInvitationResponseDto = ApiSuccessResponseDto<InvitationPreviewDto>;
@@ -19,4 +20,10 @@ export interface AcceptInvitationRequestDto {
   confirmPassword: string;
 }
 
-export type AcceptInvitationResponseDto = ApiSuccessResponseDto<LoginResponseDataDto>;
+export interface AcceptInvitationResultDto {
+  message: string;
+}
+
+export type AcceptInvitationResponseDto = ApiSuccessResponseDto<AcceptInvitationResultDto>;
+
+export type CompleteInvitationResponseDto = ApiSuccessResponseDto<{ message: string }>;

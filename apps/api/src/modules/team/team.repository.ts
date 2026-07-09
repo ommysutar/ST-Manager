@@ -163,6 +163,30 @@ export class TeamRepository {
     return client.user.update({ where: { id }, data: updateData });
   }
 
+  async attachUserFromInvitation(
+    userId: string,
+    data: {
+      studioId: string;
+      role: string;
+      fullName: string;
+      phone?: string | null;
+      customPermissions?: string[] | null;
+    },
+  ): Promise<UserMemberRecord> {
+    const client = asClient(this.prismaService.getClient());
+    return client.user.update({
+      where: { id: userId },
+      data: {
+        studioId: data.studioId,
+        role: data.role,
+        fullName: data.fullName,
+        phone: data.phone ?? null,
+        status: MEMBER_STATUSES.ACTIVE,
+        customPermissions: data.customPermissions ?? undefined,
+      },
+    });
+  }
+
   async createMemberFromInvitation(data: {
     email: string;
     passwordHash: string;

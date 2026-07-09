@@ -135,6 +135,8 @@ export type {
   VerifyInvitationResponseDto,
   AcceptInvitationRequestDto,
   AcceptInvitationResponseDto,
+  AcceptInvitationResultDto,
+  CompleteInvitationResponseDto,
 } from "./team/invitation.dto";
 export type {
   PermissionResponseDto,
