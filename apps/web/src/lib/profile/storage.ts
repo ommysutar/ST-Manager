@@ -33,10 +33,13 @@ function defaultProfile(user: AuthUserDto): StudioProfile {
 }
 
 export function normalizeRole(role: string): UserRole {
-  if (role === "assistant" || role === "engineer") {
-    return role;
+  if (role === "owner") {
+    return "owner";
   }
-  return "owner";
+  if (role === "engineer") {
+    return "engineer";
+  }
+  return "assistant";
 }
 
 export function loadProfile(user: AuthUserDto): StudioProfile {

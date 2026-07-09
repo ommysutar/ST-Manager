@@ -220,7 +220,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build desktop frontend
+      - name: Prepare desktop shell
         run: pnpm --filter @st-manager/desktop build
 
       - name: Build Tauri bundle (unsigned)

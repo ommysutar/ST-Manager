@@ -9,6 +9,11 @@ export interface AuthUserRecord {
   email: string;
   passwordHash: string;
   role: string;
+  fullName: string | null;
+  phone: string | null;
+  studioId: string | null;
+  status: string;
+  lastLoginAt: Date | null;
 }
 
 function asAuthClient(client: DatabaseClient): PostgresPrismaClient {
@@ -33,10 +38,52 @@ export class AuthRepository {
     email: string,
     passwordHash: string,
     role: string,
+    data?: {
+      fullName?: string;
+      studioId?: string;
+    },
   ): Promise<AuthUserRecord> {
     const client = asAuthClient(this.prismaService.getClient());
     return client.user.create({
-      data: { email, passwordHash, role },
+      data: {
+        email,
+        passwordHash,
+        role,
+        fullName: data?.fullName ?? null,
+        studioId: data?.studioId ?? null,
+      },
+    });
+  }
+
+  async createStudioWithOwner(input: {
+    studioName: string;
+    ownerName: string;
+    email: string;
+    passwordHash: string;
+  }): Promise<AuthUserRecord> {
+    const client = asAuthClient(this.prismaService.getClient());
+    return client.$transaction(async (tx) => {
+      const studio = await tx.studio.create({
+        data: { name: input.studioName },
+      });
+
+      return tx.user.create({
+        data: {
+          email: input.email,
+          passwordHash: input.passwordHash,
+          role: "owner",
+          fullName: input.ownerName,
+          studioId: studio.id,
+        },
+      });
+    });
+  }
+
+  async updateLastLogin(userId: string): Promise<void> {
+    const client = asAuthClient(this.prismaService.getClient());
+    await client.user.update({
+      where: { id: userId },
+      data: { lastLoginAt: new Date() },
     });
   }
 }

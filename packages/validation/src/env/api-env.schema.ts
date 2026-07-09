@@ -21,6 +21,10 @@ export const apiEnvSchema = z
     AI_PROVIDER: z.enum(["openai", "mock"]).default("mock"),
     AI_API_KEY: z.string().trim().optional(),
     AI_MODEL: z.string().trim().min(1).default("gpt-4o-mini"),
+    EMAIL_PROVIDER: z.enum(["console", "noop", "resend"]).default("resend"),
+    APP_BASE_URL: z.string().trim().url().optional(),
+    RESEND_API_KEY: z.string().trim().optional(),
+    EMAIL_FROM: z.string().trim().email().optional(),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === "production" && !env.DATABASE_URL) {
@@ -45,6 +49,23 @@ export const apiEnvSchema = z
         path: ["AI_API_KEY"],
         message: "AI_API_KEY is required when AI_PROVIDER=openai.",
       });
+    }
+
+    if (env.EMAIL_PROVIDER === "resend" && env.NODE_ENV === "production") {
+      if (!env.RESEND_API_KEY) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["RESEND_API_KEY"],
+          message: "RESEND_API_KEY is required when EMAIL_PROVIDER=resend in production.",
+        });
+      }
+      if (!env.EMAIL_FROM) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["EMAIL_FROM"],
+          message: "EMAIL_FROM is required when EMAIL_PROVIDER=resend in production.",
+        });
+      }
     }
   });
 

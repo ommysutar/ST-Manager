@@ -31,3 +31,6 @@ export type { InvoicesApi } from "./invoices/invoices.api";
 
 export { createReportsApi } from "./reports/reports.api";
 export type { ReportsApi } from "./reports/reports.api";
+
+export { createTeamMembersApi } from "./team-members/team-members.api";
+export type { TeamMembersApi } from "./team-members/team-members.api";

@@ -6,6 +6,7 @@ node_modules/
 dist/
 build/
 .next/
+.next-desktop/
 out/
 target/
 
@@ -41,6 +42,7 @@ packages/database/src/generated/
 
 # Tauri
 apps/desktop/src-tauri/target/
+apps/desktop/dist/
 
 # Test coverage
 coverage/

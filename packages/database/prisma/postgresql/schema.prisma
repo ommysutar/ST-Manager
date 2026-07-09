@@ -15,25 +15,114 @@ datasource db {
 }
 
 model Studio {
-  id        String    @id @default(cuid())
-  name      String    @db.VarChar(120)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  bookings  Booking[]
-  sessions  Session[]
+  id           String              @id @default(cuid())
+  name         String              @db.VarChar(120)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  bookings     Booking[]
+  sessions     Session[]
+  members      User[]
+  invitations  StudioInvitation[]
+  auditLogs    AuditLog[]
+  roleDefs     RoleDefinition[]
 
   @@map("studios")
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique @db.VarChar(255)
-  passwordHash String   @db.VarChar(255)
-  role         String   @default("owner") @db.VarChar(32)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                 String              @id @default(cuid())
+  email              String              @unique @db.VarChar(255)
+  passwordHash       String              @db.VarChar(255)
+  fullName           String?             @db.VarChar(120)
+  phone              String?             @db.VarChar(64)
+  role               String              @default("owner") @db.VarChar(32)
+  status             String              @default("active") @db.VarChar(32)
+  studioId           String?
+  customPermissions  Json?
+  lastLoginAt        DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  studio             Studio?             @relation(fields: [studioId], references: [id])
+  sentInvitations    StudioInvitation[]  @relation("InvitationSender")
+  auditLogs          AuditLog[]          @relation("AuditActor")
 
+  @@index([studioId])
   @@map("users")
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  key         String           @unique @db.VarChar(64)
+  label       String           @db.VarChar(120)
+  category    String           @db.VarChar(64)
+  createdAt   DateTime         @default(now())
+  rolePerms   RolePermission[]
+
+  @@map("permissions")
+}
+
+model RoleDefinition {
+  id          String           @id @default(cuid())
+  studioId    String?
+  name        String           @db.VarChar(32)
+  label       String           @db.VarChar(64)
+  isSystem    Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  studio      Studio?          @relation(fields: [studioId], references: [id])
+  permissions RolePermission[]
+
+  @@unique([studioId, name])
+  @@map("role_definitions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         RoleDefinition @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission     @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model StudioInvitation {
+  id                String    @id @default(cuid())
+  studioId          String
+  email             String    @db.VarChar(255)
+  fullName          String    @db.VarChar(120)
+  phone             String?   @db.VarChar(64)
+  role              String    @db.VarChar(32)
+  tokenHash         String    @unique @db.VarChar(64)
+  status            String    @default("pending") @db.VarChar(32)
+  customPermissions Json?
+  expiresAt         DateTime
+  invitedById       String
+  acceptedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  studio            Studio    @relation(fields: [studioId], references: [id])
+  invitedBy         User      @relation("InvitationSender", fields: [invitedById], references: [id])
+
+  @@index([studioId, status])
+  @@index([email])
+  @@map("studio_invitations")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  studioId    String
+  actorUserId String?
+  action      String   @db.VarChar(64)
+  targetType  String?  @db.VarChar(32)
+  targetId    String?  @db.VarChar(64)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  studio      Studio   @relation(fields: [studioId], references: [id])
+  actor       User?    @relation("AuditActor", fields: [actorUserId], references: [id])
+
+  @@index([studioId, createdAt])
+  @@map("audit_logs")
 }
 
 model Client {

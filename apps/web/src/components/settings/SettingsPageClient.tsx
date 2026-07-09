@@ -7,7 +7,7 @@ import { AccessDenied } from "@/components/roles/AccessDenied";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 
-const settingsLinks = [
+const ownerSettingsLinks = [
   {
     href: "/settings/whatsapp-notifications",
     title: "WhatsApp Notifications",
@@ -38,11 +38,17 @@ const settingsLinks = [
     title: "Invoice & Quotation Template",
     description: "Owner branding, bank/UPI details, and terms used on every document.",
   },
-];
+] as const;
+
+const teamManagementLink = {
+  href: "/settings/team-members",
+  title: "Team Members",
+  description: "Invite team members, assign roles, and manage workspace access.",
+} as const;
 
 export function SettingsPageClient() {
   const { isAuthenticated } = useAuth();
-  const { canAccessSettings } = usePermissions();
+  const { canAccessSettings, canAccessTeamManagement } = usePermissions();
 
   if (!isAuthenticated) {
     return (
@@ -54,31 +60,50 @@ export function SettingsPageClient() {
     );
   }
 
-  if (!canAccessSettings()) {
-    return (
-      <AccessDenied message="Only the studio owner can access settings." />
-    );
+  if (!canAccessSettings() && !canAccessTeamManagement()) {
+    return <AccessDenied message="You do not have permission to access settings." />;
   }
 
   return (
     <div className="page-container flex flex-col gap-6">
       <div>
         <h1 className="page-title">Settings</h1>
-        <p className="text-sm text-muted-foreground">Owner panel configuration.</p>
+        <p className="text-sm text-muted-foreground">
+          {canAccessSettings() ? "Owner panel configuration." : "Team management."}
+        </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {settingsLinks.map((link) => (
-          <Link key={link.href} href={link.href}>
+      <div>
+        <h2 className="text-sm font-medium text-muted-foreground">Team Management</h2>
+        <div className="mt-3 grid gap-4 md:grid-cols-2">
+          <Link href={teamManagementLink.href}>
             <Card className="h-full transition-colors hover:border-primary/40">
               <CardHeader>
-                <CardTitle className="text-base">{link.title}</CardTitle>
-                <CardDescription>{link.description}</CardDescription>
+                <CardTitle className="text-base">{teamManagementLink.title}</CardTitle>
+                <CardDescription>{teamManagementLink.description}</CardDescription>
               </CardHeader>
             </Card>
           </Link>
-        ))}
+        </div>
       </div>
+
+      {canAccessSettings() ? (
+        <div>
+          <h2 className="text-sm font-medium text-muted-foreground">Studio Configuration</h2>
+          <div className="mt-3 grid gap-4 md:grid-cols-2">
+            {ownerSettingsLinks.map((link) => (
+              <Link key={link.href} href={link.href}>
+                <Card className="h-full transition-colors hover:border-primary/40">
+                  <CardHeader>
+                    <CardTitle className="text-base">{link.title}</CardTitle>
+                    <CardDescription>{link.description}</CardDescription>
+                  </CardHeader>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -74,3 +74,16 @@ export type {
 
 export { reportsDateRangeQuerySchema } from "./reports/reports.schema";
 export type { ReportsDateRangeQueryInput } from "./reports/reports.schema";
+
+export {
+  inviteTeamMemberSchema,
+  updateTeamMemberSchema,
+  acceptInvitationSchema,
+  transferOwnershipSchema,
+} from "./team/team.schema";
+export type {
+  InviteTeamMemberInput,
+  UpdateTeamMemberInput,
+  AcceptInvitationInput,
+  TransferOwnershipInput,
+} from "./team/team.schema";

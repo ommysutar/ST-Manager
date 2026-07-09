@@ -27,11 +27,30 @@ export class AuthService {
       throw new UnauthorizedException("Invalid email or password");
     }
 
+    if (user.status === "disabled") {
+      throw new UnauthorizedException("Your account has been disabled");
+    }
+
     const passwordMatches = await bcrypt.compare(input.password, user.passwordHash);
     if (!passwordMatches) {
       throw new UnauthorizedException("Invalid email or password");
     }
 
+    await this.authRepository.updateLastLogin(user.id);
+    const tokens = await this.issueTokenPair(user.id, user.email, user.role);
+    return {
+      ...tokens,
+      user: this.toAuthUserDto(user),
+    };
+  }
+
+  async loginWithUser(userId: string): Promise<LoginResponseDataDto> {
+    const user = await this.authRepository.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException("User not found");
+    }
+
+    await this.authRepository.updateLastLogin(user.id);
     const tokens = await this.issueTokenPair(user.id, user.email, user.role);
     return {
       ...tokens,
@@ -47,7 +66,12 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(input.password, 10);
-    const user = await this.authRepository.createUser(email, passwordHash, "owner");
+    const user = await this.authRepository.createStudioWithOwner({
+      studioName: input.studioName,
+      ownerName: input.ownerName,
+      email,
+      passwordHash,
+    });
     const tokens = await this.issueTokenPair(user.id, user.email, user.role);
 
     return {
@@ -110,11 +134,21 @@ export class AuthService {
     };
   }
 
-  private toAuthUserDto(user: { id: string; email: string; role: string }): AuthUserDto {
+  private toAuthUserDto(user: {
+    id: string;
+    email: string;
+    role: string;
+    fullName?: string | null;
+    studioId?: string | null;
+    status?: string;
+  }): AuthUserDto {
     return {
       id: user.id,
       email: user.email,
       role: user.role,
+      fullName: user.fullName ?? null,
+      studioId: user.studioId ?? null,
+      status: user.status ?? "active",
     };
   }
 }

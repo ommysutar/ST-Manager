@@ -1,4 +1,5 @@
 import type { AuthUserDto } from "@st-manager/contracts";
+import { TEAM_ROLES } from "@st-manager/constants";
 
 import { getPrimaryEngineer } from "@/lib/projects/progress";
 import type { StudioProject } from "@/lib/projects/types";
@@ -72,6 +73,17 @@ export function canAccessSettings(user: AuthUserDto | null | undefined): boolean
   return getUserRole(user) === "owner";
 }
 
+/** Raw API role — owner or manager may view team management. */
+export function canAccessTeamManagement(user: AuthUserDto | null | undefined): boolean {
+  const role = user?.role;
+  return role === TEAM_ROLES.OWNER || role === TEAM_ROLES.MANAGER;
+}
+
+/** Only the studio owner can invite, edit, or remove team members. */
+export function canManageTeam(user: AuthUserDto | null | undefined): boolean {
+  return user?.role === TEAM_ROLES.OWNER;
+}
+
 export function canAccessPayments(user: AuthUserDto | null | undefined): boolean {
   const role = getUserRole(user);
   return role === "owner" || role === "assistant";
@@ -139,6 +151,12 @@ export function navHrefAllowed(
   }
   if (href.startsWith("/reports")) {
     return canAccessModule(user, "reports");
+  }
+  if (href.startsWith("/settings/team-members")) {
+    return canAccessTeamManagement(user);
+  }
+  if (href === "/settings") {
+    return canAccessSettings(user) || canAccessTeamManagement(user);
   }
   if (href.startsWith("/settings")) {
     return canAccessSettings(user);

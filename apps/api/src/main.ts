@@ -8,6 +8,31 @@ import type { ApiEnv } from "@st-manager/validation";
 import { AppModule } from "./app.module";
 import { StManagerNestLoggerService } from "./common/logging/st-manager-nest-logger.service";
 
+/** Origins used by the Tauri desktop WebView when loading bundled local assets. */
+const DESKTOP_CORS_ORIGINS = new Set([
+  "tauri://localhost",
+  "http://tauri.localhost",
+  "https://tauri.localhost",
+  "http://asset.localhost",
+  "https://asset.localhost",
+  "http://localhost",
+  "http://127.0.0.1",
+]);
+
+function isDesktopCorsOrigin(origin: string): boolean {
+  return DESKTOP_CORS_ORIGINS.has(origin) || origin.startsWith("tauri://");
+}
+
+function isLocalDevCorsOrigin(origin: string): boolean {
+  return (
+    isDesktopCorsOrigin(origin) ||
+    origin.startsWith("http://localhost:") ||
+    origin.startsWith("http://127.0.0.1:") ||
+    origin.startsWith("https://localhost:") ||
+    origin.startsWith("https://127.0.0.1:")
+  );
+}
+
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   const logger = app.get(StManagerNestLoggerService);
@@ -31,19 +56,20 @@ async function bootstrap(): Promise<void> {
       requestOrigin: string | undefined,
       callback: (error: Error | null, allow?: boolean) => void,
     ) => {
+      // Tauri/WebView requests may omit the Origin header.
       if (!requestOrigin) {
         callback(null, true);
         return;
       }
 
-      if (nodeEnv !== "production") {
-        const isLocalOrigin =
-          requestOrigin.startsWith("http://localhost:") ||
-          requestOrigin.startsWith("http://127.0.0.1:") ||
-          requestOrigin.startsWith("https://localhost:") ||
-          requestOrigin.startsWith("https://127.0.0.1:");
+      if (isDesktopCorsOrigin(requestOrigin)) {
+        callback(null, true);
+        return;
+      }
 
-        callback(isLocalOrigin ? null : new Error("Blocked by CORS"), isLocalOrigin);
+      if (nodeEnv !== "production") {
+        const isAllowed = isLocalDevCorsOrigin(requestOrigin);
+        callback(isAllowed ? null : new Error("Blocked by CORS"), isAllowed);
         return;
       }
 

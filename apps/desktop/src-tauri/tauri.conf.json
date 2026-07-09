@@ -5,13 +5,14 @@
   "identifier": "com.stmanager.desktop",
   "build": {
     "frontendDist": "../dist",
-    "devUrl": "http://localhost:1420",
-    "beforeDevCommand": "pnpm dev",
-    "beforeBuildCommand": "pnpm build"
+    "devUrl": "http://localhost:3000",
+    "beforeDevCommand": "pnpm --filter @st-manager/web dev",
+    "beforeBuildCommand": "node scripts/bundle-web.mjs"
   },
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "ST Manager",
         "width": 1280,
         "height": 800,
@@ -23,7 +24,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' tauri:; connect-src 'self' tauri: http://localhost:4000 http://127.0.0.1:4000 http://localhost:1420 http://127.0.0.1:1420 ws://localhost:1420 ws://127.0.0.1:1420 https:; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      "csp": "default-src 'self' asset: tauri: http://asset.localhost https://asset.localhost; connect-src 'self' tauri: http://localhost:4000 http://127.0.0.1:4000 asset: http://asset.localhost https://asset.localhost ipc: http://ipc.localhost https://ipc.localhost; img-src 'self' data: blob: asset: http://asset.localhost https://asset.localhost; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
     }
   },
   "bundle": {

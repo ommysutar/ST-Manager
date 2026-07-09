@@ -2,38 +2,15 @@
   "name": "@st-manager/desktop",
   "version": "0.0.0",
   "private": true,
-  "description": "Tauri 2 desktop application for ST Manager",
+  "description": "Tauri 2 desktop shell for ST Manager — loads the production web app",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "dev": "tauri dev",
+    "build": "node scripts/bundle-web.mjs",
+    "typecheck": "node -e \"console.log('Desktop shell has no TypeScript frontend')\"",
     "tauri": "tauri"
   },
-  "dependencies": {
-    "@st-manager/api-sdk": "workspace:*",
-    "@st-manager/constants": "workspace:*",
-    "@st-manager/contracts": "workspace:*",
-    "@st-manager/events": "workspace:*",
-    "@st-manager/theme": "workspace:*",
-    "@st-manager/types": "workspace:*",
-    "@st-manager/ui": "workspace:*",
-    "@st-manager/validation": "workspace:*",
-    "@tauri-apps/api": "^2.11.1",
-    "lucide-react": "^0.545.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "react-router": "^7.6.3"
-  },
   "devDependencies": {
-    "@st-manager/config-tailwind": "workspace:*",
-    "@tailwindcss/vite": "^4.1.16",
-    "@tauri-apps/cli": "^2.11.4",
-    "@types/react": "^19.2.7",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^4.5.2",
-    "typescript": "^6.0.3",
-    "vite": "^6.3.5"
+    "@tauri-apps/cli": "^2.11.4"
   }
 }

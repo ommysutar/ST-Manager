@@ -13,6 +13,9 @@ export const ROUTES = {
   STUDIOS: "studios",
   SYNC: "sync",
   AI: "ai",
+  TEAM_MEMBERS: "team-members",
+  INVITATIONS: "invitations",
+  PERMISSIONS: "permissions",
 } as const;
 
 export type RouteKey = (typeof ROUTES)[keyof typeof ROUTES];

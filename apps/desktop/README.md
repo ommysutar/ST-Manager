@@ -1,41 +1,39 @@
 # @st-manager/desktop
 
-Tauri 2 native desktop client (React + Vite frontend, Rust shell). Uses **embedded SQLite** (M11) for local-first Studio data and syncs to `@st-manager/api` via `@st-manager/api-sdk` when online and authenticated.
+Tauri 2 native desktop shell for ST Manager. The packaged app bundles the **local production static export** of `apps/web` — the same Next.js UI, served from files inside the DMG (no remote URL, works offline for UI).
 
-## Structure
+## Architecture
 
-- `src/` — React frontend rendered in the Tauri webview
-  - `app/shell/` — persistent app shell (header, sidebar, layout)
-  - `app/studios/` — Studios feature screen (local list + create)
-  - `app/router.tsx` — hash-based client routing (`react-router`)
-  - `lib/api-client.ts` — `packages/api-sdk` wiring (auth + sync)
-  - `lib/sync-engine.ts` — background push/pull sync when online
-  - `lib/tauri/studios.ts` — typed Tauri invoke wrappers for local SQLite
-  - `styles/globals.css` — Tailwind v4 entry (`@st-manager/config-tailwind/preset.css`)
-- `src-tauri/` — Rust application shell (Tauri 2 + `rusqlite` local database)
+| Mode | Webview loads |
+|------|----------------|
+| **Development** (`tauri dev`) | `http://localhost:3000` — local `apps/web` dev server |
+| **Production** (DMG / bundle) | Bundled `apps/web/out` copied to `apps/desktop/dist` |
 
-## Local database
+Build pipeline:
 
-- File: `{app_data_dir}/st-manager.db` (platform-specific app data directory)
-- Schema mirrors `packages/database/prisma/sqlite/schema.prisma` (`Studio` fields + local `sync_status` metadata)
-- Migrations: `src-tauri/src/db/migrations.rs` (`PRAGMA user_version`)
+1. `ST_MANAGER_DESKTOP_BUILD=1 pnpm --filter @st-manager/web build` → static export to `apps/web/out`
+2. Copy `out/` → `apps/desktop/dist`
+3. `tauri build` packages `dist/` into the macOS app
+
+API calls use `NEXT_PUBLIC_API_BASE_URL` (default `http://localhost:4000` at build time). Run the API locally for live data.
 
 ## Development
-
-Requires `apps/api` running for auth and sync (local list/create works offline once signed in at least once for sync push):
 
 ```bash
 # Terminal 1 — API
 pnpm --filter @st-manager/api dev
 
-# Terminal 2 — Desktop (Tauri + Vite)
+# Terminal 2 — Desktop (starts apps/web on :3000)
 pnpm --filter @st-manager/desktop tauri dev
 ```
 
-Copy `.env.example` to `.env` if you need to override `VITE_API_BASE_URL` (dev defaults to Vite origin with proxy to `:4000`).
+## Production build (macOS DMG)
 
-Dev credentials: `dev@st-manager.local` / `devpassword`
+```bash
+pnpm install
+pnpm --filter @st-manager/desktop exec tauri build
+```
 
-## Status
+`beforeBuildCommand` runs `scripts/bundle-web.mjs` automatically.
 
-M7: first running desktop app. M10: header auth. M11: embedded SQLite + background sync.
+Artifacts: `apps/desktop/src-tauri/target/release/bundle/`

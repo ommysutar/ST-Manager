@@ -112,3 +112,33 @@ export type {
   ClientActivityReportResponseDto,
   ClientActivityRowDto,
 } from "./reports/client-activity-report.dto";
+
+export type {
+  TeamMemberResponseDto,
+  PendingInvitationResponseDto,
+  TeamMemberListItemDto,
+  ListTeamMembersResponseDto,
+  InviteTeamMemberRequestDto,
+  InviteTeamMemberResponseDto,
+  UpdateTeamMemberRequestDto,
+  UpdateTeamMemberResponseDto,
+  DisableTeamMemberResponseDto,
+  EnableTeamMemberResponseDto,
+  RemoveTeamMemberResponseDto,
+  ResendInvitationResponseDto,
+  CancelInvitationResponseDto,
+  TransferOwnershipRequestDto,
+  TransferOwnershipResponseDto,
+} from "./team/team-member.dto";
+export type {
+  InvitationPreviewDto,
+  VerifyInvitationResponseDto,
+  AcceptInvitationRequestDto,
+  AcceptInvitationResponseDto,
+} from "./team/invitation.dto";
+export type {
+  PermissionResponseDto,
+  RoleDefinitionResponseDto,
+  ListPermissionsResponseDto,
+  ListRolesResponseDto,
+} from "./team/permissions.dto";

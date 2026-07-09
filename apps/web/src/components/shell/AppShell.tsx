@@ -19,7 +19,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
   const mounted = useIsClientMounted();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const isAuthRoute = pathname === "/login" || pathname.startsWith("/login/");
+  const isAuthRoute =
+    pathname === "/login" ||
+    pathname.startsWith("/login/") ||
+    pathname.startsWith("/invite/");
 
   useEffect(() => {
     if (!mounted) {
