@@ -14,7 +14,7 @@ import {
 } from "@st-manager/ui";
 import { TEAM_ROLE_LABELS } from "@st-manager/constants";
 import { inviteTeamMemberSchema, type InviteTeamMemberInput } from "@st-manager/validation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 
 import type { PermissionResponseDto } from "@st-manager/contracts";
@@ -56,14 +56,14 @@ export function InviteMemberDialog({
     formState: { errors, isSubmitting },
   } = form;
 
-  useEffect(() => {
-    if (!open) {
-      return;
+  function handleOpenChange(nextOpen: boolean) {
+    if (nextOpen) {
+      reset(defaultValues);
+      setShowCustomPermissions(false);
+      setSelectedPermissions([]);
     }
-    reset(defaultValues);
-    setShowCustomPermissions(false);
-    setSelectedPermissions([]);
-  }, [open, reset]);
+    onOpenChange(nextOpen);
+  }
 
   async function handleFormSubmit(values: InviteTeamMemberInput) {
     await onSubmit({
@@ -83,7 +83,7 @@ export function InviteMemberDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Invite Team Member</DialogTitle>

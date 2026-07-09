@@ -27,9 +27,12 @@ function AcceptInvitationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
+  const invalidLink = !token;
   const [preview, setPreview] = useState<InvitationPreviewDto | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(!invalidLink);
+  const [error, setError] = useState<string | null>(
+    invalidLink ? "Invalid invitation link" : null,
+  );
 
   const form = useForm<AcceptInvitationInput>({
     resolver: zodResolver(acceptInvitationSchema),
@@ -43,9 +46,7 @@ function AcceptInvitationContent() {
   } = form;
 
   useEffect(() => {
-    if (!token) {
-      setError("Invalid invitation link");
-      setLoading(false);
+    if (invalidLink) {
       return;
     }
 
@@ -56,7 +57,7 @@ function AcceptInvitationContent() {
         setError(getApiErrorMessage(err, "Invitation is invalid or expired"));
       })
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [invalidLink, token]);
 
   async function onSubmit(values: AcceptInvitationInput) {
     try {

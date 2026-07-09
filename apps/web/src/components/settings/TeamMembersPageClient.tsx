@@ -100,9 +100,11 @@ export function TeamMembersPageClient() {
   }, [isOwner]);
 
   useEffect(() => {
-    if (isAuthenticated && canAccessTeamManagement()) {
-      void loadData();
+    if (!isAuthenticated || !canAccessTeamManagement()) {
+      return;
     }
+
+    void Promise.resolve().then(() => loadData());
   }, [isAuthenticated, canAccessTeamManagement, loadData]);
 
   const activeMembers = useMemo(

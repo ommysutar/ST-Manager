@@ -10,7 +10,7 @@ import {
   Label,
 } from "@st-manager/ui";
 import type { TeamMemberResponseDto } from "@st-manager/contracts";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface TransferOwnershipDialogProps {
   open: boolean;
@@ -37,12 +37,12 @@ export function TransferOwnershipDialog({
       member.id !== currentUserId,
   );
 
-  useEffect(() => {
-    if (!open) {
-      return;
+  function handleOpenChange(nextOpen: boolean) {
+    if (nextOpen) {
+      setSelectedId(candidates[0]?.id ?? "");
     }
-    setSelectedId(candidates[0]?.id ?? "");
-  }, [open, candidates]);
+    onOpenChange(nextOpen);
+  }
 
   async function handleSubmit() {
     if (!selectedId) {
@@ -58,7 +58,7 @@ export function TransferOwnershipDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Transfer Ownership</DialogTitle>
