@@ -30,11 +30,15 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
 
     if (isAuthRoute) {
+      const isInviteAcceptRoute =
+        pathname === "/invite/accept" || pathname.startsWith("/invite/accept/");
+
       if (isAuthenticated) {
         const hasPendingInvitation =
           typeof window !== "undefined" &&
           new URLSearchParams(window.location.search).has("invitation");
-        if (!hasPendingInvitation) {
+        // Never redirect away from invitation acceptance — session is resolved on that page.
+        if (!hasPendingInvitation && !isInviteAcceptRoute) {
           router.replace("/");
         }
       }

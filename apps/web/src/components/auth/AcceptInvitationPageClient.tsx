@@ -16,10 +16,12 @@ import type { InvitationPreviewDto } from "@st-manager/contracts";
 import { acceptInvitationSchema, type AcceptInvitationInput } from "@st-manager/validation";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import { InvitationSessionConflict } from "@/components/auth/InvitationSessionConflict";
+import { useAuth } from "@/hooks/useAuth";
 import { teamMembersApi } from "@/lib/api-client";
 import { getApiErrorMessage } from "@/lib/api-error";
 
@@ -37,12 +39,21 @@ function AcceptInvitationContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
   const invalidLink = !token;
+  const { isAuthenticated } = useAuth();
+  const [sessionCleared, setSessionCleared] = useState(false);
   const [preview, setPreview] = useState<InvitationPreviewDto | null>(null);
   const [loading, setLoading] = useState(!invalidLink);
   const [error, setError] = useState<string | null>(
     invalidLink ? "Invalid invitation link" : null,
   );
   const [accountCreated, setAccountCreated] = useState(false);
+
+  const invitationUrl = useMemo(() => {
+    if (typeof window === "undefined" || !token) {
+      return "";
+    }
+    return `${window.location.origin}/invite/accept?token=${encodeURIComponent(token)}`;
+  }, [token]);
 
   const form = useForm<AcceptInvitationInput>({
     resolver: zodResolver(acceptInvitationSchema),
@@ -56,10 +67,11 @@ function AcceptInvitationContent() {
   } = form;
 
   useEffect(() => {
-    if (invalidLink) {
+    if (invalidLink || (isAuthenticated && !sessionCleared)) {
       return;
     }
 
+    setLoading(true);
     void teamMembersApi
       .verifyInvitation(token)
       .then(setPreview)
@@ -67,7 +79,7 @@ function AcceptInvitationContent() {
         setError(getApiErrorMessage(err, "Invitation is invalid or expired"));
       })
       .finally(() => setLoading(false));
-  }, [invalidLink, token]);
+  }, [invalidLink, token, isAuthenticated, sessionCleared]);
 
   async function onSubmit(values: AcceptInvitationInput) {
     try {
@@ -79,6 +91,15 @@ function AcceptInvitationContent() {
   }
 
   const loginHref = `/login?invitation=${encodeURIComponent(token)}`;
+
+  if (isAuthenticated && !sessionCleared) {
+    return (
+      <InvitationSessionConflict
+        invitationUrl={invitationUrl}
+        onSignedOut={() => setSessionCleared(true)}
+      />
+    );
+  }
 
   if (loading) {
     return (

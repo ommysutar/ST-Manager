@@ -3,8 +3,10 @@
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label } from "@st-manager/ui";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, type FormEvent, useState } from "react";
+import { Suspense, type FormEvent, useMemo, useState } from "react";
 
+import { InvitationSessionConflict } from "@/components/auth/InvitationSessionConflict";
+import { useAuth } from "@/hooks/useAuth";
 import { authApi, teamMembersApi } from "@/lib/api-client";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { tokenStore } from "@/lib/token-store";
@@ -13,10 +15,19 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const invitationToken = searchParams.get("invitation");
+  const { isAuthenticated } = useAuth();
+  const [sessionCleared, setSessionCleared] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const invitationUrl = useMemo(() => {
+    if (typeof window === "undefined" || !invitationToken) {
+      return "";
+    }
+    return `${window.location.origin}/login?invitation=${encodeURIComponent(invitationToken)}`;
+  }, [invitationToken]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,6 +53,17 @@ function LoginForm() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  if (invitationToken && isAuthenticated && !sessionCleared) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center bg-background p-4 sm:p-6">
+        <InvitationSessionConflict
+          invitationUrl={invitationUrl}
+          onSignedOut={() => setSessionCleared(true)}
+        />
+      </div>
+    );
   }
 
   return (
