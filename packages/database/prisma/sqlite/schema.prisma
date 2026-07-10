@@ -149,6 +149,7 @@ model ActivationCode {
   expiresAt                DateTime?
   usedAt                   DateTime?
   usedByStudioId           String?
+  usedByOwnerEmail         String?
   generatedByPlatformAdmin String
   notes                    String?
   usedByStudio             Studio?   @relation(fields: [usedByStudioId], references: [id])

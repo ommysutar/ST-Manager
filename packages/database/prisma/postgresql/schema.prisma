@@ -152,6 +152,7 @@ model ActivationCode {
   expiresAt                DateTime?
   usedAt                   DateTime?
   usedByStudioId           String?
+  usedByOwnerEmail         String?   @db.VarChar(255)
   generatedByPlatformAdmin String   @db.VarChar(64)
   notes                    String?   @db.Text
   usedByStudio             Studio?   @relation(fields: [usedByStudioId], references: [id])

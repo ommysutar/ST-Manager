@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService, type JwtSignOptions } from "@nestjs/jwt";
 import { DISABLED_STUDIO_MESSAGE, PLATFORM_ROLES, STUDIO_STATUSES } from "@st-manager/constants";
@@ -10,7 +10,7 @@ import type {
 import type { ApiEnv, LoginInput, RefreshInput, RegisterInput } from "@st-manager/validation";
 import * as bcrypt from "bcrypt";
 
-import { AuthRepository } from "./auth.repository";
+import { ActivationCodeRedeemError, AuthRepository } from "./auth.repository";
 import type { JwtTokenPayload } from "./auth.types";
 import { expiresInToSeconds } from "./auth.utils";
 
@@ -79,12 +79,21 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(input.password, 10);
-    const user = await this.authRepository.createStudioWithOwner({
-      studioName: input.studioName,
-      ownerName: input.ownerName,
-      email,
-      passwordHash,
-    });
+    let user;
+    try {
+      user = await this.authRepository.createStudioWithOwner({
+        studioName: input.studioName,
+        ownerName: input.ownerName,
+        email,
+        passwordHash,
+        activationCode: input.activationCode,
+      });
+    } catch (error) {
+      if (error instanceof ActivationCodeRedeemError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
     const tokens = await this.issueTokenPair(user.id, user.email, user.role);
 
     return {

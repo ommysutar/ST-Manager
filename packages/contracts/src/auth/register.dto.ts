@@ -7,6 +7,7 @@ export interface RegisterRequestDto {
   email: string;
   password: string;
   confirmPassword: string;
+  activationCode: string;
 }
 
 export type RegisterResponseDataDto = LoginResponseDataDto;

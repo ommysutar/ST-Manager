@@ -20,10 +20,20 @@ export const PLATFORM_AUDIT_ACTIONS = {
   STUDIO_DISABLED: "studio.disabled",
   STUDIO_ENABLED: "studio.enabled",
   STUDIO_DELETED: "studio.deleted",
+  STUDIO_ACTIVATED: "studio.activated",
   ACTIVATION_CODE_GENERATED: "activation_code.generated",
+  ACTIVATION_CODE_VALIDATED: "activation_code.validated",
+  ACTIVATION_CODE_USED: "activation_code.used",
   ACTIVATION_CODE_DISABLED: "activation_code.disabled",
   ACTIVATION_CODE_ENABLED: "activation_code.enabled",
   ACTIVATION_CODE_DELETED: "activation_code.deleted",
+} as const;
+
+export const ACTIVATION_CODE_ERROR_MESSAGES = {
+  INVALID: "Invalid code",
+  USED: "Code already used",
+  DISABLED: "Code disabled",
+  EXPIRED: "Code expired",
 } as const;
 
 export type PlatformAuditAction =

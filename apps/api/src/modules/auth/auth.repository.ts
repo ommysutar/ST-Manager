@@ -1,4 +1,9 @@
 import { Injectable } from "@nestjs/common";
+import {
+  ACTIVATION_CODE_ERROR_MESSAGES,
+  ACTIVATION_CODE_STATUSES,
+  PLATFORM_AUDIT_ACTIONS,
+} from "@st-manager/constants";
 import type { PostgresPrismaClient } from "@st-manager/database";
 
 import type { DatabaseClient } from "../../common/prisma/prisma.service";
@@ -14,6 +19,13 @@ export interface AuthUserRecord {
   studioId: string | null;
   status: string;
   lastLoginAt: Date | null;
+}
+
+export class ActivationCodeRedeemError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ActivationCodeRedeemError";
+  }
 }
 
 function asAuthClient(client: DatabaseClient): PostgresPrismaClient {
@@ -80,14 +92,56 @@ export class AuthRepository {
     ownerName: string;
     email: string;
     passwordHash: string;
+    activationCode: string;
   }): Promise<AuthUserRecord> {
     const client = asAuthClient(this.prismaService.getClient());
     return client.$transaction(async (tx) => {
+      const code = await tx.activationCode.findUnique({
+        where: { code: input.activationCode },
+      });
+
+      if (!code) {
+        throw new ActivationCodeRedeemError(ACTIVATION_CODE_ERROR_MESSAGES.INVALID);
+      }
+
+      if (code.status === ACTIVATION_CODE_STATUSES.USED) {
+        throw new ActivationCodeRedeemError(ACTIVATION_CODE_ERROR_MESSAGES.USED);
+      }
+
+      if (code.status === ACTIVATION_CODE_STATUSES.DISABLED) {
+        throw new ActivationCodeRedeemError(ACTIVATION_CODE_ERROR_MESSAGES.DISABLED);
+      }
+
+      if (code.status === ACTIVATION_CODE_STATUSES.EXPIRED) {
+        throw new ActivationCodeRedeemError(ACTIVATION_CODE_ERROR_MESSAGES.EXPIRED);
+      }
+
+      if (code.status !== ACTIVATION_CODE_STATUSES.ACTIVE) {
+        throw new ActivationCodeRedeemError(ACTIVATION_CODE_ERROR_MESSAGES.INVALID);
+      }
+
+      if (code.expiresAt && code.expiresAt.getTime() <= Date.now()) {
+        await tx.activationCode.update({
+          where: { id: code.id },
+          data: { status: ACTIVATION_CODE_STATUSES.EXPIRED },
+        });
+        throw new ActivationCodeRedeemError(ACTIVATION_CODE_ERROR_MESSAGES.EXPIRED);
+      }
+
+      await tx.platformAuditLog.create({
+        data: {
+          actorUserId: null,
+          actorEmail: input.email,
+          action: PLATFORM_AUDIT_ACTIONS.ACTIVATION_CODE_VALIDATED,
+          metadata: { code: code.code },
+        },
+      });
+
       const studio = await tx.studio.create({
         data: { name: input.studioName },
       });
 
-      return tx.user.create({
+      const user = await tx.user.create({
         data: {
           email: input.email,
           passwordHash: input.passwordHash,
@@ -96,6 +150,47 @@ export class AuthRepository {
           studioId: studio.id,
         },
       });
+
+      const redeemed = await tx.activationCode.updateMany({
+        where: {
+          id: code.id,
+          status: ACTIVATION_CODE_STATUSES.ACTIVE,
+        },
+        data: {
+          status: ACTIVATION_CODE_STATUSES.USED,
+          usedAt: new Date(),
+          usedByStudioId: studio.id,
+          usedByOwnerEmail: input.email,
+        },
+      });
+
+      if (redeemed.count !== 1) {
+        throw new ActivationCodeRedeemError(ACTIVATION_CODE_ERROR_MESSAGES.USED);
+      }
+
+      await tx.platformAuditLog.create({
+        data: {
+          actorUserId: user.id,
+          actorEmail: input.email,
+          action: PLATFORM_AUDIT_ACTIONS.ACTIVATION_CODE_USED,
+          studioId: studio.id,
+          studioName: studio.name,
+          metadata: { code: code.code },
+        },
+      });
+
+      await tx.platformAuditLog.create({
+        data: {
+          actorUserId: user.id,
+          actorEmail: input.email,
+          action: PLATFORM_AUDIT_ACTIONS.STUDIO_ACTIVATED,
+          studioId: studio.id,
+          studioName: studio.name,
+          metadata: { code: code.code },
+        },
+      });
+
+      return user;
     });
   }
 

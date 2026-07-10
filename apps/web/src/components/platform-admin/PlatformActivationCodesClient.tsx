@@ -279,7 +279,18 @@ export function PlatformActivationCodesClient() {
                   label="Expires"
                   value={row.expiresAt ? new Date(row.expiresAt).toLocaleDateString() : "—"}
                 />
-                <MobileDataField label="Used By" value={row.usedByStudioName ?? "—"} />
+                <MobileDataField
+                  label="Used By Studio"
+                  value={row.usedByStudioName ?? "—"}
+                />
+                <MobileDataField
+                  label="Owner Email"
+                  value={row.usedByOwnerEmail ?? "—"}
+                />
+                <MobileDataField
+                  label="Used Date"
+                  value={row.usedAt ? new Date(row.usedAt).toLocaleString() : "—"}
+                />
               </MobileDataCard>
             ))}
           </>
@@ -331,7 +342,21 @@ export function PlatformActivationCodesClient() {
                     <TableCell>
                       {row.expiresAt ? new Date(row.expiresAt).toLocaleDateString() : "—"}
                     </TableCell>
-                    <TableCell>{row.usedByStudioName ?? "—"}</TableCell>
+                    <TableCell>
+                      {row.status === ACTIVATION_CODE_STATUSES.USED ? (
+                        <div className="space-y-0.5">
+                          <div>{row.usedByStudioName ?? "—"}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {row.usedByOwnerEmail ?? "—"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {row.usedAt ? new Date(row.usedAt).toLocaleString() : "—"}
+                          </div>
+                        </div>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
                     <TableCell className="space-x-2 text-right">
                       <Button size="sm" variant="outline" onClick={() => void copyCode(row.code)}>
                         Copy

@@ -390,7 +390,7 @@ export class PlatformAdminService implements OnModuleInit {
           row.expiresAt?.toISOString() ?? "",
           row.usedAt?.toISOString() ?? "",
           row.usedByStudio?.name ?? "",
-          row.usedByStudio?.members[0]?.email ?? "",
+          row.usedByOwnerEmail ?? row.usedByStudio?.members[0]?.email ?? "",
           (row.notes ?? "").replaceAll('"', '""'),
         ]
           .map((value) => `"${value}"`)
@@ -451,6 +451,7 @@ export class PlatformAdminService implements OnModuleInit {
     expiresAt: Date | null;
     usedAt: Date | null;
     usedByStudioId: string | null;
+    usedByOwnerEmail?: string | null;
     generatedByPlatformAdmin: string;
     notes: string | null;
     usedByStudio?: {
@@ -468,7 +469,7 @@ export class PlatformAdminService implements OnModuleInit {
       usedAt: row.usedAt?.toISOString() ?? null,
       usedByStudioId: row.usedByStudioId,
       usedByStudioName: row.usedByStudio?.name ?? null,
-      usedByOwnerEmail: row.usedByStudio?.members[0]?.email ?? null,
+      usedByOwnerEmail: row.usedByOwnerEmail ?? row.usedByStudio?.members[0]?.email ?? null,
       generatedByPlatformAdmin: row.generatedByPlatformAdmin,
       notes: row.notes,
     };

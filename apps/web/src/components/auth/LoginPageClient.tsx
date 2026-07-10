@@ -15,6 +15,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const invitationToken = searchParams.get("invitation");
+  const activated = searchParams.get("activated") === "1";
   const { isAuthenticated } = useAuth();
   const [sessionCleared, setSessionCleared] = useState(false);
   const [email, setEmail] = useState("");
@@ -78,6 +79,11 @@ function LoginForm() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {activated ? (
+            <p className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              Activation successful. Sign in to continue.
+            </p>
+          ) : null}
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <Label htmlFor="login-email">Email</Label>
