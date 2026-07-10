@@ -1,7 +1,7 @@
 import { ConflictException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService, type JwtSignOptions } from "@nestjs/jwt";
-import { PLATFORM_ROLES } from "@st-manager/constants";
+import { DISABLED_STUDIO_MESSAGE, PLATFORM_ROLES, STUDIO_STATUSES } from "@st-manager/constants";
 import type {
   AuthUserDto,
   LoginResponseDataDto,
@@ -23,7 +23,7 @@ export class AuthService {
   ) {}
 
   async login(input: LoginInput): Promise<LoginResponseDataDto> {
-    const user = await this.authRepository.findByEmail(input.email.toLowerCase());
+    const user = await this.authRepository.findByEmailWithStudio(input.email.toLowerCase());
     if (!user) {
       throw new UnauthorizedException("Invalid email or password");
     }
@@ -34,6 +34,14 @@ export class AuthService {
 
     if (user.role === PLATFORM_ROLES.PLATFORM_ADMIN) {
       throw new UnauthorizedException("Invalid email or password");
+    }
+
+    if (
+      user.studio &&
+      (user.studio.status === STUDIO_STATUSES.DISABLED ||
+        user.studio.status === STUDIO_STATUSES.ARCHIVED)
+    ) {
+      throw new UnauthorizedException(DISABLED_STUDIO_MESSAGE);
     }
 
     const passwordMatches = await bcrypt.compare(input.password, user.passwordHash);

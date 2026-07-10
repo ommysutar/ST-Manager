@@ -87,3 +87,12 @@ export type {
   AcceptInvitationInput,
   TransferOwnershipInput,
 } from "./team/team.schema";
+
+export {
+  platformStudioListQuerySchema,
+  platformDeleteStudioSchema,
+} from "./platform-admin/platform-admin.schema";
+export type {
+  PlatformStudioListQueryInput,
+  PlatformDeleteStudioInput,
+} from "./platform-admin/platform-admin.schema";

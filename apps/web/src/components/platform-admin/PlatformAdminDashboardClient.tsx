@@ -1,13 +1,15 @@
 "use client";
 
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@st-manager/ui";
+import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@st-manager/ui";
 import type { PlatformAdminDashboardDto } from "@st-manager/contracts";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { usePlatformAuth } from "@/hooks/usePlatformAuth";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { platformAdminApi } from "@/lib/platform-api-client";
+import { PlatformStudiosTable } from "@/components/platform-admin/PlatformStudiosTable";
 
 export function PlatformAdminDashboardClient() {
   const router = useRouter();
@@ -22,8 +24,8 @@ export function PlatformAdminDashboardClient() {
       return;
     }
 
-    void platformAdminApi
-      .getDashboard()
+    void Promise.resolve()
+      .then(() => platformAdminApi.getDashboard())
       .then(setDashboard)
       .catch((err) => {
         setError(getApiErrorMessage(err, "Failed to load dashboard"));
@@ -41,60 +43,57 @@ export function PlatformAdminDashboardClient() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-5xl flex-col gap-6 p-6">
-      <header className="flex items-center justify-between gap-4">
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-6xl flex-col gap-8 p-6">
+      <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Platform Admin</h1>
           <p className="text-sm text-muted-foreground">{user?.email}</p>
         </div>
-        <Button variant="outline" onClick={handleLogout}>
-          Sign out
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline">
+            <Link href="/platform-admin/audit-logs">Audit Log</Link>
+          </Button>
+          <Button variant="outline" onClick={handleLogout}>
+            Sign out
+          </Button>
+        </div>
       </header>
 
       {loading ? <p className="text-sm text-muted-foreground">Loading dashboard…</p> : null}
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
       {dashboard ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Total Studios</CardTitle>
-              <CardDescription>Registered studio workspaces</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-semibold">{dashboard.totalStudios}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Total Users</CardTitle>
-              <CardDescription>All platform user accounts</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-semibold">{dashboard.totalUsers}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Platform Status</CardTitle>
-              <CardDescription>Current operational state</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-semibold capitalize">{dashboard.platformStatus}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Server Time</CardTitle>
-              <CardDescription>UTC timestamp from the API</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-lg font-medium">{new Date(dashboard.serverTime).toLocaleString()}</p>
-            </CardContent>
-          </Card>
-        </div>
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Studios</h2>
+            <Badge variant="secondary">{dashboard.platformStatus}</Badge>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <SummaryCard title="Total Studios" value={dashboard.totalStudios} />
+            <SummaryCard title="Active Studios" value={dashboard.activeStudios} />
+            <SummaryCard title="Disabled Studios" value={dashboard.disabledStudios} />
+            <SummaryCard title="Total Users" value={dashboard.totalUsers} />
+            <SummaryCard title="Verified Users" value={dashboard.verifiedUsers} />
+          </div>
+        </section>
       ) : null}
+
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold">Studio Management</h2>
+        <PlatformStudiosTable />
+      </section>
     </div>
+  );
+}
+
+function SummaryCard({ title, value }: { title: string; value: number }) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardDescription>{title}</CardDescription>
+        <CardTitle className="text-3xl">{value}</CardTitle>
+      </CardHeader>
+      <CardContent />
+    </Card>
   );
 }

@@ -1,20 +1,35 @@
 import {
+  BadRequestException,
   Injectable,
   Logger,
+  NotFoundException,
   OnModuleInit,
   UnauthorizedException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService, type JwtSignOptions } from "@nestjs/jwt";
-import { PLATFORM_ROLES } from "@st-manager/constants";
+import {
+  DISABLED_STUDIO_MESSAGE,
+  PLATFORM_AUDIT_ACTIONS,
+  PLATFORM_ROLES,
+  STUDIO_STATUSES,
+  TEAM_ROLES,
+} from "@st-manager/constants";
 import type {
   PlatformAdminDashboardDto,
   PlatformAdminLoginResponseDataDto,
+  PlatformStudioDetailDto,
+  PlatformStudioListItemDto,
 } from "@st-manager/contracts";
-import type { ApiEnv, LoginInput } from "@st-manager/validation";
+import type {
+  ApiEnv,
+  LoginInput,
+  PlatformDeleteStudioInput,
+  PlatformStudioListQueryInput,
+} from "@st-manager/validation";
 import * as bcrypt from "bcrypt";
 
-import type { JwtTokenPayload } from "../auth/auth.types";
+import type { AuthenticatedUser, JwtTokenPayload } from "../auth/auth.types";
 import { expiresInToSeconds } from "../auth/auth.utils";
 import { PlatformAdminRepository } from "./platform-admin.repository";
 
@@ -85,6 +100,12 @@ export class PlatformAdminService implements OnModuleInit {
     }
 
     await this.repository.updateLastLogin(user.id);
+    await this.repository.createPlatformAuditLog({
+      actorUserId: user.id,
+      actorEmail: user.email,
+      action: PLATFORM_AUDIT_ACTIONS.PLATFORM_ADMIN_LOGIN,
+    });
+
     const tokens = await this.issueTokenPair(user.id, user.email, user.role);
 
     return {
@@ -101,16 +122,151 @@ export class PlatformAdminService implements OnModuleInit {
   }
 
   async getDashboard(): Promise<PlatformAdminDashboardDto> {
-    const [totalStudios, totalUsers] = await Promise.all([
-      this.repository.countStudios(),
-      this.repository.countUsers(),
-    ]);
-
+    const counts = await this.repository.getDashboardCounts();
     return {
-      totalStudios,
-      totalUsers,
+      ...counts,
       platformStatus: "operational",
       serverTime: new Date().toISOString(),
+    };
+  }
+
+  async listStudios(query: PlatformStudioListQueryInput) {
+    const { total, rows } = await this.repository.listStudios(query);
+    return {
+      data: rows,
+      meta: {
+        page: query.page,
+        pageSize: query.pageSize,
+        total,
+      },
+    };
+  }
+
+  async getStudio(studioId: string): Promise<PlatformStudioDetailDto> {
+    const detail = await this.repository.findStudioDetail(studioId);
+    if (!detail) {
+      throw new NotFoundException("Studio not found");
+    }
+    return detail;
+  }
+
+  async disableStudio(
+    studioId: string,
+    actor: AuthenticatedUser,
+  ): Promise<PlatformStudioListItemDto> {
+    const studio = await this.requireStudio(studioId);
+    if (studio.status === STUDIO_STATUSES.ARCHIVED) {
+      throw new BadRequestException("Archived studios cannot be disabled");
+    }
+    if (studio.status === STUDIO_STATUSES.DISABLED) {
+      return this.toListItem(await this.repository.updateStudioStatus(studioId, STUDIO_STATUSES.DISABLED, null));
+    }
+
+    const updated = await this.repository.updateStudioStatus(
+      studioId,
+      STUDIO_STATUSES.DISABLED,
+      null,
+    );
+    await this.repository.createPlatformAuditLog({
+      actorUserId: actor.userId,
+      actorEmail: actor.email,
+      action: PLATFORM_AUDIT_ACTIONS.STUDIO_DISABLED,
+      studioId: studio.id,
+      studioName: studio.name,
+    });
+    return this.toListItem(updated);
+  }
+
+  async enableStudio(
+    studioId: string,
+    actor: AuthenticatedUser,
+  ): Promise<PlatformStudioListItemDto> {
+    const studio = await this.requireStudio(studioId);
+    if (studio.status === STUDIO_STATUSES.ARCHIVED) {
+      throw new BadRequestException("Archived studios cannot be enabled");
+    }
+
+    const updated = await this.repository.updateStudioStatus(
+      studioId,
+      STUDIO_STATUSES.ACTIVE,
+      null,
+    );
+    await this.repository.createPlatformAuditLog({
+      actorUserId: actor.userId,
+      actorEmail: actor.email,
+      action: PLATFORM_AUDIT_ACTIONS.STUDIO_ENABLED,
+      studioId: studio.id,
+      studioName: studio.name,
+    });
+    return this.toListItem(updated);
+  }
+
+  async deleteStudio(
+    studioId: string,
+    input: PlatformDeleteStudioInput,
+    actor: AuthenticatedUser,
+  ): Promise<PlatformStudioListItemDto> {
+    if (input.confirmation !== "DELETE") {
+      throw new BadRequestException('Type DELETE to confirm studio deletion');
+    }
+
+    const studio = await this.requireStudio(studioId);
+    if (studio.status === STUDIO_STATUSES.ARCHIVED) {
+      throw new BadRequestException("Studio is already archived");
+    }
+
+    const updated = await this.repository.updateStudioStatus(
+      studioId,
+      STUDIO_STATUSES.ARCHIVED,
+      new Date(),
+    );
+    await this.repository.createPlatformAuditLog({
+      actorUserId: actor.userId,
+      actorEmail: actor.email,
+      action: PLATFORM_AUDIT_ACTIONS.STUDIO_DELETED,
+      studioId: studio.id,
+      studioName: studio.name,
+    });
+    return this.toListItem(updated);
+  }
+
+  async listAuditLogs() {
+    const logs = await this.repository.listRecentAuditLogs();
+    return logs.map((log) => ({
+      id: log.id,
+      actorEmail: log.actorEmail,
+      action: log.action,
+      studioId: log.studioId,
+      studioName: log.studioName,
+      createdAt: log.createdAt.toISOString(),
+    }));
+  }
+
+  private async requireStudio(studioId: string) {
+    const studio = await this.repository.findStudioById(studioId);
+    if (!studio) {
+      throw new NotFoundException("Studio not found");
+    }
+    return studio;
+  }
+
+  private toListItem(studio: {
+    id: string;
+    name: string;
+    status: string;
+    createdAt: Date;
+    members: Array<{ fullName: string | null; email: string; role: string }>;
+    _count: { members: number };
+  }): PlatformStudioListItemDto {
+    const owner = studio.members.find((m) => m.role === TEAM_ROLES.OWNER) ?? null;
+    return {
+      id: studio.id,
+      name: studio.name,
+      ownerName: owner?.fullName ?? null,
+      ownerEmail: owner?.email ?? null,
+      createdAt: studio.createdAt.toISOString(),
+      totalUsers: studio._count.members,
+      status: studio.status,
     };
   }
 
@@ -145,3 +301,5 @@ export class PlatformAdminService implements OnModuleInit {
     };
   }
 }
+
+export { DISABLED_STUDIO_MESSAGE };

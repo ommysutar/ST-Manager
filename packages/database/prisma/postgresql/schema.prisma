@@ -17,6 +17,8 @@ datasource db {
 model Studio {
   id           String              @id @default(cuid())
   name         String              @db.VarChar(120)
+  status       String              @default("active") @db.VarChar(32)
+  archivedAt   DateTime?
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
   bookings     Booking[]
@@ -26,6 +28,7 @@ model Studio {
   auditLogs    AuditLog[]
   roleDefs     RoleDefinition[]
 
+  @@index([status])
   @@map("studios")
 }
 
@@ -123,6 +126,21 @@ model AuditLog {
 
   @@index([studioId, createdAt])
   @@map("audit_logs")
+}
+
+model PlatformAuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  actorEmail  String   @db.VarChar(255)
+  action      String   @db.VarChar(64)
+  studioId    String?
+  studioName  String?  @db.VarChar(120)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([studioId])
+  @@map("platform_audit_logs")
 }
 
 model Client {

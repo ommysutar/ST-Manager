@@ -29,6 +29,26 @@ export class AuthRepository {
     return client.user.findUnique({ where: { email } });
   }
 
+  async findByEmailWithStudio(email: string): Promise<
+    (AuthUserRecord & { studio: { id: string; status: string; name: string } | null }) | null
+  > {
+    const client = asAuthClient(this.prismaService.getClient());
+    return client.user.findUnique({
+      where: { email },
+      include: { studio: { select: { id: true, status: true, name: true } } },
+    });
+  }
+
+  async findByIdWithStudio(id: string): Promise<
+    (AuthUserRecord & { studio: { id: string; status: string; name: string } | null }) | null
+  > {
+    const client = asAuthClient(this.prismaService.getClient());
+    return client.user.findUnique({
+      where: { id },
+      include: { studio: { select: { id: true, status: true, name: true } } },
+    });
+  }
+
   async findById(id: string): Promise<AuthUserRecord | null> {
     const client = asAuthClient(this.prismaService.getClient());
     return client.user.findUnique({ where: { id } });
