@@ -9,6 +9,7 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { JwtService, type JwtSignOptions } from "@nestjs/jwt";
 import {
+  ACTIVATION_CODE_STATUSES,
   DISABLED_STUDIO_MESSAGE,
   PLATFORM_AUDIT_ACTIONS,
   PLATFORM_ROLES,
@@ -16,6 +17,7 @@ import {
   TEAM_ROLES,
 } from "@st-manager/constants";
 import type {
+  PlatformActivationCodeDto,
   PlatformAdminDashboardDto,
   PlatformAdminLoginResponseDataDto,
   PlatformStudioDetailDto,
@@ -24,10 +26,14 @@ import type {
 import type {
   ApiEnv,
   LoginInput,
+  PlatformActivationCodeListQueryInput,
+  PlatformDeleteActivationCodeInput,
   PlatformDeleteStudioInput,
+  PlatformGenerateActivationCodesInput,
   PlatformStudioListQueryInput,
 } from "@st-manager/validation";
 import * as bcrypt from "bcrypt";
+import { randomBytes } from "node:crypto";
 
 import type { AuthenticatedUser, JwtTokenPayload } from "../auth/auth.types";
 import { expiresInToSeconds } from "../auth/auth.utils";
@@ -240,6 +246,232 @@ export class PlatformAdminService implements OnModuleInit {
       studioName: log.studioName,
       createdAt: log.createdAt.toISOString(),
     }));
+  }
+
+  async listActivationCodes(query: PlatformActivationCodeListQueryInput) {
+    await this.repository.markExpiredActivationCodes();
+    const [summary, { total, rows }] = await Promise.all([
+      this.repository.getActivationCodeSummary(),
+      this.repository.listActivationCodes(query),
+    ]);
+
+    return {
+      data: rows.map((row) => this.toActivationCodeDto(row)),
+      meta: {
+        page: query.page,
+        pageSize: query.pageSize,
+        total,
+      },
+      summary,
+    };
+  }
+
+  async generateActivationCodes(
+    input: PlatformGenerateActivationCodesInput,
+    actor: AuthenticatedUser,
+  ): Promise<PlatformActivationCodeDto[]> {
+    const expiresAt = input.expiresAt ? new Date(input.expiresAt) : null;
+    if (expiresAt && Number.isNaN(expiresAt.getTime())) {
+      throw new BadRequestException("Invalid expiry date");
+    }
+    if (expiresAt && expiresAt.getTime() <= Date.now()) {
+      throw new BadRequestException("Expiry date must be in the future");
+    }
+
+    const codes: Array<{
+      code: string;
+      expiresAt: Date | null;
+      notes: string | null;
+      generatedByPlatformAdmin: string;
+    }> = [];
+
+    for (let i = 0; i < input.quantity; i += 1) {
+      codes.push({
+        code: await this.generateUniqueCode(),
+        expiresAt,
+        notes: input.notes?.trim() || null,
+        generatedByPlatformAdmin: actor.userId,
+      });
+    }
+
+    const created = await this.repository.createActivationCodes(codes);
+    await this.repository.createPlatformAuditLog({
+      actorUserId: actor.userId,
+      actorEmail: actor.email,
+      action: PLATFORM_AUDIT_ACTIONS.ACTIVATION_CODE_GENERATED,
+      metadata: {
+        quantity: input.quantity,
+        codes: created.map((c) => c.code).join(","),
+      },
+    });
+
+    return created.map((row) => this.toActivationCodeDto(row));
+  }
+
+  async disableActivationCode(id: string, actor: AuthenticatedUser): Promise<PlatformActivationCodeDto> {
+    const code = await this.requireMutableActivationCode(id);
+    const updated = await this.repository.updateActivationCodeStatus(
+      code.id,
+      ACTIVATION_CODE_STATUSES.DISABLED,
+    );
+    await this.repository.createPlatformAuditLog({
+      actorUserId: actor.userId,
+      actorEmail: actor.email,
+      action: PLATFORM_AUDIT_ACTIONS.ACTIVATION_CODE_DISABLED,
+      metadata: { code: code.code },
+    });
+    return this.toActivationCodeDto(updated);
+  }
+
+  async enableActivationCode(id: string, actor: AuthenticatedUser): Promise<PlatformActivationCodeDto> {
+    const code = await this.requireActivationCode(id);
+    if (code.status !== ACTIVATION_CODE_STATUSES.DISABLED) {
+      throw new BadRequestException("Only disabled activation codes can be enabled");
+    }
+    if (code.expiresAt && code.expiresAt.getTime() <= Date.now()) {
+      const expired = await this.repository.updateActivationCodeStatus(
+        code.id,
+        ACTIVATION_CODE_STATUSES.EXPIRED,
+      );
+      return this.toActivationCodeDto(expired);
+    }
+
+    const updated = await this.repository.updateActivationCodeStatus(
+      code.id,
+      ACTIVATION_CODE_STATUSES.ACTIVE,
+    );
+    await this.repository.createPlatformAuditLog({
+      actorUserId: actor.userId,
+      actorEmail: actor.email,
+      action: PLATFORM_AUDIT_ACTIONS.ACTIVATION_CODE_ENABLED,
+      metadata: { code: code.code },
+    });
+    return this.toActivationCodeDto(updated);
+  }
+
+  async deleteActivationCode(
+    id: string,
+    input: PlatformDeleteActivationCodeInput,
+    actor: AuthenticatedUser,
+  ): Promise<void> {
+    if (input.confirmation !== "DELETE") {
+      throw new BadRequestException("Type DELETE to confirm");
+    }
+    const code = await this.requireMutableActivationCode(id);
+    await this.repository.deleteActivationCode(code.id);
+    await this.repository.createPlatformAuditLog({
+      actorUserId: actor.userId,
+      actorEmail: actor.email,
+      action: PLATFORM_AUDIT_ACTIONS.ACTIVATION_CODE_DELETED,
+      metadata: { code: code.code },
+    });
+  }
+
+  async exportActivationCodesCsv(): Promise<{ csv: string; filename: string }> {
+    await this.repository.markExpiredActivationCodes();
+    const rows = await this.repository.listAllActivationCodesForExport();
+    const header = [
+      "code",
+      "status",
+      "createdAt",
+      "expiresAt",
+      "usedAt",
+      "usedByStudio",
+      "usedByOwnerEmail",
+      "notes",
+    ];
+    const lines = [
+      header.join(","),
+      ...rows.map((row) =>
+        [
+          row.code,
+          row.status,
+          row.createdAt.toISOString(),
+          row.expiresAt?.toISOString() ?? "",
+          row.usedAt?.toISOString() ?? "",
+          row.usedByStudio?.name ?? "",
+          row.usedByStudio?.members[0]?.email ?? "",
+          (row.notes ?? "").replaceAll('"', '""'),
+        ]
+          .map((value) => `"${value}"`)
+          .join(","),
+      ),
+    ];
+
+    return {
+      csv: lines.join("\n"),
+      filename: `activation-codes-${new Date().toISOString().slice(0, 10)}.csv`,
+    };
+  }
+
+  private async generateUniqueCode(): Promise<string> {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const code = this.formatActivationCode();
+      if (!(await this.repository.codeExists(code))) {
+        return code;
+      }
+    }
+    throw new BadRequestException("Unable to generate a unique activation code");
+  }
+
+  private formatActivationCode(): string {
+    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const segment = (length: number) => {
+      const bytes = randomBytes(length);
+      let out = "";
+      for (let i = 0; i < length; i += 1) {
+        out += alphabet[bytes[i]! % alphabet.length];
+      }
+      return out;
+    };
+    return `STM-${segment(4)}-${segment(4)}-${segment(4)}`;
+  }
+
+  private async requireActivationCode(id: string) {
+    const code = await this.repository.findActivationCodeById(id);
+    if (!code) {
+      throw new NotFoundException("Activation code not found");
+    }
+    return code;
+  }
+
+  private async requireMutableActivationCode(id: string) {
+    const code = await this.requireActivationCode(id);
+    if (code.status === ACTIVATION_CODE_STATUSES.USED) {
+      throw new BadRequestException("Used activation codes are read-only");
+    }
+    return code;
+  }
+
+  private toActivationCodeDto(row: {
+    id: string;
+    code: string;
+    status: string;
+    createdAt: Date;
+    expiresAt: Date | null;
+    usedAt: Date | null;
+    usedByStudioId: string | null;
+    generatedByPlatformAdmin: string;
+    notes: string | null;
+    usedByStudio?: {
+      id: string;
+      name: string;
+      members: Array<{ email: string }>;
+    } | null;
+  }): PlatformActivationCodeDto {
+    return {
+      id: row.id,
+      code: row.code,
+      status: row.status,
+      createdAt: row.createdAt.toISOString(),
+      expiresAt: row.expiresAt?.toISOString() ?? null,
+      usedAt: row.usedAt?.toISOString() ?? null,
+      usedByStudioId: row.usedByStudioId,
+      usedByStudioName: row.usedByStudio?.name ?? null,
+      usedByOwnerEmail: row.usedByStudio?.members[0]?.email ?? null,
+      generatedByPlatformAdmin: row.generatedByPlatformAdmin,
+      notes: row.notes,
+    };
   }
 
   private async requireStudio(studioId: string) {

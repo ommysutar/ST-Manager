@@ -97,3 +97,59 @@ export interface PlatformAuditLogDto {
 }
 
 export type PlatformAuditLogListResponseDto = ApiSuccessResponseDto<PlatformAuditLogDto[]>;
+
+export interface PlatformActivationCodeDto {
+  id: string;
+  code: string;
+  status: string;
+  createdAt: string;
+  expiresAt: string | null;
+  usedAt: string | null;
+  usedByStudioId: string | null;
+  usedByStudioName: string | null;
+  usedByOwnerEmail: string | null;
+  generatedByPlatformAdmin: string;
+  notes: string | null;
+}
+
+export interface PlatformActivationCodeSummaryDto {
+  totalCodes: number;
+  activeCodes: number;
+  usedCodes: number;
+  disabledCodes: number;
+  expiredCodes: number;
+}
+
+export interface PlatformActivationCodeListQueryDto {
+  search?: string;
+  page?: number;
+  pageSize?: number;
+  sortBy?: "code" | "status" | "createdAt" | "expiresAt";
+  sortOrder?: "asc" | "desc";
+  status?: string;
+}
+
+export type PlatformActivationCodeListResponseDto = PaginatedResponseDto<PlatformActivationCodeDto> & {
+  summary: PlatformActivationCodeSummaryDto;
+};
+
+export interface PlatformGenerateActivationCodesRequestDto {
+  quantity: 1 | 5 | 10 | 25 | 50;
+  expiresAt?: string | null;
+  notes?: string | null;
+}
+
+export type PlatformGenerateActivationCodesResponseDto = ApiSuccessResponseDto<{
+  codes: PlatformActivationCodeDto[];
+}>;
+
+export type PlatformActivationCodeActionResponseDto = ApiSuccessResponseDto<PlatformActivationCodeDto>;
+
+export interface PlatformDeleteActivationCodeRequestDto {
+  confirmation: string;
+}
+
+export type PlatformActivationCodesExportResponseDto = ApiSuccessResponseDto<{
+  csv: string;
+  filename: string;
+}>;

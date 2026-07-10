@@ -9,19 +9,29 @@ import {
 } from "@nestjs/common";
 import { ROUTES } from "@st-manager/constants";
 import type {
+  PlatformActivationCodeActionResponseDto,
+  PlatformActivationCodeListResponseDto,
+  PlatformActivationCodesExportResponseDto,
   PlatformAdminDashboardResponseDto,
   PlatformAdminLoginResponseDto,
   PlatformAuditLogListResponseDto,
+  PlatformGenerateActivationCodesResponseDto,
   PlatformStudioActionResponseDto,
   PlatformStudioDetailResponseDto,
   PlatformStudioListResponseDto,
 } from "@st-manager/contracts";
 import {
   loginSchema,
+  platformActivationCodeListQuerySchema,
+  platformDeleteActivationCodeSchema,
   platformDeleteStudioSchema,
+  platformGenerateActivationCodesSchema,
   platformStudioListQuerySchema,
   type LoginInput,
+  type PlatformActivationCodeListQueryInput,
+  type PlatformDeleteActivationCodeInput,
   type PlatformDeleteStudioInput,
+  type PlatformGenerateActivationCodesInput,
   type PlatformStudioListQueryInput,
 } from "@st-manager/validation";
 
@@ -104,5 +114,65 @@ export class PlatformAdminController {
   async auditLogs(): Promise<PlatformAuditLogListResponseDto> {
     const data = await this.platformAdminService.listAuditLogs();
     return { success: true, data };
+  }
+
+  @Get("activation-codes")
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  async listActivationCodes(
+    @Query(new ZodValidationPipe(platformActivationCodeListQuerySchema))
+    query: PlatformActivationCodeListQueryInput,
+  ): Promise<PlatformActivationCodeListResponseDto> {
+    const result = await this.platformAdminService.listActivationCodes(query);
+    return { success: true, ...result };
+  }
+
+  @Get("activation-codes/export")
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  async exportActivationCodes(): Promise<PlatformActivationCodesExportResponseDto> {
+    const data = await this.platformAdminService.exportActivationCodesCsv();
+    return { success: true, data };
+  }
+
+  @Post("activation-codes/generate")
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  async generateActivationCodes(
+    @Body(new ZodValidationPipe(platformGenerateActivationCodesSchema))
+    body: PlatformGenerateActivationCodesInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<PlatformGenerateActivationCodesResponseDto> {
+    const codes = await this.platformAdminService.generateActivationCodes(body, user);
+    return { success: true, data: { codes } };
+  }
+
+  @Post("activation-codes/:id/disable")
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  async disableActivationCode(
+    @Param("id") id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<PlatformActivationCodeActionResponseDto> {
+    const data = await this.platformAdminService.disableActivationCode(id, user);
+    return { success: true, data };
+  }
+
+  @Post("activation-codes/:id/enable")
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  async enableActivationCode(
+    @Param("id") id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<PlatformActivationCodeActionResponseDto> {
+    const data = await this.platformAdminService.enableActivationCode(id, user);
+    return { success: true, data };
+  }
+
+  @Post("activation-codes/:id/delete")
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  async deleteActivationCode(
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(platformDeleteActivationCodeSchema))
+    body: PlatformDeleteActivationCodeInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<{ success: true }> {
+    await this.platformAdminService.deleteActivationCode(id, body, user);
+    return { success: true };
   }
 }

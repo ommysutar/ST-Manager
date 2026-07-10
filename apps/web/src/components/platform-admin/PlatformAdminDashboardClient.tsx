@@ -51,6 +51,9 @@ export function PlatformAdminDashboardClient() {
         </div>
         <div className="flex items-center gap-2">
           <Button asChild variant="outline">
+            <Link href="/platform-admin/activation-codes">Activation Codes</Link>
+          </Button>
+          <Button asChild variant="outline">
             <Link href="/platform-admin/audit-logs">Audit Log</Link>
           </Button>
           <Button variant="outline" onClick={handleLogout}>

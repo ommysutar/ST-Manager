@@ -161,4 +161,13 @@ export type {
   PlatformDeleteStudioRequestDto,
   PlatformAuditLogDto,
   PlatformAuditLogListResponseDto,
+  PlatformActivationCodeDto,
+  PlatformActivationCodeSummaryDto,
+  PlatformActivationCodeListQueryDto,
+  PlatformActivationCodeListResponseDto,
+  PlatformGenerateActivationCodesRequestDto,
+  PlatformGenerateActivationCodesResponseDto,
+  PlatformActivationCodeActionResponseDto,
+  PlatformDeleteActivationCodeRequestDto,
+  PlatformActivationCodesExportResponseDto,
 } from "./platform-admin/platform-admin.dto";

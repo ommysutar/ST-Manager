@@ -16,3 +16,37 @@ export const platformDeleteStudioSchema = z.object({
 });
 
 export type PlatformDeleteStudioInput = z.infer<typeof platformDeleteStudioSchema>;
+
+export const platformActivationCodeListQuerySchema = z.object({
+  search: z.string().trim().optional(),
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().positive().max(100).default(20),
+  sortBy: z.enum(["code", "status", "createdAt", "expiresAt"]).default("createdAt"),
+  sortOrder: z.enum(["asc", "desc"]).default("desc"),
+  status: z.string().trim().optional(),
+});
+
+export type PlatformActivationCodeListQueryInput = z.infer<
+  typeof platformActivationCodeListQuerySchema
+>;
+
+export const platformGenerateActivationCodesSchema = z.object({
+  quantity: z.union([z.literal(1), z.literal(5), z.literal(10), z.literal(25), z.literal(50)]),
+  expiresAt: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .transform((value) => (value ? value : null)),
+  notes: z.string().trim().max(2000).optional().nullable(),
+});
+
+export type PlatformGenerateActivationCodesInput = z.infer<
+  typeof platformGenerateActivationCodesSchema
+>;
+
+export const platformDeleteActivationCodeSchema = z.object({
+  confirmation: z.literal("DELETE"),
+});
+
+export type PlatformDeleteActivationCodeInput = z.infer<typeof platformDeleteActivationCodeSchema>;

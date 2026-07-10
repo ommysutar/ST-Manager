@@ -20,7 +20,21 @@ export const PLATFORM_AUDIT_ACTIONS = {
   STUDIO_DISABLED: "studio.disabled",
   STUDIO_ENABLED: "studio.enabled",
   STUDIO_DELETED: "studio.deleted",
+  ACTIVATION_CODE_GENERATED: "activation_code.generated",
+  ACTIVATION_CODE_DISABLED: "activation_code.disabled",
+  ACTIVATION_CODE_ENABLED: "activation_code.enabled",
+  ACTIVATION_CODE_DELETED: "activation_code.deleted",
 } as const;
 
 export type PlatformAuditAction =
   (typeof PLATFORM_AUDIT_ACTIONS)[keyof typeof PLATFORM_AUDIT_ACTIONS];
+
+export const ACTIVATION_CODE_STATUSES = {
+  ACTIVE: "ACTIVE",
+  USED: "USED",
+  DISABLED: "DISABLED",
+  EXPIRED: "EXPIRED",
+} as const;
+
+export type ActivationCodeStatus =
+  (typeof ACTIVATION_CODE_STATUSES)[keyof typeof ACTIVATION_CODE_STATUSES];

@@ -15,18 +15,19 @@ datasource db {
 }
 
 model Studio {
-  id           String              @id @default(cuid())
-  name         String              @db.VarChar(120)
-  status       String              @default("active") @db.VarChar(32)
-  archivedAt   DateTime?
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
-  bookings     Booking[]
-  sessions     Session[]
-  members      User[]
-  invitations  StudioInvitation[]
-  auditLogs    AuditLog[]
-  roleDefs     RoleDefinition[]
+  id              String              @id @default(cuid())
+  name            String              @db.VarChar(120)
+  status          String              @default("active") @db.VarChar(32)
+  archivedAt      DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  bookings        Booking[]
+  sessions        Session[]
+  members         User[]
+  invitations     StudioInvitation[]
+  auditLogs       AuditLog[]
+  roleDefs        RoleDefinition[]
+  activationCodes ActivationCode[]
 
   @@index([status])
   @@map("studios")
@@ -141,6 +142,23 @@ model PlatformAuditLog {
   @@index([createdAt])
   @@index([studioId])
   @@map("platform_audit_logs")
+}
+
+model ActivationCode {
+  id                       String    @id @default(cuid())
+  code                     String    @unique @db.VarChar(32)
+  status                   String    @default("ACTIVE") @db.VarChar(32)
+  createdAt                DateTime  @default(now())
+  expiresAt                DateTime?
+  usedAt                   DateTime?
+  usedByStudioId           String?
+  generatedByPlatformAdmin String   @db.VarChar(64)
+  notes                    String?   @db.Text
+  usedByStudio             Studio?   @relation(fields: [usedByStudioId], references: [id])
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("activation_codes")
 }
 
 model Client {

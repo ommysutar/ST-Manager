@@ -91,8 +91,14 @@ export type {
 export {
   platformStudioListQuerySchema,
   platformDeleteStudioSchema,
+  platformActivationCodeListQuerySchema,
+  platformGenerateActivationCodesSchema,
+  platformDeleteActivationCodeSchema,
 } from "./platform-admin/platform-admin.schema";
 export type {
   PlatformStudioListQueryInput,
   PlatformDeleteStudioInput,
+  PlatformActivationCodeListQueryInput,
+  PlatformGenerateActivationCodesInput,
+  PlatformDeleteActivationCodeInput,
 } from "./platform-admin/platform-admin.schema";

@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import {
+  ACTIVATION_CODE_STATUSES,
   PLATFORM_ROLES,
   STUDIO_STATUSES,
   TEAM_ROLES,
@@ -320,5 +321,184 @@ export class PlatformAdminRepository {
         createdAt: true,
       },
     });
+  }
+
+  async getActivationCodeSummary() {
+    const client = asClient(this.prismaService.getClient());
+    const [totalCodes, activeCodes, usedCodes, disabledCodes, expiredCodes] = await Promise.all([
+      client.activationCode.count(),
+      client.activationCode.count({ where: { status: ACTIVATION_CODE_STATUSES.ACTIVE } }),
+      client.activationCode.count({ where: { status: ACTIVATION_CODE_STATUSES.USED } }),
+      client.activationCode.count({ where: { status: ACTIVATION_CODE_STATUSES.DISABLED } }),
+      client.activationCode.count({ where: { status: ACTIVATION_CODE_STATUSES.EXPIRED } }),
+    ]);
+    return { totalCodes, activeCodes, usedCodes, disabledCodes, expiredCodes };
+  }
+
+  async markExpiredActivationCodes(): Promise<void> {
+    const client = asClient(this.prismaService.getClient());
+    await client.activationCode.updateMany({
+      where: {
+        status: ACTIVATION_CODE_STATUSES.ACTIVE,
+        expiresAt: { lt: new Date() },
+      },
+      data: { status: ACTIVATION_CODE_STATUSES.EXPIRED },
+    });
+  }
+
+  async listActivationCodes(query: {
+    search?: string;
+    page: number;
+    pageSize: number;
+    sortBy: "code" | "status" | "createdAt" | "expiresAt";
+    sortOrder: "asc" | "desc";
+    status?: string;
+  }) {
+    const client = asClient(this.prismaService.getClient());
+    const search = query.search?.trim();
+    const where = {
+      ...(query.status ? { status: query.status } : {}),
+      ...(search
+        ? {
+            OR: [
+              { code: { contains: search } },
+              { notes: { contains: search } },
+              { usedByStudio: { name: { contains: search } } },
+            ],
+          }
+        : {}),
+    };
+
+    const [total, rows] = await Promise.all([
+      client.activationCode.count({ where }),
+      client.activationCode.findMany({
+        where,
+        include: {
+          usedByStudio: {
+            select: {
+              id: true,
+              name: true,
+              members: {
+                where: { role: TEAM_ROLES.OWNER },
+                select: { email: true },
+                take: 1,
+              },
+            },
+          },
+        },
+        orderBy: { [query.sortBy]: query.sortOrder },
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+      }),
+    ]);
+
+    return { total, rows };
+  }
+
+  async listAllActivationCodesForExport() {
+    const client = asClient(this.prismaService.getClient());
+    return client.activationCode.findMany({
+      include: {
+        usedByStudio: {
+          select: {
+            name: true,
+            members: {
+              where: { role: TEAM_ROLES.OWNER },
+              select: { email: true },
+              take: 1,
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async codeExists(code: string): Promise<boolean> {
+    const client = asClient(this.prismaService.getClient());
+    const existing = await client.activationCode.findUnique({ where: { code } });
+    return Boolean(existing);
+  }
+
+  async createActivationCodes(
+    codes: Array<{
+      code: string;
+      expiresAt: Date | null;
+      notes: string | null;
+      generatedByPlatformAdmin: string;
+    }>,
+  ) {
+    const client = asClient(this.prismaService.getClient());
+    await client.activationCode.createMany({
+      data: codes.map((item) => ({
+        code: item.code,
+        status: ACTIVATION_CODE_STATUSES.ACTIVE,
+        expiresAt: item.expiresAt,
+        notes: item.notes,
+        generatedByPlatformAdmin: item.generatedByPlatformAdmin,
+      })),
+    });
+    return client.activationCode.findMany({
+      where: { code: { in: codes.map((c) => c.code) } },
+      include: {
+        usedByStudio: {
+          select: {
+            id: true,
+            name: true,
+            members: {
+              where: { role: TEAM_ROLES.OWNER },
+              select: { email: true },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async findActivationCodeById(id: string) {
+    const client = asClient(this.prismaService.getClient());
+    return client.activationCode.findUnique({
+      where: { id },
+      include: {
+        usedByStudio: {
+          select: {
+            id: true,
+            name: true,
+            members: {
+              where: { role: TEAM_ROLES.OWNER },
+              select: { email: true },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async updateActivationCodeStatus(id: string, status: string) {
+    const client = asClient(this.prismaService.getClient());
+    return client.activationCode.update({
+      where: { id },
+      data: { status },
+      include: {
+        usedByStudio: {
+          select: {
+            id: true,
+            name: true,
+            members: {
+              where: { role: TEAM_ROLES.OWNER },
+              select: { email: true },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async deleteActivationCode(id: string): Promise<void> {
+    const client = asClient(this.prismaService.getClient());
+    await client.activationCode.delete({ where: { id } });
   }
 }
