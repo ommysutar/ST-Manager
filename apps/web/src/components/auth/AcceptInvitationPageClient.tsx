@@ -71,7 +71,6 @@ function AcceptInvitationContent() {
       return;
     }
 
-    setLoading(true);
     void teamMembersApi
       .verifyInvitation(token)
       .then(setPreview)

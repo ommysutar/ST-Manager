@@ -48,7 +48,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (!isAuthenticated) {
       router.replace("/login");
     }
-  }, [mounted, isAuthenticated, isAuthRoute, router]);
+  }, [mounted, isAuthenticated, isAuthRoute, pathname, router]);
 
   if (!mounted) {
     return <div className="min-h-screen bg-background" />;
