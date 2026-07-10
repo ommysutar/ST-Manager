@@ -176,41 +176,66 @@ async function main() {
   if (process.env.DATABASE_URL) {
     const req = createRequire(join(__dirname, "../../../packages/database/package.json"));
     const { Client } = req("pg");
-    const client = new Client({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false },
-    });
-    await client.connect();
-    const admins = await client.query(
-      `SELECT id, email, role, "passwordHash", "studioId" FROM users WHERE role = 'platform_admin'`,
-    );
-    admins.rowCount === 1
-      ? pass("Exactly one platform admin exists (no duplicates)")
-      : fail("Platform admin count", `count=${admins.rowCount}`);
-
-    const admin = admins.rows[0];
-    if (admin) {
-      admin.email === ADMIN_EMAIL.toLowerCase()
-        ? pass("Bootstrap admin email matches env")
-        : fail("Bootstrap email", admin.email);
-      admin.passwordHash?.startsWith("$2")
-        ? pass("Password hash stored (bcrypt)")
-        : fail("Password hash", String(admin.passwordHash).slice(0, 10));
-      admin.studioId === null
-        ? pass("Platform admin isolated from studios (studioId null)")
-        : fail("studioId", String(admin.studioId));
+    let client = null;
+    let lastError = null;
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        client = new Client({
+          connectionString: process.env.DATABASE_URL,
+          ssl: { rejectUnauthorized: false },
+          connectionTimeoutMillis: 20000,
+        });
+        await client.connect();
+        lastError = null;
+        break;
+      } catch (err) {
+        lastError = err;
+        if (client) {
+          try {
+            await client.end();
+          } catch {
+            // ignore
+          }
+        }
+        client = null;
+        await new Promise((r) => setTimeout(r, attempt * 1500));
+      }
     }
 
-    // Idempotency: count before/after is conceptual — admin already exists so
-    // a second API cold start would skip. We verify count stays 1.
-    const again = await client.query(
-      `SELECT COUNT(*)::int AS n FROM users WHERE role = 'platform_admin'`,
-    );
-    again.rows[0].n === 1
-      ? pass("Duplicate bootstrap impossible (still exactly one)")
-      : fail("Idempotent count", JSON.stringify(again.rows[0]));
+    if (!client) {
+      fail("Bootstrap DB connect", lastError?.message || String(lastError));
+    } else {
+      try {
+        const admins = await client.query(
+          `SELECT id, email, role, "passwordHash", "studioId" FROM users WHERE role = 'platform_admin'`,
+        );
+        admins.rowCount === 1
+          ? pass("Exactly one platform admin exists (no duplicates)")
+          : fail("Platform admin count", `count=${admins.rowCount}`);
 
-    await client.end();
+        const admin = admins.rows[0];
+        if (admin) {
+          admin.email === ADMIN_EMAIL.toLowerCase()
+            ? pass("Bootstrap admin email matches env")
+            : fail("Bootstrap email", admin.email);
+          admin.passwordHash?.startsWith("$2")
+            ? pass("Password hash stored (bcrypt)")
+            : fail("Password hash", String(admin.passwordHash).slice(0, 10));
+          admin.studioId === null
+            ? pass("Platform admin isolated from studios (studioId null)")
+            : fail("studioId", String(admin.studioId));
+        }
+
+        const again = await client.query(
+          `SELECT COUNT(*)::int AS n FROM users WHERE role = 'platform_admin'`,
+        );
+        again.rows[0].n === 1
+          ? pass("Duplicate bootstrap impossible (still exactly one)")
+          : fail("Idempotent count", JSON.stringify(again.rows[0]));
+      } finally {
+        await client.end();
+      }
+    }
   } else {
     fail("Bootstrap DB checks", "DATABASE_URL required");
   }
