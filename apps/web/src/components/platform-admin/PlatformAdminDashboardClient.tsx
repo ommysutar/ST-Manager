@@ -67,16 +67,23 @@ export function PlatformAdminDashboardClient() {
 
       {dashboard ? (
         <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Studios</h2>
-            <Badge variant="secondary">{dashboard.platformStatus}</Badge>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">Platform Overview</h2>
+            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <Badge variant="secondary">{dashboard.platformStatus}</Badge>
+              <span>Server time: {new Date(dashboard.serverTime).toLocaleString()}</span>
+            </div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <SummaryCard title="Total Studios" value={dashboard.totalStudios} />
             <SummaryCard title="Active Studios" value={dashboard.activeStudios} />
             <SummaryCard title="Disabled Studios" value={dashboard.disabledStudios} />
+            <SummaryCard title="Archived Studios" value={dashboard.archivedStudios} />
             <SummaryCard title="Total Users" value={dashboard.totalUsers} />
             <SummaryCard title="Verified Users" value={dashboard.verifiedUsers} />
+            <SummaryCard title="Activation Codes" value={dashboard.activationCodes} />
+            <SummaryCard title="Used Activation Codes" value={dashboard.usedActivationCodes} />
+            <SummaryCard title="Pending Activation Codes" value={dashboard.pendingActivationCodes} />
           </div>
         </section>
       ) : null}

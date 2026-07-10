@@ -20,8 +20,12 @@ export interface PlatformAdminDashboardDto {
   totalStudios: number;
   activeStudios: number;
   disabledStudios: number;
+  archivedStudios: number;
   totalUsers: number;
   verifiedUsers: number;
+  activationCodes: number;
+  usedActivationCodes: number;
+  pendingActivationCodes: number;
   platformStatus: string;
   serverTime: string;
 }

@@ -121,6 +121,10 @@ export class AuthService {
       throw new UnauthorizedException("Invalid refresh token");
     }
 
+    if (user.role === PLATFORM_ROLES.PLATFORM_ADMIN) {
+      throw new UnauthorizedException("Invalid refresh token");
+    }
+
     return this.issueTokenPair(user.id, user.email, user.role);
   }
 

@@ -89,12 +89,17 @@ export class PlatformAdminRepository {
       totalStudios,
       activeStudios,
       disabledStudios,
+      archivedStudios,
       totalUsers,
       verifiedUsers,
+      activationCodes,
+      usedActivationCodes,
+      pendingActivationCodes,
     ] = await Promise.all([
-      client.studio.count({ where: { status: { not: STUDIO_STATUSES.ARCHIVED } } }),
+      client.studio.count(),
       client.studio.count({ where: { status: STUDIO_STATUSES.ACTIVE } }),
       client.studio.count({ where: { status: STUDIO_STATUSES.DISABLED } }),
+      client.studio.count({ where: { status: STUDIO_STATUSES.ARCHIVED } }),
       client.user.count({ where: { role: { not: PLATFORM_ROLES.PLATFORM_ADMIN } } }),
       client.user.count({
         where: {
@@ -102,9 +107,22 @@ export class PlatformAdminRepository {
           lastLoginAt: { not: null },
         },
       }),
+      client.activationCode.count(),
+      client.activationCode.count({ where: { status: ACTIVATION_CODE_STATUSES.USED } }),
+      client.activationCode.count({ where: { status: ACTIVATION_CODE_STATUSES.ACTIVE } }),
     ]);
 
-    return { totalStudios, activeStudios, disabledStudios, totalUsers, verifiedUsers };
+    return {
+      totalStudios,
+      activeStudios,
+      disabledStudios,
+      archivedStudios,
+      totalUsers,
+      verifiedUsers,
+      activationCodes,
+      usedActivationCodes,
+      pendingActivationCodes,
+    };
   }
 
   async listStudios(query: PlatformStudioListQueryInput) {
