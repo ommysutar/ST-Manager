@@ -25,8 +25,20 @@ export const apiEnvSchema = z
     APP_BASE_URL: z.string().trim().url().optional(),
     RESEND_API_KEY: z.string().trim().optional(),
     EMAIL_FROM: z.string().trim().email().optional(),
+    PLATFORM_ADMIN_EMAIL: z.string().trim().email().optional(),
+    PLATFORM_ADMIN_PASSWORD: z.string().trim().min(8).optional(),
   })
   .superRefine((env, ctx) => {
+    const hasAdminEmail = Boolean(env.PLATFORM_ADMIN_EMAIL);
+    const hasAdminPassword = Boolean(env.PLATFORM_ADMIN_PASSWORD);
+    if (hasAdminEmail !== hasAdminPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: hasAdminEmail ? ["PLATFORM_ADMIN_PASSWORD"] : ["PLATFORM_ADMIN_EMAIL"],
+        message:
+          "PLATFORM_ADMIN_EMAIL and PLATFORM_ADMIN_PASSWORD must both be set (or both omitted) to bootstrap the platform admin.",
+      });
+    }
     if (env.NODE_ENV === "production" && !env.DATABASE_URL) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

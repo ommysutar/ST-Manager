@@ -34,3 +34,6 @@ export type { ReportsApi } from "./reports/reports.api";
 
 export { createTeamMembersApi } from "./team-members/team-members.api";
 export type { TeamMembersApi } from "./team-members/team-members.api";
+
+export { createPlatformAdminApi } from "./platform-admin/platform-admin.api";
+export type { PlatformAdminApi } from "./platform-admin/platform-admin.api";

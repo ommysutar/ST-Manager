@@ -19,6 +19,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
   const mounted = useIsClientMounted();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const isPlatformAdminRoute = pathname.startsWith("/platform-admin");
   const isAuthRoute =
     pathname === "/login" ||
     pathname.startsWith("/login/") ||
@@ -26,6 +27,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!mounted) {
+      return;
+    }
+
+    // Platform admin uses a completely separate session and shell.
+    if (isPlatformAdminRoute) {
       return;
     }
 
@@ -48,13 +54,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (!isAuthenticated) {
       router.replace("/login");
     }
-  }, [mounted, isAuthenticated, isAuthRoute, pathname, router]);
+  }, [mounted, isAuthenticated, isAuthRoute, isPlatformAdminRoute, pathname, router]);
 
   if (!mounted) {
     return <div className="min-h-screen bg-background" />;
   }
 
-  if (isAuthRoute) {
+  if (isPlatformAdminRoute || isAuthRoute) {
     return (
       <ThemeProvider>
         <div className="safe-area-insets min-h-screen">{children}</div>

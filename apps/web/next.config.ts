@@ -98,6 +98,8 @@ const webConfig: NextConfig = {
       { source: "/api/invitations/:path*", destination: "http://localhost:4000/invitations/:path*" },
       { source: "/api/permissions", destination: "http://localhost:4000/permissions" },
       { source: "/api/permissions/:path*", destination: "http://localhost:4000/permissions/:path*" },
+      { source: "/api/platform-admin", destination: "http://localhost:4000/platform-admin" },
+      { source: "/api/platform-admin/:path*", destination: "http://localhost:4000/platform-admin/:path*" },
     ];
   },
 };

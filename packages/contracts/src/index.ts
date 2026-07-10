@@ -144,3 +144,11 @@ export type {
   ListPermissionsResponseDto,
   ListRolesResponseDto,
 } from "./team/permissions.dto";
+
+export type {
+  PlatformAdminLoginRequestDto,
+  PlatformAdminLoginResponseDataDto,
+  PlatformAdminLoginResponseDto,
+  PlatformAdminDashboardDto,
+  PlatformAdminDashboardResponseDto,
+} from "./platform-admin/platform-admin.dto";

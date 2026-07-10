@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService, type JwtSignOptions } from "@nestjs/jwt";
+import { PLATFORM_ROLES } from "@st-manager/constants";
 import type {
   AuthUserDto,
   LoginResponseDataDto,
@@ -29,6 +30,10 @@ export class AuthService {
 
     if (user.status === "disabled") {
       throw new UnauthorizedException("Your account has been disabled");
+    }
+
+    if (user.role === PLATFORM_ROLES.PLATFORM_ADMIN) {
+      throw new UnauthorizedException("Invalid email or password");
     }
 
     const passwordMatches = await bcrypt.compare(input.password, user.passwordHash);
