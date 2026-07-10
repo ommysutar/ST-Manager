@@ -9,6 +9,11 @@ import { usePermissions } from "@/hooks/usePermissions";
 
 const ownerSettingsLinks = [
   {
+    href: "/settings/activation",
+    title: "Activation",
+    description: "View your studio license status and verified activation details.",
+  },
+  {
     href: "/settings/whatsapp-notifications",
     title: "WhatsApp Notifications",
     description: "Configure one-click WhatsApp message templates for client communication.",

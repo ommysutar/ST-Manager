@@ -2,7 +2,9 @@ import { Injectable } from "@nestjs/common";
 import {
   ACTIVATION_CODE_ERROR_MESSAGES,
   ACTIVATION_CODE_STATUSES,
+  LICENSE_TYPES,
   PLATFORM_AUDIT_ACTIONS,
+  TRIAL_DEFAULT_DAYS,
 } from "@st-manager/constants";
 import type { PostgresPrismaClient } from "@st-manager/database";
 
@@ -116,6 +118,10 @@ export class AuthRepository {
         throw new ActivationCodeRedeemError(ACTIVATION_CODE_ERROR_MESSAGES.EXPIRED);
       }
 
+      if (code.status === ACTIVATION_CODE_STATUSES.REVOKED) {
+        throw new ActivationCodeRedeemError(ACTIVATION_CODE_ERROR_MESSAGES.REVOKED);
+      }
+
       if (code.status !== ACTIVATION_CODE_STATUSES.ACTIVE) {
         throw new ActivationCodeRedeemError(ACTIVATION_CODE_ERROR_MESSAGES.INVALID);
       }
@@ -151,6 +157,20 @@ export class AuthRepository {
         },
       });
 
+      const activatedAt = new Date();
+      let expiresAt: Date | null | undefined;
+      if (code.licenseType === LICENSE_TYPES.TRIAL) {
+        expiresAt = new Date(activatedAt);
+        expiresAt.setUTCDate(expiresAt.getUTCDate() + TRIAL_DEFAULT_DAYS);
+      } else if (
+        code.licenseType === LICENSE_TYPES.SUBSCRIPTION &&
+        code.subscriptionMonths &&
+        code.subscriptionMonths > 0
+      ) {
+        expiresAt = new Date(activatedAt);
+        expiresAt.setUTCMonth(expiresAt.getUTCMonth() + code.subscriptionMonths);
+      }
+
       const redeemed = await tx.activationCode.updateMany({
         where: {
           id: code.id,
@@ -158,9 +178,11 @@ export class AuthRepository {
         },
         data: {
           status: ACTIVATION_CODE_STATUSES.USED,
-          usedAt: new Date(),
+          usedAt: activatedAt,
+          activatedAt,
           usedByStudioId: studio.id,
           usedByOwnerEmail: input.email,
+          ...(expiresAt !== undefined ? { expiresAt } : {}),
         },
       });
 

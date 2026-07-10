@@ -157,3 +157,92 @@ export type PlatformActivationCodesExportResponseDto = ApiSuccessResponseDto<{
   csv: string;
   filename: string;
 }>;
+
+export interface PlatformLicenseDto {
+  id: string;
+  code: string;
+  status: string;
+  licenseType: string;
+  subscriptionMonths: number | null;
+  customerName: string | null;
+  phone: string | null;
+  createdAt: string;
+  expiresAt: string | null;
+  activatedAt: string | null;
+  usedAt: string | null;
+  revokedAt: string | null;
+  usedByStudioId: string | null;
+  usedByStudioName: string | null;
+  usedByOwnerEmail: string | null;
+  generatedByPlatformAdmin: string;
+  notes: string | null;
+}
+
+export interface PlatformLicenseSummaryDto {
+  total: number;
+  active: number;
+  used: number;
+  expired: number;
+  revoked: number;
+  disabled: number;
+  lifetime: number;
+  trial: number;
+  revenuePlaceholder: string;
+}
+
+export interface PlatformLicenseListQueryDto {
+  search?: string;
+  page?: number;
+  pageSize?: number;
+  sortBy?: "code" | "status" | "createdAt" | "expiresAt" | "licenseType";
+  sortOrder?: "asc" | "desc";
+  status?: string;
+  licenseType?: string;
+  createdFrom?: string;
+  createdTo?: string;
+}
+
+export type PlatformLicenseListResponseDto = PaginatedResponseDto<PlatformLicenseDto> & {
+  summary: PlatformLicenseSummaryDto;
+};
+
+export interface PlatformGenerateLicensesRequestDto {
+  quantity: 1 | 5 | 10 | 25 | 50 | 100;
+  licenseType: "LIFETIME" | "TRIAL" | "SUBSCRIPTION";
+  subscriptionMonths?: 1 | 3 | 6 | 12 | null;
+  customerName?: string | null;
+  phone?: string | null;
+  notes?: string | null;
+  expiresAt?: string | null;
+}
+
+export type PlatformGenerateLicensesResponseDto = ApiSuccessResponseDto<{
+  licenses: PlatformLicenseDto[];
+}>;
+
+export type PlatformLicenseActionResponseDto = ApiSuccessResponseDto<PlatformLicenseDto>;
+
+export interface PlatformDeleteLicenseRequestDto {
+  confirmation: string;
+}
+
+export type PlatformLicensesExportResponseDto = ApiSuccessResponseDto<{
+  csv: string;
+  filename: string;
+}>;
+
+export interface StudioLicenseDto {
+  id: string;
+  code: string;
+  status: string;
+  licenseType: string;
+  subscriptionMonths: number | null;
+  customerName: string | null;
+  activatedAt: string | null;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  activatedBy: string | null;
+  verified: boolean;
+}
+
+export type StudioLicenseResponseDto = ApiSuccessResponseDto<StudioLicenseDto>;

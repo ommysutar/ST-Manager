@@ -94,6 +94,9 @@ export {
   platformActivationCodeListQuerySchema,
   platformGenerateActivationCodesSchema,
   platformDeleteActivationCodeSchema,
+  platformLicenseListQuerySchema,
+  platformGenerateLicensesSchema,
+  platformDeleteLicenseSchema,
 } from "./platform-admin/platform-admin.schema";
 export type {
   PlatformStudioListQueryInput,
@@ -101,4 +104,7 @@ export type {
   PlatformActivationCodeListQueryInput,
   PlatformGenerateActivationCodesInput,
   PlatformDeleteActivationCodeInput,
+  PlatformLicenseListQueryInput,
+  PlatformGenerateLicensesInput,
+  PlatformDeleteLicenseInput,
 } from "./platform-admin/platform-admin.schema";

@@ -11,25 +11,34 @@ import { JwtService, type JwtSignOptions } from "@nestjs/jwt";
 import {
   ACTIVATION_CODE_STATUSES,
   DISABLED_STUDIO_MESSAGE,
+  LICENSE_STATUSES,
+  LICENSE_TYPES,
   PLATFORM_AUDIT_ACTIONS,
   PLATFORM_ROLES,
   STUDIO_STATUSES,
   TEAM_ROLES,
+  WIRE_STATUS_TO_LICENSE,
 } from "@st-manager/constants";
 import type {
   PlatformActivationCodeDto,
   PlatformAdminDashboardDto,
   PlatformAdminLoginResponseDataDto,
+  PlatformLicenseDto,
+  PlatformLicenseSummaryDto,
   PlatformStudioDetailDto,
   PlatformStudioListItemDto,
+  StudioLicenseDto,
 } from "@st-manager/contracts";
 import type {
   ApiEnv,
   LoginInput,
   PlatformActivationCodeListQueryInput,
   PlatformDeleteActivationCodeInput,
+  PlatformDeleteLicenseInput,
   PlatformDeleteStudioInput,
   PlatformGenerateActivationCodesInput,
+  PlatformGenerateLicensesInput,
+  PlatformLicenseListQueryInput,
   PlatformStudioListQueryInput,
 } from "@st-manager/validation";
 import * as bcrypt from "bcrypt";
@@ -402,6 +411,420 @@ export class PlatformAdminService implements OnModuleInit {
       csv: lines.join("\n"),
       filename: `activation-codes-${new Date().toISOString().slice(0, 10)}.csv`,
     };
+  }
+
+  async listLicenses(query: PlatformLicenseListQueryInput) {
+    await this.repository.markExpiredActivationCodes();
+    const [summaryCounts, { total, rows }] = await Promise.all([
+      this.repository.getLicenseSummary(),
+      this.repository.listLicenses(query),
+    ]);
+
+    const summary: PlatformLicenseSummaryDto = {
+      ...summaryCounts,
+      revenuePlaceholder: "Revenue tracking coming soon",
+    };
+
+    return {
+      data: rows.map((row) => this.toLicenseDto(row)),
+      meta: {
+        page: query.page,
+        pageSize: query.pageSize,
+        total,
+      },
+      summary,
+    };
+  }
+
+  async generateLicenses(
+    input: PlatformGenerateLicensesInput,
+    actor: AuthenticatedUser,
+  ): Promise<PlatformLicenseDto[]> {
+    if (input.licenseType === LICENSE_TYPES.SUBSCRIPTION && !input.subscriptionMonths) {
+      throw new BadRequestException("subscriptionMonths is required for SUBSCRIPTION licenses");
+    }
+
+    const expiresAt = input.expiresAt ? new Date(input.expiresAt) : null;
+    if (expiresAt && Number.isNaN(expiresAt.getTime())) {
+      throw new BadRequestException("Invalid expiry date");
+    }
+    if (expiresAt && expiresAt.getTime() <= Date.now()) {
+      throw new BadRequestException("Expiry date must be in the future");
+    }
+
+    const licenses: Array<{
+      code: string;
+      expiresAt: Date | null;
+      notes: string | null;
+      generatedByPlatformAdmin: string;
+      licenseType: string;
+      subscriptionMonths: number | null;
+      customerName: string | null;
+      phone: string | null;
+    }> = [];
+
+    for (let i = 0; i < input.quantity; i += 1) {
+      licenses.push({
+        code: await this.generateUniqueCode(),
+        expiresAt,
+        notes: input.notes?.trim() || null,
+        generatedByPlatformAdmin: actor.userId,
+        licenseType: input.licenseType,
+        subscriptionMonths:
+          input.licenseType === LICENSE_TYPES.SUBSCRIPTION
+            ? (input.subscriptionMonths ?? null)
+            : null,
+        customerName: input.customerName?.trim() || null,
+        phone: input.phone?.trim() || null,
+      });
+    }
+
+    const created = await this.repository.createLicenses(licenses);
+    await this.repository.createPlatformAuditLog({
+      actorUserId: actor.userId,
+      actorEmail: actor.email,
+      action: PLATFORM_AUDIT_ACTIONS.LICENSE_GENERATED,
+      metadata: {
+        who: actor.email,
+        what: PLATFORM_AUDIT_ACTIONS.LICENSE_GENERATED,
+        when: new Date().toISOString(),
+        quantity: input.quantity,
+        licenseType: input.licenseType,
+        subscriptionMonths: input.subscriptionMonths ?? null,
+        codes: created.map((c) => c.code).join(","),
+        oldValue: null,
+        newValue: {
+          quantity: input.quantity,
+          licenseType: input.licenseType,
+          status: LICENSE_STATUSES.PENDING,
+        },
+      },
+    });
+
+    return created.map((row) => this.toLicenseDto(row));
+  }
+
+  async disableLicense(id: string, actor: AuthenticatedUser): Promise<PlatformLicenseDto> {
+    const license = await this.requireMutableLicense(id);
+    const oldValue = this.toLicenseAuditSnapshot(license);
+    const updated = await this.repository.updateLicense(license.id, {
+      status: ACTIVATION_CODE_STATUSES.DISABLED,
+    });
+    await this.auditLicenseChange(
+      actor,
+      PLATFORM_AUDIT_ACTIONS.LICENSE_DISABLED,
+      license,
+      oldValue,
+      this.toLicenseAuditSnapshot(updated),
+    );
+    return this.toLicenseDto(updated);
+  }
+
+  async enableLicense(id: string, actor: AuthenticatedUser): Promise<PlatformLicenseDto> {
+    const license = await this.requireActivationCode(id);
+    if (license.status !== ACTIVATION_CODE_STATUSES.DISABLED) {
+      throw new BadRequestException("Only disabled licenses can be enabled");
+    }
+    const oldValue = this.toLicenseAuditSnapshot(license);
+    if (license.expiresAt && license.expiresAt.getTime() <= Date.now()) {
+      const expired = await this.repository.updateLicense(license.id, {
+        status: ACTIVATION_CODE_STATUSES.EXPIRED,
+      });
+      return this.toLicenseDto(expired);
+    }
+
+    const updated = await this.repository.updateLicense(license.id, {
+      status: ACTIVATION_CODE_STATUSES.ACTIVE,
+    });
+    await this.auditLicenseChange(
+      actor,
+      PLATFORM_AUDIT_ACTIONS.LICENSE_ENABLED,
+      license,
+      oldValue,
+      this.toLicenseAuditSnapshot(updated),
+    );
+    return this.toLicenseDto(updated);
+  }
+
+  async revokeLicense(id: string, actor: AuthenticatedUser): Promise<PlatformLicenseDto> {
+    const license = await this.requireActivationCode(id);
+    if (license.status === ACTIVATION_CODE_STATUSES.REVOKED) {
+      throw new BadRequestException("License is already revoked");
+    }
+    if (license.status === ACTIVATION_CODE_STATUSES.EXPIRED) {
+      throw new BadRequestException("Expired licenses cannot be revoked");
+    }
+
+    const oldValue = this.toLicenseAuditSnapshot(license);
+    const revokedAt = new Date();
+    const updated = await this.repository.updateLicense(license.id, {
+      status: ACTIVATION_CODE_STATUSES.REVOKED,
+      revokedAt,
+    });
+    await this.auditLicenseChange(
+      actor,
+      PLATFORM_AUDIT_ACTIONS.LICENSE_REVOKED,
+      license,
+      oldValue,
+      this.toLicenseAuditSnapshot(updated),
+      license.usedByStudioId,
+      license.usedByStudio?.name ?? null,
+    );
+    return this.toLicenseDto(updated);
+  }
+
+  async deleteLicense(
+    id: string,
+    input: PlatformDeleteLicenseInput,
+    actor: AuthenticatedUser,
+  ): Promise<void> {
+    if (input.confirmation !== "DELETE") {
+      throw new BadRequestException("Type DELETE to confirm");
+    }
+    const license = await this.requireMutableLicense(id);
+    const oldValue = this.toLicenseAuditSnapshot(license);
+    await this.repository.deleteActivationCode(license.id);
+    await this.repository.createPlatformAuditLog({
+      actorUserId: actor.userId,
+      actorEmail: actor.email,
+      action: PLATFORM_AUDIT_ACTIONS.LICENSE_DELETED,
+      metadata: {
+        who: actor.email,
+        what: PLATFORM_AUDIT_ACTIONS.LICENSE_DELETED,
+        when: new Date().toISOString(),
+        code: license.code,
+        oldValue,
+        newValue: null,
+      },
+    });
+  }
+
+  async duplicateLicense(id: string, actor: AuthenticatedUser): Promise<PlatformLicenseDto> {
+    const source = await this.requireActivationCode(id);
+    const created = await this.repository.createLicenses([
+      {
+        code: await this.generateUniqueCode(),
+        expiresAt: null,
+        notes: source.notes,
+        generatedByPlatformAdmin: actor.userId,
+        licenseType: source.licenseType,
+        subscriptionMonths: source.subscriptionMonths,
+        customerName: source.customerName,
+        phone: source.phone,
+      },
+    ]);
+    const duplicated = created[0];
+    if (!duplicated) {
+      throw new BadRequestException("Failed to duplicate license");
+    }
+
+    await this.repository.createPlatformAuditLog({
+      actorUserId: actor.userId,
+      actorEmail: actor.email,
+      action: PLATFORM_AUDIT_ACTIONS.LICENSE_DUPLICATED,
+      metadata: {
+        who: actor.email,
+        what: PLATFORM_AUDIT_ACTIONS.LICENSE_DUPLICATED,
+        when: new Date().toISOString(),
+        sourceCode: source.code,
+        newCode: duplicated.code,
+        oldValue: this.toLicenseAuditSnapshot(source),
+        newValue: this.toLicenseAuditSnapshot(duplicated),
+      },
+    });
+
+    return this.toLicenseDto(duplicated);
+  }
+
+  async exportLicensesCsv(): Promise<{ csv: string; filename: string }> {
+    await this.repository.markExpiredActivationCodes();
+    const rows = await this.repository.listAllLicensesForExport();
+    const header = [
+      "code",
+      "status",
+      "licenseType",
+      "subscriptionMonths",
+      "customerName",
+      "phone",
+      "createdAt",
+      "expiresAt",
+      "activatedAt",
+      "usedAt",
+      "revokedAt",
+      "usedByStudio",
+      "usedByOwnerEmail",
+      "notes",
+    ];
+    const lines = [
+      header.join(","),
+      ...rows.map((row) =>
+        [
+          row.code,
+          WIRE_STATUS_TO_LICENSE[row.status] ?? row.status,
+          row.licenseType,
+          row.subscriptionMonths?.toString() ?? "",
+          row.customerName ?? "",
+          row.phone ?? "",
+          row.createdAt.toISOString(),
+          row.expiresAt?.toISOString() ?? "",
+          row.activatedAt?.toISOString() ?? "",
+          row.usedAt?.toISOString() ?? "",
+          row.revokedAt?.toISOString() ?? "",
+          row.usedByStudio?.name ?? "",
+          row.usedByOwnerEmail ?? row.usedByStudio?.members[0]?.email ?? "",
+          (row.notes ?? "").replaceAll('"', '""'),
+        ]
+          .map((value) => `"${value}"`)
+          .join(","),
+      ),
+    ];
+
+    return {
+      csv: lines.join("\n"),
+      filename: `licenses-${new Date().toISOString().slice(0, 10)}.csv`,
+    };
+  }
+
+  async getStudioLicense(actor: AuthenticatedUser): Promise<StudioLicenseDto> {
+    const studioId = await this.repository.findUserStudioId(actor.userId);
+    if (!studioId) {
+      throw new NotFoundException("No license found for this studio");
+    }
+
+    await this.repository.markExpiredActivationCodes();
+    const license = await this.repository.findLicenseByStudioId(studioId);
+    if (!license) {
+      throw new NotFoundException("No license found for this studio");
+    }
+
+    const status = WIRE_STATUS_TO_LICENSE[license.status] ?? license.status;
+    const verified =
+      status === LICENSE_STATUSES.ACTIVATED &&
+      (!license.expiresAt || license.expiresAt.getTime() > Date.now());
+
+    return {
+      id: license.id,
+      code: license.code,
+      status,
+      licenseType: license.licenseType,
+      subscriptionMonths: license.subscriptionMonths,
+      customerName: license.customerName,
+      activatedAt: license.activatedAt?.toISOString() ?? null,
+      expiresAt: license.expiresAt?.toISOString() ?? null,
+      revokedAt: license.revokedAt?.toISOString() ?? null,
+      activatedBy: license.usedByOwnerEmail ?? null,
+      verified,
+    };
+  }
+
+  private async requireMutableLicense(id: string) {
+    const license = await this.requireActivationCode(id);
+    if (license.status === ACTIVATION_CODE_STATUSES.USED) {
+      throw new BadRequestException("Activated licenses are read-only (revoke instead)");
+    }
+    return license;
+  }
+
+  private toLicenseDto(row: {
+    id: string;
+    code: string;
+    status: string;
+    licenseType: string;
+    subscriptionMonths: number | null;
+    customerName: string | null;
+    phone: string | null;
+    createdAt: Date;
+    expiresAt: Date | null;
+    activatedAt: Date | null;
+    usedAt: Date | null;
+    revokedAt: Date | null;
+    usedByStudioId: string | null;
+    usedByOwnerEmail?: string | null;
+    generatedByPlatformAdmin: string;
+    notes: string | null;
+    usedByStudio?: {
+      id: string;
+      name: string;
+      members: Array<{ email: string }>;
+    } | null;
+  }): PlatformLicenseDto {
+    return {
+      id: row.id,
+      code: row.code,
+      status: WIRE_STATUS_TO_LICENSE[row.status] ?? row.status,
+      licenseType: row.licenseType,
+      subscriptionMonths: row.subscriptionMonths,
+      customerName: row.customerName,
+      phone: row.phone,
+      createdAt: row.createdAt.toISOString(),
+      expiresAt: row.expiresAt?.toISOString() ?? null,
+      activatedAt: row.activatedAt?.toISOString() ?? null,
+      usedAt: row.usedAt?.toISOString() ?? null,
+      revokedAt: row.revokedAt?.toISOString() ?? null,
+      usedByStudioId: row.usedByStudioId,
+      usedByStudioName: row.usedByStudio?.name ?? null,
+      usedByOwnerEmail: row.usedByOwnerEmail ?? row.usedByStudio?.members[0]?.email ?? null,
+      generatedByPlatformAdmin: row.generatedByPlatformAdmin,
+      notes: row.notes,
+    };
+  }
+
+  private toLicenseAuditSnapshot(row: {
+    id: string;
+    code: string;
+    status: string;
+    licenseType: string;
+    subscriptionMonths: number | null;
+    customerName: string | null;
+    phone: string | null;
+    expiresAt: Date | null;
+    activatedAt: Date | null;
+    usedAt: Date | null;
+    revokedAt: Date | null;
+    usedByStudioId: string | null;
+    notes: string | null;
+  }) {
+    return {
+      id: row.id,
+      code: row.code,
+      status: WIRE_STATUS_TO_LICENSE[row.status] ?? row.status,
+      licenseType: row.licenseType,
+      subscriptionMonths: row.subscriptionMonths,
+      customerName: row.customerName,
+      phone: row.phone,
+      expiresAt: row.expiresAt?.toISOString() ?? null,
+      activatedAt: row.activatedAt?.toISOString() ?? null,
+      usedAt: row.usedAt?.toISOString() ?? null,
+      revokedAt: row.revokedAt?.toISOString() ?? null,
+      usedByStudioId: row.usedByStudioId,
+      notes: row.notes,
+    };
+  }
+
+  private async auditLicenseChange(
+    actor: AuthenticatedUser,
+    action: string,
+    license: { code: string },
+    oldValue: Record<string, unknown>,
+    newValue: Record<string, unknown> | null,
+    studioId?: string | null,
+    studioName?: string | null,
+  ): Promise<void> {
+    await this.repository.createPlatformAuditLog({
+      actorUserId: actor.userId,
+      actorEmail: actor.email,
+      action,
+      studioId: studioId ?? null,
+      studioName: studioName ?? null,
+      metadata: {
+        who: actor.email,
+        what: action,
+        when: new Date().toISOString(),
+        code: license.code,
+        oldValue,
+        newValue,
+      },
+    });
   }
 
   private async generateUniqueCode(): Promise<string> {

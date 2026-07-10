@@ -6,10 +6,11 @@ import { PlatformAdminController } from "./platform-admin.controller";
 import { PlatformAdminRepository } from "./platform-admin.repository";
 import { PlatformAdminService } from "./platform-admin.service";
 import { PlatformAdminGuard } from "./guards/platform-admin.guard";
+import { StudioLicenseController } from "./studio-license.controller";
 
 @Module({
   imports: [PrismaModule, AuthModule],
-  controllers: [PlatformAdminController],
+  controllers: [PlatformAdminController, StudioLicenseController],
   providers: [PlatformAdminRepository, PlatformAdminService, PlatformAdminGuard],
   exports: [PlatformAdminService, PlatformAdminGuard],
 })

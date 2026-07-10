@@ -37,3 +37,6 @@ export type { TeamMembersApi } from "./team-members/team-members.api";
 
 export { createPlatformAdminApi } from "./platform-admin/platform-admin.api";
 export type { PlatformAdminApi } from "./platform-admin/platform-admin.api";
+
+export { createStudioLicenseApi } from "./studio-license/studio-license.api";
+export type { StudioLicenseApi } from "./studio-license/studio-license.api";

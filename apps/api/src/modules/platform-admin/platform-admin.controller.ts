@@ -16,6 +16,10 @@ import type {
   PlatformAdminLoginResponseDto,
   PlatformAuditLogListResponseDto,
   PlatformGenerateActivationCodesResponseDto,
+  PlatformGenerateLicensesResponseDto,
+  PlatformLicenseActionResponseDto,
+  PlatformLicenseListResponseDto,
+  PlatformLicensesExportResponseDto,
   PlatformStudioActionResponseDto,
   PlatformStudioDetailResponseDto,
   PlatformStudioListResponseDto,
@@ -24,14 +28,20 @@ import {
   loginSchema,
   platformActivationCodeListQuerySchema,
   platformDeleteActivationCodeSchema,
+  platformDeleteLicenseSchema,
   platformDeleteStudioSchema,
   platformGenerateActivationCodesSchema,
+  platformGenerateLicensesSchema,
+  platformLicenseListQuerySchema,
   platformStudioListQuerySchema,
   type LoginInput,
   type PlatformActivationCodeListQueryInput,
   type PlatformDeleteActivationCodeInput,
+  type PlatformDeleteLicenseInput,
   type PlatformDeleteStudioInput,
   type PlatformGenerateActivationCodesInput,
+  type PlatformGenerateLicensesInput,
+  type PlatformLicenseListQueryInput,
   type PlatformStudioListQueryInput,
 } from "@st-manager/validation";
 
@@ -173,6 +183,85 @@ export class PlatformAdminController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<{ success: true }> {
     await this.platformAdminService.deleteActivationCode(id, body, user);
+    return { success: true };
+  }
+
+  @Get("licenses")
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  async listLicenses(
+    @Query(new ZodValidationPipe(platformLicenseListQuerySchema))
+    query: PlatformLicenseListQueryInput,
+  ): Promise<PlatformLicenseListResponseDto> {
+    const result = await this.platformAdminService.listLicenses(query);
+    return { success: true, ...result };
+  }
+
+  @Get("licenses/export")
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  async exportLicenses(): Promise<PlatformLicensesExportResponseDto> {
+    const data = await this.platformAdminService.exportLicensesCsv();
+    return { success: true, data };
+  }
+
+  @Post("licenses/generate")
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  async generateLicenses(
+    @Body(new ZodValidationPipe(platformGenerateLicensesSchema))
+    body: PlatformGenerateLicensesInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<PlatformGenerateLicensesResponseDto> {
+    const licenses = await this.platformAdminService.generateLicenses(body, user);
+    return { success: true, data: { licenses } };
+  }
+
+  @Post("licenses/:id/disable")
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  async disableLicense(
+    @Param("id") id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<PlatformLicenseActionResponseDto> {
+    const data = await this.platformAdminService.disableLicense(id, user);
+    return { success: true, data };
+  }
+
+  @Post("licenses/:id/enable")
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  async enableLicense(
+    @Param("id") id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<PlatformLicenseActionResponseDto> {
+    const data = await this.platformAdminService.enableLicense(id, user);
+    return { success: true, data };
+  }
+
+  @Post("licenses/:id/revoke")
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  async revokeLicense(
+    @Param("id") id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<PlatformLicenseActionResponseDto> {
+    const data = await this.platformAdminService.revokeLicense(id, user);
+    return { success: true, data };
+  }
+
+  @Post("licenses/:id/duplicate")
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  async duplicateLicense(
+    @Param("id") id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<PlatformLicenseActionResponseDto> {
+    const data = await this.platformAdminService.duplicateLicense(id, user);
+    return { success: true, data };
+  }
+
+  @Post("licenses/:id/delete")
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  async deleteLicense(
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(platformDeleteLicenseSchema)) body: PlatformDeleteLicenseInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<{ success: true }> {
+    await this.platformAdminService.deleteLicense(id, body, user);
     return { success: true };
   }
 }

@@ -153,12 +153,19 @@ model ActivationCode {
   usedAt                   DateTime?
   usedByStudioId           String?
   usedByOwnerEmail         String?   @db.VarChar(255)
-  generatedByPlatformAdmin String   @db.VarChar(64)
+  generatedByPlatformAdmin String    @db.VarChar(64)
   notes                    String?   @db.Text
+  licenseType              String    @default("LIFETIME") @db.VarChar(32)
+  subscriptionMonths       Int?
+  customerName             String?   @db.VarChar(120)
+  phone                    String?   @db.VarChar(64)
+  activatedAt              DateTime?
+  revokedAt                DateTime?
   usedByStudio             Studio?   @relation(fields: [usedByStudioId], references: [id])
 
   @@index([status])
   @@index([createdAt])
+  @@index([licenseType])
   @@map("activation_codes")
 }
 

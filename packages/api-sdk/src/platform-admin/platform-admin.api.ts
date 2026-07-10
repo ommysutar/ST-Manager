@@ -9,9 +9,16 @@ import type {
   PlatformAdminLoginResponseDto,
   PlatformAuditLogListResponseDto,
   PlatformDeleteActivationCodeRequestDto,
+  PlatformDeleteLicenseRequestDto,
   PlatformDeleteStudioRequestDto,
   PlatformGenerateActivationCodesRequestDto,
   PlatformGenerateActivationCodesResponseDto,
+  PlatformGenerateLicensesRequestDto,
+  PlatformGenerateLicensesResponseDto,
+  PlatformLicenseActionResponseDto,
+  PlatformLicenseListQueryDto,
+  PlatformLicenseListResponseDto,
+  PlatformLicensesExportResponseDto,
   PlatformStudioActionResponseDto,
   PlatformStudioDetailResponseDto,
   PlatformStudioListQueryDto,
@@ -21,8 +28,11 @@ import {
   loginSchema,
   platformActivationCodeListQuerySchema,
   platformDeleteActivationCodeSchema,
+  platformDeleteLicenseSchema,
   platformDeleteStudioSchema,
   platformGenerateActivationCodesSchema,
+  platformGenerateLicensesSchema,
+  platformLicenseListQuerySchema,
   platformStudioListQuerySchema,
 } from "@st-manager/validation";
 
@@ -47,6 +57,16 @@ export interface PlatformAdminApi {
   enableActivationCode(id: string): Promise<PlatformActivationCodeActionResponseDto["data"]>;
   deleteActivationCode(id: string, input: PlatformDeleteActivationCodeRequestDto): Promise<void>;
   exportActivationCodes(): Promise<PlatformActivationCodesExportResponseDto["data"]>;
+  listLicenses(query?: PlatformLicenseListQueryDto): Promise<PlatformLicenseListResponseDto>;
+  generateLicenses(
+    input: PlatformGenerateLicensesRequestDto,
+  ): Promise<PlatformGenerateLicensesResponseDto["data"]>;
+  disableLicense(id: string): Promise<PlatformLicenseActionResponseDto["data"]>;
+  enableLicense(id: string): Promise<PlatformLicenseActionResponseDto["data"]>;
+  revokeLicense(id: string): Promise<PlatformLicenseActionResponseDto["data"]>;
+  duplicateLicense(id: string): Promise<PlatformLicenseActionResponseDto["data"]>;
+  deleteLicense(id: string, input: PlatformDeleteLicenseRequestDto): Promise<void>;
+  exportLicenses(): Promise<PlatformLicensesExportResponseDto["data"]>;
 }
 
 export function createPlatformAdminApi(client: HttpClient): PlatformAdminApi {
@@ -158,6 +178,70 @@ export function createPlatformAdminApi(client: HttpClient): PlatformAdminApi {
     exportActivationCodes: async () => {
       const response = await client.get<PlatformActivationCodesExportResponseDto>(
         `${ROUTES.PLATFORM_ADMIN}/activation-codes/export`,
+      );
+      return response.data;
+    },
+
+    listLicenses: async (query = {}) => {
+      const validated = platformLicenseListQuerySchema.parse(query);
+      return client.get<PlatformLicenseListResponseDto>(
+        `${ROUTES.PLATFORM_ADMIN}/licenses`,
+        validated as QueryParams,
+      );
+    },
+
+    generateLicenses: async (input) => {
+      const validated = platformGenerateLicensesSchema.parse(input);
+      const response = await client.post<PlatformGenerateLicensesResponseDto>(
+        `${ROUTES.PLATFORM_ADMIN}/licenses/generate`,
+        validated,
+      );
+      return response.data;
+    },
+
+    disableLicense: async (id) => {
+      const response = await client.post<PlatformLicenseActionResponseDto>(
+        `${ROUTES.PLATFORM_ADMIN}/licenses/${encodeURIComponent(id)}/disable`,
+        {},
+      );
+      return response.data;
+    },
+
+    enableLicense: async (id) => {
+      const response = await client.post<PlatformLicenseActionResponseDto>(
+        `${ROUTES.PLATFORM_ADMIN}/licenses/${encodeURIComponent(id)}/enable`,
+        {},
+      );
+      return response.data;
+    },
+
+    revokeLicense: async (id) => {
+      const response = await client.post<PlatformLicenseActionResponseDto>(
+        `${ROUTES.PLATFORM_ADMIN}/licenses/${encodeURIComponent(id)}/revoke`,
+        {},
+      );
+      return response.data;
+    },
+
+    duplicateLicense: async (id) => {
+      const response = await client.post<PlatformLicenseActionResponseDto>(
+        `${ROUTES.PLATFORM_ADMIN}/licenses/${encodeURIComponent(id)}/duplicate`,
+        {},
+      );
+      return response.data;
+    },
+
+    deleteLicense: async (id, input) => {
+      const validated = platformDeleteLicenseSchema.parse(input);
+      await client.post(
+        `${ROUTES.PLATFORM_ADMIN}/licenses/${encodeURIComponent(id)}/delete`,
+        validated,
+      );
+    },
+
+    exportLicenses: async () => {
+      const response = await client.get<PlatformLicensesExportResponseDto>(
+        `${ROUTES.PLATFORM_ADMIN}/licenses/export`,
       );
       return response.data;
     },

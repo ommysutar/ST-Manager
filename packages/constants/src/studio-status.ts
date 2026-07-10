@@ -27,6 +27,12 @@ export const PLATFORM_AUDIT_ACTIONS = {
   ACTIVATION_CODE_DISABLED: "activation_code.disabled",
   ACTIVATION_CODE_ENABLED: "activation_code.enabled",
   ACTIVATION_CODE_DELETED: "activation_code.deleted",
+  LICENSE_GENERATED: "license.generated",
+  LICENSE_DISABLED: "license.disabled",
+  LICENSE_ENABLED: "license.enabled",
+  LICENSE_REVOKED: "license.revoked",
+  LICENSE_DELETED: "license.deleted",
+  LICENSE_DUPLICATED: "license.duplicated",
 } as const;
 
 export const ACTIVATION_CODE_ERROR_MESSAGES = {
@@ -34,6 +40,7 @@ export const ACTIVATION_CODE_ERROR_MESSAGES = {
   USED: "Code already used",
   DISABLED: "Code disabled",
   EXPIRED: "Code expired",
+  REVOKED: "Code revoked",
 } as const;
 
 export type PlatformAuditAction =
@@ -44,6 +51,7 @@ export const ACTIVATION_CODE_STATUSES = {
   USED: "USED",
   DISABLED: "DISABLED",
   EXPIRED: "EXPIRED",
+  REVOKED: "REVOKED",
 } as const;
 
 export type ActivationCodeStatus =

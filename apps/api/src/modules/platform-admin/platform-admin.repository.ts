@@ -1,12 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import {
   ACTIVATION_CODE_STATUSES,
+  LICENSE_TYPES,
   PLATFORM_ROLES,
   STUDIO_STATUSES,
   TEAM_ROLES,
 } from "@st-manager/constants";
 import type { PostgresPrismaClient } from "@st-manager/database";
-import type { PlatformStudioListQueryInput } from "@st-manager/validation";
+import type { PlatformLicenseListQueryInput, PlatformStudioListQueryInput } from "@st-manager/validation";
 
 import type { DatabaseClient } from "../../common/prisma/prisma.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
@@ -301,7 +302,7 @@ export class PlatformAdminRepository {
     action: string;
     studioId?: string | null;
     studioName?: string | null;
-    metadata?: Record<string, string | number | boolean | null>;
+    metadata?: Record<string, unknown>;
   }): Promise<void> {
     const client = asClient(this.prismaService.getClient());
     await client.platformAuditLog.create({
@@ -311,7 +312,7 @@ export class PlatformAdminRepository {
         action: input.action,
         studioId: input.studioId ?? null,
         studioName: input.studioName ?? null,
-        ...(input.metadata ? { metadata: input.metadata } : {}),
+        ...(input.metadata ? { metadata: input.metadata as never } : {}),
       },
     });
   }
@@ -355,10 +356,19 @@ export class PlatformAdminRepository {
 
   async markExpiredActivationCodes(): Promise<void> {
     const client = asClient(this.prismaService.getClient());
+    const now = new Date();
     await client.activationCode.updateMany({
       where: {
         status: ACTIVATION_CODE_STATUSES.ACTIVE,
-        expiresAt: { lt: new Date() },
+        expiresAt: { lt: now },
+      },
+      data: { status: ACTIVATION_CODE_STATUSES.EXPIRED },
+    });
+    await client.activationCode.updateMany({
+      where: {
+        status: ACTIVATION_CODE_STATUSES.USED,
+        licenseType: { in: [LICENSE_TYPES.TRIAL, LICENSE_TYPES.SUBSCRIPTION] },
+        expiresAt: { lt: now },
       },
       data: { status: ACTIVATION_CODE_STATUSES.EXPIRED },
     });
@@ -518,5 +528,175 @@ export class PlatformAdminRepository {
   async deleteActivationCode(id: string): Promise<void> {
     const client = asClient(this.prismaService.getClient());
     await client.activationCode.delete({ where: { id } });
+  }
+
+  private activationCodeInclude() {
+    return {
+      usedByStudio: {
+        select: {
+          id: true,
+          name: true,
+          members: {
+            where: { role: TEAM_ROLES.OWNER },
+            select: { email: true },
+            take: 1,
+          },
+        },
+      },
+    } as const;
+  }
+
+  async getLicenseSummary() {
+    const client = asClient(this.prismaService.getClient());
+    const [
+      total,
+      active,
+      used,
+      expired,
+      revoked,
+      disabled,
+      lifetime,
+      trial,
+    ] = await Promise.all([
+      client.activationCode.count(),
+      client.activationCode.count({ where: { status: ACTIVATION_CODE_STATUSES.ACTIVE } }),
+      client.activationCode.count({ where: { status: ACTIVATION_CODE_STATUSES.USED } }),
+      client.activationCode.count({ where: { status: ACTIVATION_CODE_STATUSES.EXPIRED } }),
+      client.activationCode.count({ where: { status: ACTIVATION_CODE_STATUSES.REVOKED } }),
+      client.activationCode.count({ where: { status: ACTIVATION_CODE_STATUSES.DISABLED } }),
+      client.activationCode.count({ where: { licenseType: LICENSE_TYPES.LIFETIME } }),
+      client.activationCode.count({ where: { licenseType: LICENSE_TYPES.TRIAL } }),
+    ]);
+    return { total, active, used, expired, revoked, disabled, lifetime, trial };
+  }
+
+  async listLicenses(query: PlatformLicenseListQueryInput) {
+    const client = asClient(this.prismaService.getClient());
+    const search = query.search?.trim();
+    const createdFrom = query.createdFrom ? new Date(query.createdFrom) : null;
+    const createdTo = query.createdTo ? new Date(query.createdTo) : null;
+
+    const where = {
+      ...(query.status ? { status: query.status } : {}),
+      ...(query.licenseType ? { licenseType: query.licenseType } : {}),
+      ...(createdFrom || createdTo
+        ? {
+            createdAt: {
+              ...(createdFrom && !Number.isNaN(createdFrom.getTime())
+                ? { gte: createdFrom }
+                : {}),
+              ...(createdTo && !Number.isNaN(createdTo.getTime()) ? { lte: createdTo } : {}),
+            },
+          }
+        : {}),
+      ...(search
+        ? {
+            OR: [
+              { code: { contains: search } },
+              { notes: { contains: search } },
+              { customerName: { contains: search } },
+              { usedByOwnerEmail: { contains: search } },
+              { usedByStudio: { name: { contains: search } } },
+              {
+                usedByStudio: {
+                  members: {
+                    some: {
+                      role: TEAM_ROLES.OWNER,
+                      email: { contains: search },
+                    },
+                  },
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+
+    const [total, rows] = await Promise.all([
+      client.activationCode.count({ where }),
+      client.activationCode.findMany({
+        where,
+        include: this.activationCodeInclude(),
+        orderBy: { [query.sortBy]: query.sortOrder },
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+      }),
+    ]);
+
+    return { total, rows };
+  }
+
+  async listAllLicensesForExport() {
+    const client = asClient(this.prismaService.getClient());
+    return client.activationCode.findMany({
+      include: this.activationCodeInclude(),
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async createLicenses(
+    licenses: Array<{
+      code: string;
+      expiresAt: Date | null;
+      notes: string | null;
+      generatedByPlatformAdmin: string;
+      licenseType: string;
+      subscriptionMonths: number | null;
+      customerName: string | null;
+      phone: string | null;
+    }>,
+  ) {
+    const client = asClient(this.prismaService.getClient());
+    await client.activationCode.createMany({
+      data: licenses.map((item) => ({
+        code: item.code,
+        status: ACTIVATION_CODE_STATUSES.ACTIVE,
+        expiresAt: item.expiresAt,
+        notes: item.notes,
+        generatedByPlatformAdmin: item.generatedByPlatformAdmin,
+        licenseType: item.licenseType,
+        subscriptionMonths: item.subscriptionMonths,
+        customerName: item.customerName,
+        phone: item.phone,
+      })),
+    });
+    return client.activationCode.findMany({
+      where: { code: { in: licenses.map((c) => c.code) } },
+      include: this.activationCodeInclude(),
+    });
+  }
+
+  async updateLicense(
+    id: string,
+    data: {
+      status?: string;
+      revokedAt?: Date | null;
+      expiresAt?: Date | null;
+    },
+  ) {
+    const client = asClient(this.prismaService.getClient());
+    return client.activationCode.update({
+      where: { id },
+      data,
+      include: this.activationCodeInclude(),
+    });
+  }
+
+  async findLicenseByStudioId(studioId: string) {
+    const client = asClient(this.prismaService.getClient());
+    return client.activationCode.findFirst({
+      where: { usedByStudioId: studioId },
+      orderBy: { activatedAt: "desc" },
+      include: this.activationCodeInclude(),
+    });
+  }
+
+  async findUserStudioId(userId: string): Promise<string | null> {
+    const client = asClient(this.prismaService.getClient());
+    const user = await client.user.findUnique({
+      where: { id: userId },
+      select: { studioId: true },
+    });
+    return user?.studioId ?? null;
   }
 }

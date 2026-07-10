@@ -50,3 +50,62 @@ export const platformDeleteActivationCodeSchema = z.object({
 });
 
 export type PlatformDeleteActivationCodeInput = z.infer<typeof platformDeleteActivationCodeSchema>;
+
+export const platformLicenseListQuerySchema = z.object({
+  search: z.string().trim().optional(),
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().positive().max(100).default(20),
+  sortBy: z
+    .enum(["code", "status", "createdAt", "expiresAt", "licenseType"])
+    .default("createdAt"),
+  sortOrder: z.enum(["asc", "desc"]).default("desc"),
+  status: z.string().trim().optional(),
+  licenseType: z.string().trim().optional(),
+  createdFrom: z.string().trim().optional(),
+  createdTo: z.string().trim().optional(),
+});
+
+export type PlatformLicenseListQueryInput = z.infer<typeof platformLicenseListQuerySchema>;
+
+export const platformGenerateLicensesSchema = z
+  .object({
+    quantity: z.union([
+      z.literal(1),
+      z.literal(5),
+      z.literal(10),
+      z.literal(25),
+      z.literal(50),
+      z.literal(100),
+    ]),
+    licenseType: z.enum(["LIFETIME", "TRIAL", "SUBSCRIPTION"]),
+    subscriptionMonths: z
+      .union([z.literal(1), z.literal(3), z.literal(6), z.literal(12)])
+      .optional()
+      .nullable(),
+    customerName: z.string().trim().max(200).optional().nullable(),
+    phone: z.string().trim().max(40).optional().nullable(),
+    notes: z.string().trim().max(2000).optional().nullable(),
+    expiresAt: z
+      .string()
+      .trim()
+      .optional()
+      .nullable()
+      .transform((value) => (value ? value : null)),
+  })
+  .superRefine((value, ctx) => {
+    if (value.licenseType === "SUBSCRIPTION" && !value.subscriptionMonths) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "subscriptionMonths is required for SUBSCRIPTION licenses",
+        path: ["subscriptionMonths"],
+      });
+    }
+  });
+
+export type PlatformGenerateLicensesInput = z.infer<typeof platformGenerateLicensesSchema>;
+
+export const platformDeleteLicenseSchema = z.object({
+  confirmation: z.literal("DELETE"),
+});
+
+export type PlatformDeleteLicenseInput = z.infer<typeof platformDeleteLicenseSchema>;
