@@ -43,6 +43,12 @@ export interface ClientPortalEstimateDto {
   delayReason: string | null;
 }
 
+export interface ClientPortalFileDto {
+  name: string;
+  url: string;
+  kind: "file" | "link";
+}
+
 export interface ClientPortalSnapshotDto {
   projectName: string;
   clientName: string;
@@ -56,6 +62,8 @@ export interface ClientPortalSnapshotDto {
   upcomingBooking: ClientPortalBookingDto | null;
   payment: ClientPortalPaymentDto;
   documents: ClientPortalDocumentDto[];
+  clientFiles: ClientPortalFileDto[];
+  clientNotes: string | null;
   studioMessage: string | null;
   projectStatus: string;
 }

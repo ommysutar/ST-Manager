@@ -229,7 +229,7 @@ export class ClientPortalService {
     }
     if (resolved === "expired") {
       throw new GoneException(
-        "This project link has expired. Please contact your Studio if you need access again.",
+        "This secure project link has expired. Please contact your Studio if you need access again.",
       );
     }
 
@@ -360,6 +360,12 @@ export class ClientPortalService {
         currency: doc.currency ?? "INR",
         lineItems: doc.lineItems,
       })),
+      clientFiles: (input.clientFiles ?? []).map((file) => ({
+        name: file.name,
+        url: file.url,
+        kind: file.kind,
+      })),
+      clientNotes: input.clientNotes ?? null,
       studioMessage: input.studioMessage ?? null,
       projectStatus: input.projectStatus,
     };

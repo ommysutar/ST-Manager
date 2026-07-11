@@ -57,6 +57,17 @@ export const clientPortalSnapshotSchema = z.object({
     status: z.string().trim().min(1).max(64),
   }),
   documents: z.array(documentSchema).max(10),
+  clientFiles: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1).max(200),
+        url: z.string().trim().min(1).max(2000),
+        kind: z.enum(["file", "link"]),
+      }),
+    )
+    .max(50)
+    .default([]),
+  clientNotes: z.string().trim().max(5000).nullable().default(null),
   studioMessage: z.string().trim().max(2000).nullable(),
   projectStatus: z.string().trim().min(1).max(64),
 });

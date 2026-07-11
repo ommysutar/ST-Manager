@@ -8,6 +8,7 @@ import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsClientMounted } from "@/hooks/useInquiryStorage";
+import { startClientPortalAutoSync } from "@/lib/client-portal/auto-sync";
 
 import { Header } from "./Header";
 import { MobileNavDrawer } from "./MobileNavDrawer";
@@ -25,6 +26,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     pathname.startsWith("/login/") ||
     pathname.startsWith("/invite/") ||
     pathname.startsWith("/client/");
+
+  useEffect(() => {
+    if (!mounted || !isAuthenticated || isPlatformAdminRoute || isAuthRoute) {
+      return;
+    }
+    return startClientPortalAutoSync();
+  }, [mounted, isAuthenticated, isPlatformAdminRoute, isAuthRoute]);
 
   useEffect(() => {
     if (!mounted) {

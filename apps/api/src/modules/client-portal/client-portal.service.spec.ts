@@ -65,6 +65,8 @@ describe("ClientPortalService", () => {
           upcomingBooking: null,
           payment: { totalAmount: 1000, advancePaid: 200, remainingAmount: 800, status: "Partial" },
           documents: [],
+          clientFiles: [],
+          clientNotes: null,
           studioMessage: null,
           projectStatus: "active",
         },

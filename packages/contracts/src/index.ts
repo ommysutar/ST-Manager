@@ -203,6 +203,7 @@ export type {
   ClientPortalPaymentDto,
   ClientPortalDocumentDto,
   ClientPortalEstimateDto,
+  ClientPortalFileDto,
   ClientPortalSnapshotDto,
   ClientPortalLinkMetaDto,
   ClientPortalCreateOrSyncRequestDto,

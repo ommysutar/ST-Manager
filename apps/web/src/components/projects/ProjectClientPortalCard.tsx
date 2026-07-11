@@ -23,10 +23,13 @@ import { useStudios } from "@/hooks/useStudios";
 import { clientPortalApi } from "@/lib/api-client";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { buildWhatsAppUrl, normalizeWhatsAppPhone } from "@/lib/clients/whatsapp";
+import { syncClientPortalNow } from "@/lib/client-portal/auto-sync";
+import { loadPortalSettings, savePortalSettings } from "@/lib/client-portal/settings";
 import {
   buildClientPortalSnapshot,
   buildPortalWhatsAppMessage,
   loadPortalUrl,
+  markPortalLinked,
   savePortalUrl,
   type PortalEstimateInput,
 } from "@/lib/client-portal/snapshot";
@@ -45,35 +48,61 @@ function formatDate(value: string | null): string {
   });
 }
 
+function toDateInputValue(iso: string | null): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+}
+
 export function ProjectClientPortalCard({ project }: ProjectClientPortalCardProps) {
   const { user } = useAuth();
   const profile = useProfile(user);
   const bookings = useProjectBookings(project.id);
   const studios = useStudios();
+  const initialSettings = loadPortalSettings(project.id);
   const [meta, setMeta] = useState<ClientPortalLinkMetaDto | null>(null);
   const [portalUrl, setPortalUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [studioMessage, setStudioMessage] = useState("");
-  const [estimateDate, setEstimateDate] = useState("");
-  const [scheduleStatus, setScheduleStatus] = useState<PortalEstimateInput["scheduleStatus"]>("on_schedule");
-  const [expectedDate, setExpectedDate] = useState("");
-  const [delayReason, setDelayReason] = useState("");
+  const [studioMessage, setStudioMessage] = useState(initialSettings.studioMessage ?? "");
+  const [estimateDate, setEstimateDate] = useState(
+    toDateInputValue(initialSettings.estimate.estimatedCompletionDate),
+  );
+  const [scheduleStatus, setScheduleStatus] = useState<PortalEstimateInput["scheduleStatus"]>(
+    initialSettings.estimate.scheduleStatus,
+  );
+  const [expectedDate, setExpectedDate] = useState(
+    toDateInputValue(initialSettings.estimate.expectedCompletionDate),
+  );
+  const [delayReason, setDelayReason] = useState(initialSettings.estimate.delayReason ?? "");
   const [emailTo, setEmailTo] = useState(project.clientEmail ?? "");
 
+  function currentEstimate(): PortalEstimateInput {
+    return {
+      estimatedCompletionDate: estimateDate ? new Date(estimateDate).toISOString() : null,
+      scheduleStatus,
+      expectedCompletionDate:
+        scheduleStatus === "delayed" && expectedDate ? new Date(expectedDate).toISOString() : null,
+      delayReason: scheduleStatus === "delayed" ? delayReason.trim() || null : null,
+    };
+  }
+
+  function persistSettings(nextMessage = studioMessage) {
+    savePortalSettings(project.id, {
+      studioMessage: nextMessage.trim() || null,
+      estimate: currentEstimate(),
+    });
+  }
+
   function buildSnapshot() {
+    persistSettings();
     return buildClientPortalSnapshot({
       project,
       profile,
       bookings,
       studios,
       studioMessage: studioMessage.trim() || null,
-      estimate: {
-        estimatedCompletionDate: estimateDate ? new Date(estimateDate).toISOString() : null,
-        scheduleStatus,
-        expectedCompletionDate:
-          scheduleStatus === "delayed" && expectedDate ? new Date(expectedDate).toISOString() : null,
-        delayReason: scheduleStatus === "delayed" ? delayReason.trim() || null : null,
-      },
+      estimate: currentEstimate(),
     });
   }
 
@@ -84,9 +113,17 @@ export function ProjectClientPortalCard({ project }: ProjectClientPortalCardProp
       .then((data) => {
         if (cancelled) return;
         setMeta(data);
-        setStudioMessage(data.studioMessage ?? "");
+        if (data.hasLink) {
+          markPortalLinked(project.id);
+        }
+        if (data.studioMessage) {
+          setStudioMessage(data.studioMessage);
+        }
         const stored = loadPortalUrl(project.id);
         if (stored) setPortalUrl(stored);
+        if (data.hasLink) {
+          void syncClientPortalNow(project.id);
+        }
       })
       .catch(() => {
         // Portal may be unavailable offline; card still renders.
@@ -107,6 +144,7 @@ export function ProjectClientPortalCard({ project }: ProjectClientPortalCardProp
       setMeta(result.meta);
       setPortalUrl(result.portalUrl);
       savePortalUrl(project.id, result.portalUrl);
+      markPortalLinked(project.id);
       toast.success(mode === "create" ? "Secure portal link created" : "Secure portal link regenerated");
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Failed to update portal link"));
@@ -125,6 +163,7 @@ export function ProjectClientPortalCard({ project }: ProjectClientPortalCardProp
         studioMessage: snapshot.studioMessage,
       });
       setMeta(next);
+      markPortalLinked(project.id);
       toast.success("Portal details updated");
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Failed to sync portal"));
@@ -227,7 +266,8 @@ export function ProjectClientPortalCard({ project }: ProjectClientPortalCardProp
       <CardHeader>
         <CardTitle>Client Portal</CardTitle>
         <CardDescription>
-          Share a secure read-only project link. Clients do not need an account.
+          Share a secure read-only project link. Clients do not need an account. Project changes sync
+          automatically.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -251,14 +291,38 @@ export function ProjectClientPortalCard({ project }: ProjectClientPortalCardProp
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-2">
             <Label>Estimated Completion Date</Label>
-            <Input type="date" value={estimateDate} onChange={(e) => setEstimateDate(e.target.value)} />
+            <Input
+              type="date"
+              value={estimateDate}
+              onChange={(e) => {
+                setEstimateDate(e.target.value);
+                savePortalSettings(project.id, {
+                  studioMessage: studioMessage.trim() || null,
+                  estimate: {
+                    estimatedCompletionDate: e.target.value
+                      ? new Date(e.target.value).toISOString()
+                      : null,
+                    scheduleStatus,
+                    expectedCompletionDate:
+                      scheduleStatus === "delayed" && expectedDate
+                        ? new Date(expectedDate).toISOString()
+                        : null,
+                    delayReason: scheduleStatus === "delayed" ? delayReason.trim() || null : null,
+                  },
+                });
+              }}
+            />
           </div>
           <div className="space-y-2">
             <Label>Schedule Status</Label>
             <select
               className="flex h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm"
               value={scheduleStatus}
-              onChange={(e) => setScheduleStatus(e.target.value as PortalEstimateInput["scheduleStatus"])}
+              onChange={(e) => {
+                const next = e.target.value as PortalEstimateInput["scheduleStatus"];
+                setScheduleStatus(next);
+                persistSettings();
+              }}
             >
               <option value="on_schedule">On Schedule</option>
               <option value="delayed">Delayed</option>
@@ -286,6 +350,7 @@ export function ProjectClientPortalCard({ project }: ProjectClientPortalCardProp
             rows={2}
             value={studioMessage}
             onChange={(e) => setStudioMessage(e.target.value)}
+            onBlur={() => persistSettings()}
             placeholder="A short note for your client"
           />
         </div>

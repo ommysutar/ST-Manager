@@ -85,7 +85,7 @@ export function createClientPortalApi(client: HttpClient): ClientPortalApi {
 
     access: async (token) => {
       const response = await client.get<ClientPortalAccessResponseDto>(
-        `${ROUTES.CLIENT_PORTAL}/access/${encodeURIComponent(token)}`,
+        `${ROUTES.CLIENT_PORTAL}/access/${encodeURIComponent(token)}?_=${Date.now()}`,
       );
       return response.data;
     },

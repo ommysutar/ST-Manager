@@ -2,7 +2,7 @@
 
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Progress } from "@st-manager/ui";
 import type { ClientPortalSnapshotDto } from "@st-manager/contracts";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { clientPortalApi } from "@/lib/api-client";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -19,7 +19,10 @@ function formatDate(value: string | null | undefined): string {
 
 function printDocument(doc: ClientPortalSnapshotDto["documents"][number], studioName: string) {
   const lines = doc.lineItems
-    .map((item) => `<tr><td style="padding:8px;border-bottom:1px solid #e2e8f0;">${item.label}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:right;">${formatINR(item.amount)}</td></tr>`)
+    .map(
+      (item) =>
+        `<tr><td style="padding:8px;border-bottom:1px solid #e2e8f0;">${item.label}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:right;">${formatINR(item.amount)}</td></tr>`,
+    )
     .join("");
   const html = `<!doctype html><html><head><title>${doc.title} ${doc.number}</title>
     <style>body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;padding:32px;color:#0f172a} h1{margin:0 0 8px} table{width:100%;border-collapse:collapse;margin-top:24px}</style>
@@ -46,31 +49,47 @@ export function ClientPortalPageClient({ token }: { token: string }) {
   const [snapshot, setSnapshot] = useState<ClientPortalSnapshotDto | null>(null);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    void Promise.resolve()
-      .then(() => clientPortalApi.access(token))
+  const loadPortal = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    setExpired(false);
+    void clientPortalApi
+      .access(token)
       .then((data) => {
-        if (cancelled) return;
         setSnapshot(data.snapshot);
         setExpiresAt(data.expiresAt);
         setLoading(false);
       })
       .catch((err) => {
-        if (cancelled) return;
         const message = getApiErrorMessage(err, "Unable to open portal");
         if (/expired/i.test(message)) {
           setExpired(true);
+          setSnapshot(null);
         }
         setError(message);
         setLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
   }, [token]);
 
-  if (loading) {
+  useEffect(() => {
+    loadPortal();
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        loadPortal();
+      }
+    };
+    const onPageShow = () => loadPortal();
+
+    window.addEventListener("pageshow", onPageShow);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("pageshow", onPageShow);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [loadPortal]);
+
+  if (loading && !snapshot && !expired && !error) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-slate-50 p-6">
         <p className="text-sm text-slate-500">Loading project portal…</p>
@@ -86,7 +105,7 @@ export function ClientPortalPageClient({ token }: { token: string }) {
             <CardTitle>Link expired</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
-            <p>This project link has expired.</p>
+            <p>This secure project link has expired.</p>
             <p>Please contact your Studio if you need access again.</p>
           </CardContent>
         </Card>
@@ -94,7 +113,7 @@ export function ClientPortalPageClient({ token }: { token: string }) {
     );
   }
 
-  if (error || !snapshot) {
+  if ((error || !snapshot) && !loading) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-slate-50 p-6">
         <Card className="w-full max-w-lg">
@@ -107,8 +126,13 @@ export function ClientPortalPageClient({ token }: { token: string }) {
     );
   }
 
+  if (!snapshot) {
+    return null;
+  }
+
   const quotation = snapshot.documents.find((doc) => doc.type === "quotation");
   const invoice = snapshot.documents.find((doc) => doc.type === "invoice");
+  const clientFiles = snapshot.clientFiles ?? [];
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-slate-50 to-white text-slate-900">
@@ -273,6 +297,43 @@ export function ClientPortalPageClient({ token }: { token: string }) {
             </Button>
           </CardContent>
         </Card>
+
+        <Card className="rounded-2xl border-slate-200 shadow-sm">
+          <CardHeader>
+            <CardTitle>Files shared with client</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {clientFiles.length > 0 ? (
+              <ul className="space-y-2">
+                {clientFiles.map((file) => (
+                  <li key={`${file.kind}-${file.url}`}>
+                    <a
+                      href={file.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-blue-600 hover:underline"
+                    >
+                      {file.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-slate-500">No files shared yet.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {snapshot.clientNotes ? (
+          <Card className="rounded-2xl border-slate-200 shadow-sm">
+            <CardHeader>
+              <CardTitle>Notes</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">
+              {snapshot.clientNotes}
+            </CardContent>
+          </Card>
+        ) : null}
 
         {snapshot.studioMessage ? (
           <Card className="rounded-2xl border-blue-200 bg-blue-50/50 shadow-sm">
