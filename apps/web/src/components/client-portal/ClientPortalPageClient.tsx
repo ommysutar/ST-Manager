@@ -49,8 +49,10 @@ export function ClientPortalPageClient({ token }: { token: string }) {
   const [snapshot, setSnapshot] = useState<ClientPortalSnapshotDto | null>(null);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
 
-  const loadPortal = useCallback(() => {
-    setLoading(true);
+  const loadPortal = useCallback((opts?: { quiet?: boolean }) => {
+    if (!opts?.quiet) {
+      setLoading(true);
+    }
     setError(null);
     setExpired(false);
     void clientPortalApi
@@ -72,18 +74,29 @@ export function ClientPortalPageClient({ token }: { token: string }) {
   }, [token]);
 
   useEffect(() => {
-    loadPortal();
+    let cancelled = false;
+    const run = () => {
+      if (cancelled) return;
+      queueMicrotask(() => {
+        if (cancelled) return;
+        loadPortal();
+      });
+    };
+    run();
 
     const onVisible = () => {
       if (document.visibilityState === "visible") {
-        loadPortal();
+        queueMicrotask(() => loadPortal({ quiet: true }));
       }
     };
-    const onPageShow = () => loadPortal();
+    const onPageShow = () => {
+      queueMicrotask(() => loadPortal({ quiet: true }));
+    };
 
     window.addEventListener("pageshow", onPageShow);
     document.addEventListener("visibilitychange", onVisible);
     return () => {
+      cancelled = true;
       window.removeEventListener("pageshow", onPageShow);
       document.removeEventListener("visibilitychange", onVisible);
     };
