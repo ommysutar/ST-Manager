@@ -306,7 +306,15 @@ export class ClientPortalService {
       timeline: input.timeline,
       upcomingBooking: input.upcomingBooking ?? null,
       payment: input.payment,
-      documents: input.documents,
+      documents: input.documents.map((doc) => ({
+        type: doc.type,
+        title: doc.title,
+        number: doc.number,
+        issuedAt: doc.issuedAt ?? null,
+        total: doc.total,
+        currency: doc.currency ?? "INR",
+        lineItems: doc.lineItems,
+      })),
       studioMessage: input.studioMessage ?? null,
       projectStatus: input.projectStatus,
     };
