@@ -63,8 +63,9 @@ export class ClientPortalService {
     }
 
     const { token, tokenHash } = this.generateToken();
-    const expiryFields = this.computeExpiryFields(input.snapshot, null);
-    const studioMessage = input.studioMessage ?? input.snapshot.studioMessage ?? null;
+    const snapshot = this.normalizeSnapshot(input.snapshot);
+    const expiryFields = this.computeExpiryFields(snapshot.projectStatus, null);
+    const studioMessage = input.studioMessage ?? snapshot.studioMessage ?? null;
 
     const link = existing
       ? await this.repository.update(existing.id, {
@@ -73,7 +74,7 @@ export class ClientPortalService {
           disabledAt: null,
           expiresAt: expiryFields.expiresAt,
           completedAt: expiryFields.completedAt,
-          snapshot: input.snapshot,
+          snapshot,
           studioMessage,
         })
       : await this.repository.create({
@@ -83,7 +84,7 @@ export class ClientPortalService {
           status: "active",
           expiresAt: expiryFields.expiresAt,
           completedAt: expiryFields.completedAt,
-          snapshot: input.snapshot,
+          snapshot,
           studioMessage,
         });
 
@@ -99,8 +100,9 @@ export class ClientPortalService {
     const studioId = await this.requireStudioId(actor);
     const existing = await this.repository.findByStudioAndProject(studioId, projectKey);
     const { token, tokenHash } = this.generateToken();
-    const expiryFields = this.computeExpiryFields(input.snapshot, existing?.completedAt ?? null);
-    const studioMessage = input.studioMessage ?? input.snapshot.studioMessage ?? existing?.studioMessage ?? null;
+    const snapshot = this.normalizeSnapshot(input.snapshot);
+    const expiryFields = this.computeExpiryFields(snapshot.projectStatus, existing?.completedAt ?? null);
+    const studioMessage = input.studioMessage ?? snapshot.studioMessage ?? existing?.studioMessage ?? null;
 
     const link = existing
       ? await this.repository.update(existing.id, {
@@ -109,7 +111,7 @@ export class ClientPortalService {
           disabledAt: null,
           expiresAt: expiryFields.expiresAt,
           completedAt: expiryFields.completedAt,
-          snapshot: input.snapshot,
+          snapshot,
           studioMessage,
         })
       : await this.repository.create({
@@ -119,7 +121,7 @@ export class ClientPortalService {
           status: "active",
           expiresAt: expiryFields.expiresAt,
           completedAt: expiryFields.completedAt,
-          snapshot: input.snapshot,
+          snapshot,
           studioMessage,
         });
 
@@ -138,15 +140,16 @@ export class ClientPortalService {
       throw new NotFoundException("Client portal link not found. Create a link first.");
     }
 
-    const expiryFields = this.computeExpiryFields(input.snapshot, existing.completedAt);
+    const expiryFields = this.computeExpiryFields(input.snapshot.projectStatus, existing.completedAt);
     const studioMessage =
       input.studioMessage !== undefined
         ? input.studioMessage
         : (input.snapshot.studioMessage ?? existing.studioMessage);
     const baseStatus = existing.status === "disabled" ? "disabled" : "active";
     const resolved = this.resolveStatus(baseStatus, expiryFields.expiresAt);
+    const snapshot = this.normalizeSnapshot(input.snapshot);
     const link = await this.repository.update(existing.id, {
-      snapshot: input.snapshot,
+      snapshot,
       studioMessage,
       expiresAt: expiryFields.expiresAt,
       completedAt: expiryFields.completedAt,
@@ -267,16 +270,46 @@ export class ClientPortalService {
   }
 
   private computeExpiryFields(
-    snapshot: ClientPortalSnapshotDto,
+    projectStatus: string,
     existingCompletedAt: Date | null,
   ): { expiresAt: Date | null; completedAt: Date | null } {
-    if (!COMPLETED_STATUSES.has(snapshot.projectStatus)) {
+    if (!COMPLETED_STATUSES.has(projectStatus)) {
       return { expiresAt: null, completedAt: existingCompletedAt };
     }
     const completedAt = existingCompletedAt ?? new Date();
     const expiresAt = new Date(completedAt);
     expiresAt.setDate(expiresAt.getDate() + EXPIRY_DAYS_AFTER_COMPLETE);
     return { expiresAt, completedAt };
+  }
+
+  private normalizeSnapshot(input: ClientPortalCreateOrSyncInput["snapshot"]): ClientPortalSnapshotDto {
+    return {
+      projectName: input.projectName,
+      clientName: input.clientName,
+      service: input.service ?? "",
+      packageName: input.packageName ?? "",
+      currentStatus: input.currentStatus,
+      progressPercent: input.progressPercent,
+      studio: {
+        name: input.studio.name,
+        logoDataUrl: input.studio.logoDataUrl ?? "",
+        address: input.studio.address ?? "",
+        phone: input.studio.phone ?? "",
+        email: input.studio.email ?? "",
+      },
+      estimate: {
+        estimatedCompletionDate: input.estimate.estimatedCompletionDate ?? null,
+        scheduleStatus: input.estimate.scheduleStatus,
+        expectedCompletionDate: input.estimate.expectedCompletionDate ?? null,
+        delayReason: input.estimate.delayReason ?? null,
+      },
+      timeline: input.timeline,
+      upcomingBooking: input.upcomingBooking ?? null,
+      payment: input.payment,
+      documents: input.documents,
+      studioMessage: input.studioMessage ?? null,
+      projectStatus: input.projectStatus,
+    };
   }
 
   private resolveStatus(status: string, expiresAt: Date | null): "active" | "disabled" | "expired" {
