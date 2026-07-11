@@ -76,8 +76,8 @@ export function CreateAccountPageClient() {
   const displayError = validationError ?? error;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-6">
-      <Card className="w-full max-w-md border-border/60 shadow-xl">
+    <div className="flex min-h-screen items-center justify-center overflow-x-hidden bg-background p-6">
+      <Card className="w-full max-w-md min-w-0 overflow-hidden border-border/60 shadow-xl">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="page-title">Create Account</CardTitle>
           <CardDescription>
@@ -91,9 +91,9 @@ export function CreateAccountPageClient() {
             Step {step === "owner" ? "1" : step === "studio" ? "2" : "3"} of 3
           </p>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-w-0">
           {step === "owner" ? (
-            <form className="space-y-4" onSubmit={goToStudio}>
+            <form className="w-full min-w-0 space-y-4" onSubmit={goToStudio}>
               <div className="space-y-2">
                 <Label htmlFor="register-owner-name">Owner Name</Label>
                 <Input
@@ -144,7 +144,7 @@ export function CreateAccountPageClient() {
               {displayError ? <p className="text-sm text-destructive">{displayError}</p> : null}
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full max-w-full shrink"
                 size="lg"
                 disabled={!ownerName.trim() || !email.trim() || !password || !confirmPassword}
               >
@@ -154,7 +154,7 @@ export function CreateAccountPageClient() {
           ) : null}
 
           {step === "studio" ? (
-            <form className="space-y-4" onSubmit={goToActivation}>
+            <form className="w-full min-w-0 space-y-4" onSubmit={goToActivation}>
               <div className="space-y-2">
                 <Label htmlFor="register-studio-name">Studio Name</Label>
                 <Input
@@ -167,11 +167,21 @@ export function CreateAccountPageClient() {
                 />
               </div>
               {displayError ? <p className="text-sm text-destructive">{displayError}</p> : null}
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" className="w-full" onClick={() => setStep("owner")}>
+              <div className="flex w-full min-w-0 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-w-0 flex-1 shrink"
+                  onClick={() => setStep("owner")}
+                >
                   Back
                 </Button>
-                <Button type="submit" className="w-full" size="lg" disabled={!studioName.trim()}>
+                <Button
+                  type="submit"
+                  className="min-w-0 flex-1 shrink"
+                  size="lg"
+                  disabled={!studioName.trim()}
+                >
                   Continue
                 </Button>
               </div>
@@ -179,7 +189,7 @@ export function CreateAccountPageClient() {
           ) : null}
 
           {step === "activation" ? (
-            <form className="space-y-4" onSubmit={handleActivate}>
+            <form className="w-full min-w-0 space-y-4" onSubmit={handleActivate}>
               <div className="space-y-2">
                 <Label htmlFor="register-activation-code">Activation Code</Label>
                 <Input
@@ -196,11 +206,11 @@ export function CreateAccountPageClient() {
               {displayError && !successMessage ? (
                 <p className="text-sm text-destructive">{displayError}</p>
               ) : null}
-              <div className="flex gap-2">
+              <div className="flex w-full min-w-0 gap-2">
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-full"
+                  className="min-w-0 flex-1 shrink"
                   disabled={isSubmitting || Boolean(successMessage)}
                   onClick={() => {
                     setValidationError(null);
@@ -211,7 +221,7 @@ export function CreateAccountPageClient() {
                 </Button>
                 <Button
                   type="submit"
-                  className="w-full"
+                  className="min-w-0 flex-1 shrink"
                   size="lg"
                   disabled={isSubmitting || !activationCode.trim() || Boolean(successMessage)}
                 >
