@@ -47,11 +47,16 @@ export class ClientPortalRepository {
     status: string;
     expiresAt: Date | null;
     completedAt: Date | null;
-    snapshot: Prisma.InputJsonValue;
+    snapshot: unknown;
     studioMessage: string | null;
   }): Promise<ClientPortalLinkRecord> {
     const client = asClient(this.prismaService.getClient());
-    return client.clientPortalLink.create({ data });
+    return client.clientPortalLink.create({
+      data: {
+        ...data,
+        snapshot: data.snapshot as Prisma.InputJsonValue,
+      },
+    });
   }
 
   async update(
@@ -61,12 +66,21 @@ export class ClientPortalRepository {
       status: string;
       expiresAt: Date | null;
       completedAt: Date | null;
-      snapshot: Prisma.InputJsonValue;
+      snapshot: unknown;
       studioMessage: string | null;
       disabledAt: Date | null;
     }>,
   ): Promise<ClientPortalLinkRecord> {
     const client = asClient(this.prismaService.getClient());
-    return client.clientPortalLink.update({ where: { id }, data });
+    const { snapshot, ...rest } = data;
+    return client.clientPortalLink.update({
+      where: { id },
+      data: {
+        ...rest,
+        ...(snapshot !== undefined
+          ? { snapshot: snapshot as Prisma.InputJsonValue }
+          : {}),
+      },
+    });
   }
 }
