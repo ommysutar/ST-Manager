@@ -20,6 +20,7 @@ import { ReportsModule } from "./modules/reports/reports.module";
 import { TeamModule } from "./modules/team/team.module";
 import { PlatformAdminModule } from "./modules/platform-admin/platform-admin.module";
 import { ProfileModule } from "./modules/profile/profile.module";
+import { ClientPortalModule } from "./modules/client-portal/client-portal.module";
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { ProfileModule } from "./modules/profile/profile.module";
     TeamModule,
     PlatformAdminModule,
     ProfileModule,
+    ClientPortalModule,
   ],
   providers: [StManagerNestLoggerService, { provide: APP_FILTER, useClass: HttpExceptionFilter }],
 })

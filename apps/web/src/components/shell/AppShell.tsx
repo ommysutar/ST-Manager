@@ -23,7 +23,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isAuthRoute =
     pathname === "/login" ||
     pathname.startsWith("/login/") ||
-    pathname.startsWith("/invite/");
+    pathname.startsWith("/invite/") ||
+    pathname.startsWith("/client/");
 
   useEffect(() => {
     if (!mounted) {
@@ -38,13 +39,14 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (isAuthRoute) {
       const isInviteAcceptRoute =
         pathname === "/invite/accept" || pathname.startsWith("/invite/accept/");
+      const isClientPortalRoute = pathname.startsWith("/client/");
 
       if (isAuthenticated) {
         const hasPendingInvitation =
           typeof window !== "undefined" &&
           new URLSearchParams(window.location.search).has("invitation");
-        // Never redirect away from invitation acceptance — session is resolved on that page.
-        if (!hasPendingInvitation && !isInviteAcceptRoute) {
+        // Never redirect away from invitation acceptance or client portal.
+        if (!hasPendingInvitation && !isInviteAcceptRoute && !isClientPortalRoute) {
           router.replace("/");
         }
       }

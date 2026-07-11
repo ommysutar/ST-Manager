@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { ProjectBookingsTab } from "@/components/projects/ProjectBookingsTab";
+import { ProjectClientPortalCard } from "@/components/projects/ProjectClientPortalCard";
 import { ProjectExpensesTab } from "@/components/projects/ProjectExpensesTab";
 import { ProjectFilesLinks } from "@/components/projects/ProjectFilesLinks";
 import { ProjectNotesTab } from "@/components/projects/ProjectNotesTab";
@@ -280,6 +281,10 @@ export function ProjectOverviewSections({ project }: ProjectOverviewSectionsProp
               )}
             </CardContent>
           </Card>
+
+          <div className="lg:col-span-2">
+            <ProjectClientPortalCard project={project} />
+          </div>
 
           <Card className="lg:col-span-2">
             <CardHeader>

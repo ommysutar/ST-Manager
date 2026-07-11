@@ -28,6 +28,7 @@ model Studio {
   auditLogs       AuditLog[]
   roleDefs        RoleDefinition[]
   activationCodes ActivationCode[]
+  clientPortalLinks ClientPortalLink[]
 
   @@index([status])
   @@map("studios")
@@ -257,4 +258,24 @@ model Invoice {
   @@index([clientId, status])
   @@index([status, paidAt])
   @@map("invoices")
+}
+
+model ClientPortalLink {
+  id          String    @id @default(cuid())
+  studioId    String
+  projectKey  String    @db.VarChar(64)
+  tokenHash   String    @unique @db.VarChar(64)
+  status      String    @default("active") @db.VarChar(32)
+  expiresAt   DateTime?
+  completedAt DateTime?
+  snapshot    Json
+  studioMessage String? @db.Text
+  disabledAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  studio      Studio    @relation(fields: [studioId], references: [id], onDelete: Cascade)
+
+  @@unique([studioId, projectKey])
+  @@index([studioId, status])
+  @@map("client_portal_links")
 }

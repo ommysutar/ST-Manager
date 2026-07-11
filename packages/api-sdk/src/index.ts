@@ -43,3 +43,6 @@ export type { StudioLicenseApi } from "./studio-license/studio-license.api";
 
 export { createStudioProfileApi } from "./profile/studio-profile.api";
 export type { StudioProfileApi } from "./profile/studio-profile.api";
+
+export { createClientPortalApi } from "./client-portal/client-portal.api";
+export type { ClientPortalApi } from "./client-portal/client-portal.api";

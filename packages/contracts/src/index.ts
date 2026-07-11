@@ -195,3 +195,19 @@ export type {
   GetStudioUserProfileResponseDto,
   UpdateStudioUserProfileResponseDto,
 } from "./profile/studio-profile.dto";
+
+export type {
+  ClientPortalStudioDto,
+  ClientPortalTimelineStepDto,
+  ClientPortalBookingDto,
+  ClientPortalPaymentDto,
+  ClientPortalDocumentDto,
+  ClientPortalEstimateDto,
+  ClientPortalSnapshotDto,
+  ClientPortalLinkMetaDto,
+  ClientPortalCreateOrSyncRequestDto,
+  ClientPortalCreateResponseDto,
+  ClientPortalMetaResponseDto,
+  ClientPortalAccessResponseDto,
+  ClientPortalEmailRequestDto,
+} from "./client-portal/client-portal.dto";

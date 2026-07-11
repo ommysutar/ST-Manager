@@ -95,4 +95,60 @@ export class EmailService {
       this.configService.get("APP_BASE_URL", { infer: true }) ?? "http://localhost:3000";
     return `${baseUrl.replace(/\/$/, "")}/invite/accept?token=${encodeURIComponent(token)}`;
   }
+
+  async sendClientPortalLink(params: {
+    to: string;
+    studioName: string;
+    projectName: string;
+    clientName: string;
+    portalUrl: string;
+    estimatedCompletionDate: string | null;
+    expiresAtLabel: string | null;
+  }): Promise<void> {
+    const estimateLabel = params.estimatedCompletionDate
+      ? new Date(params.estimatedCompletionDate).toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })
+      : "To be confirmed";
+
+    const expiryBlock = params.expiresAtLabel
+      ? `<p><strong>Link expires:</strong> ${params.expiresAtLabel}</p>`
+      : `<p><strong>Link expiry:</strong> Active until the project is completed (then 7 days).</p>`;
+
+    const message: EmailMessage = {
+      to: params.to,
+      subject: "Your Project Portal - ST Manager",
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 560px; margin: 0 auto; color: #0f172a;">
+          <h2 style="margin-bottom: 8px;">Your Project Portal</h2>
+          <p style="color:#64748b;margin-top:0;">Secure read-only access from ${params.studioName}</p>
+          <p><strong>Studio:</strong> ${params.studioName}</p>
+          <p><strong>Project:</strong> ${params.projectName}</p>
+          <p><strong>Client:</strong> ${params.clientName}</p>
+          <p><strong>Estimated completion:</strong> ${estimateLabel}</p>
+          ${expiryBlock}
+          <p style="margin: 32px 0;">
+            <a href="${params.portalUrl}" style="background:#2563eb;color:#fff;padding:12px 24px;text-decoration:none;border-radius:8px;display:inline-block;font-weight:600;">
+              Open Project Portal
+            </a>
+          </p>
+          <p style="color:#64748b;font-size:13px;">This link is private. Do not share it publicly.</p>
+        </div>
+      `,
+      text: [
+        `Your Project Portal - ST Manager`,
+        `Studio: ${params.studioName}`,
+        `Project: ${params.projectName}`,
+        `Client: ${params.clientName}`,
+        `Estimated completion: ${estimateLabel}`,
+        params.expiresAtLabel ? `Link expires: ${params.expiresAtLabel}` : "Link is active until project completion (+7 days).",
+        `Open: ${params.portalUrl}`,
+      ].join("\n"),
+    };
+
+    this.logger.log(`Sending client portal email to=${params.to} via provider=${this.providerId}...`);
+    await this.provider.send(message);
+  }
 }

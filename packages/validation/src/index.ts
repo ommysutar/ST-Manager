@@ -115,3 +115,14 @@ export type {
 
 export { updateStudioUserProfileSchema } from "./profile/studio-profile.schema";
 export type { UpdateStudioUserProfileInput } from "./profile/studio-profile.schema";
+
+export {
+  clientPortalSnapshotSchema,
+  clientPortalCreateOrSyncSchema,
+  clientPortalEmailSchema,
+} from "./client-portal/client-portal.schema";
+export type {
+  ClientPortalSnapshotInput,
+  ClientPortalCreateOrSyncInput,
+  ClientPortalEmailInput,
+} from "./client-portal/client-portal.schema";

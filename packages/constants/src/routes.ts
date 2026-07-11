@@ -18,6 +18,7 @@ export const ROUTES = {
   PERMISSIONS: "permissions",
   PLATFORM_ADMIN: "platform-admin",
   PROFILE: "profile",
+  CLIENT_PORTAL: "client-portal",
 } as const;
 
 export type RouteKey = (typeof ROUTES)[keyof typeof ROUTES];

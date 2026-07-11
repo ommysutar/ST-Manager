@@ -100,6 +100,10 @@ const webConfig: NextConfig = {
       { source: "/api/permissions/:path*", destination: "http://localhost:4000/permissions/:path*" },
       { source: "/api/platform-admin", destination: "http://localhost:4000/platform-admin" },
       { source: "/api/platform-admin/:path*", destination: "http://localhost:4000/platform-admin/:path*" },
+      { source: "/api/profile", destination: "http://localhost:4000/profile" },
+      { source: "/api/profile/:path*", destination: "http://localhost:4000/profile/:path*" },
+      { source: "/api/client-portal", destination: "http://localhost:4000/client-portal" },
+      { source: "/api/client-portal/:path*", destination: "http://localhost:4000/client-portal/:path*" },
     ];
   },
 };
