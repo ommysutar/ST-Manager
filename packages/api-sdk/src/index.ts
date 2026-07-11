@@ -40,3 +40,6 @@ export type { PlatformAdminApi } from "./platform-admin/platform-admin.api";
 
 export { createStudioLicenseApi } from "./studio-license/studio-license.api";
 export type { StudioLicenseApi } from "./studio-license/studio-license.api";
+
+export { createStudioProfileApi } from "./profile/studio-profile.api";
+export type { StudioProfileApi } from "./profile/studio-profile.api";

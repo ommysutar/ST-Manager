@@ -11,12 +11,16 @@ import {
   Label,
   Textarea,
 } from "@st-manager/ui";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile, useSaveProfile } from "@/hooks/useProfile";
+import { studioProfileApi } from "@/lib/api-client";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { mergeServerProfile } from "@/lib/profile/storage";
 import type { StudioProfile } from "@/lib/profile/types";
+import { tokenStore } from "@/lib/token-store";
 
 interface ProfileSettingsDialogProps {
   open: boolean;
@@ -91,10 +95,45 @@ function ImageUploadField({
 export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDialogProps) {
   const { user } = useAuth();
   const profile = useProfile(user);
-  const saveProfile = useSaveProfile(user);
+  const saveLocalProfile = useSaveProfile(user);
   const [draft, setDraft] = useState<StudioProfile | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [loadingServer, setLoadingServer] = useState(false);
 
   const form = draft ?? profile;
+  const isOwner = user?.role === "owner";
+
+  useEffect(() => {
+    if (!open || !user) {
+      return;
+    }
+
+    let cancelled = false;
+    void Promise.resolve()
+      .then(() => {
+        setLoadingServer(true);
+        return studioProfileApi.getProfile();
+      })
+      .then((serverProfile) => {
+        if (cancelled) {
+          return;
+        }
+        const merged = mergeServerProfile(user, serverProfile);
+        setDraft(merged);
+      })
+      .catch(() => {
+        // Keep local profile if server sync fails; local edits can still be saved.
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingServer(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, user]);
 
   function updateField<K extends keyof StudioProfile>(key: K, value: StudioProfile[K]) {
     if (!form) {
@@ -103,22 +142,50 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
     setDraft({ ...form, [key]: value });
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!form || !user) {
       return;
     }
 
-    saveProfile(form);
-    toast.success("Profile saved");
-    onOpenChange(false);
-    setDraft(null);
+    setSaving(true);
+    try {
+      const updated = await studioProfileApi.updateProfile({
+        fullName: form.fullName.trim(),
+        phone: form.mobile.trim() || null,
+        ...(isOwner && form.studioName.trim()
+          ? { studioName: form.studioName.trim() }
+          : {}),
+      });
+
+      saveLocalProfile({
+        ...form,
+        fullName: updated.fullName ?? form.fullName,
+        mobile: updated.phone ?? form.mobile,
+        studioName: updated.studioName ?? form.studioName,
+        email: updated.email || form.email,
+      });
+
+      const sessionUser = tokenStore.getUser();
+      if (sessionUser) {
+        tokenStore.updateUser({
+          ...sessionUser,
+          fullName: updated.fullName ?? sessionUser.fullName,
+        });
+      }
+
+      toast.success("Profile saved");
+      onOpenChange(false);
+      setDraft(null);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to save profile"));
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (!user || !form) {
     return null;
   }
-
-  const isOwner = user.role === "owner";
 
   return (
     <Dialog
@@ -136,15 +203,18 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
           <DialogDescription>
             {isOwner
               ? "Owner profile details reused for invoices, quotations, and payments."
-              : "View your account profile. Owner can edit studio branding."}
+              : "Update your account profile details."}
           </DialogDescription>
         </DialogHeader>
+
+        {loadingServer ? (
+          <p className="text-sm text-muted-foreground">Loading profile…</p>
+        ) : null}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <ImageUploadField
             label="Profile Photo"
             value={form.profilePhotoDataUrl}
-            disabled={!isOwner}
             onChange={(value) => updateField("profilePhotoDataUrl", value)}
           />
           <ImageUploadField
@@ -170,7 +240,6 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
             <Label>Full Name</Label>
             <Input
               value={form.fullName}
-              disabled={!isOwner}
               onChange={(event) => updateField("fullName", event.target.value)}
             />
           </div>
@@ -186,17 +255,12 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
             <Label>Mobile</Label>
             <Input
               value={form.mobile}
-              disabled={!isOwner}
               onChange={(event) => updateField("mobile", event.target.value)}
             />
           </div>
           <div className="space-y-2">
             <Label>Email</Label>
-            <Input
-              value={form.email}
-              disabled={!isOwner}
-              onChange={(event) => updateField("email", event.target.value)}
-            />
+            <Input value={form.email} disabled onChange={() => undefined} />
           </div>
           <div className="space-y-2 sm:col-span-2">
             <Label>Address</Label>
@@ -245,11 +309,9 @@ export function ProfileSettingsDialog({ open, onOpenChange }: ProfileSettingsDia
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          {isOwner ? (
-            <Button type="button" onClick={handleSave}>
-              Save Profile
-            </Button>
-          ) : null}
+          <Button type="button" onClick={() => void handleSave()} disabled={saving || loadingServer}>
+            {saving ? "Saving…" : "Save Profile"}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

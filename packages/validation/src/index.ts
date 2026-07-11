@@ -112,3 +112,6 @@ export type {
   PlatformGenerateLicensesInput,
   PlatformDeleteLicenseInput,
 } from "./platform-admin/platform-admin.schema";
+
+export { updateStudioUserProfileSchema } from "./profile/studio-profile.schema";
+export type { UpdateStudioUserProfileInput } from "./profile/studio-profile.schema";

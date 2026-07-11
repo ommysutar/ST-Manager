@@ -10,7 +10,7 @@ function defaultProfile(user: AuthUserDto): StudioProfile {
     userId: user.id,
     role: normalizeRole(user.role),
     profilePhotoDataUrl: "",
-    fullName: "",
+    fullName: user.fullName?.trim() || "",
     studioName: "",
     mobile: "",
     email: user.email,
@@ -64,6 +64,8 @@ export function loadProfile(user: AuthUserDto): StudioProfile {
       ...parsed,
       bankDetails: { ...fallback.bankDetails, ...parsed.bankDetails },
       userId: user.id,
+      fullName: parsed.fullName?.trim() || fallback.fullName,
+      email: parsed.email?.trim() || fallback.email,
     };
   } catch {
     return defaultProfile(user);
@@ -80,6 +82,26 @@ export function saveProfile(profile: StudioProfile): StudioProfile {
   setProfileSnapshot(updated);
   notifyProfileUpdated();
   return updated;
+}
+
+export function mergeServerProfile(
+  user: AuthUserDto,
+  server: {
+    fullName?: string | null;
+    phone?: string | null;
+    studioName?: string | null;
+    email?: string;
+  },
+): StudioProfile {
+  const current = loadProfile(user);
+  return saveProfile({
+    ...current,
+    userId: user.id,
+    fullName: server.fullName?.trim() || current.fullName,
+    mobile: server.phone?.trim() || current.mobile,
+    studioName: server.studioName?.trim() || current.studioName,
+    email: server.email?.trim() || current.email || user.email,
+  });
 }
 
 export function initializeProfileSnapshot(user: AuthUserDto | null): StudioProfile | null {

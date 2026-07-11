@@ -12,16 +12,21 @@ import {
   saveProfile,
 } from "@/lib/profile/storage";
 import type { StudioProfile } from "@/lib/profile/types";
+import { AUTH_UPDATED_EVENT } from "@/lib/token-store";
 
-let snapshotsReady = false;
+let readyForUserId: string | null = null;
 
 function ensureProfileReady(user: AuthUserDto | null): void {
-  if (typeof window === "undefined" || snapshotsReady || !user) {
+  if (typeof window === "undefined" || !user) {
+    return;
+  }
+
+  if (readyForUserId === user.id && getProfileSnapshot()?.userId === user.id) {
     return;
   }
 
   initializeProfileSnapshot(user);
-  snapshotsReady = true;
+  readyForUserId = user.id;
 }
 
 export function useProfile(user: AuthUserDto | null): StudioProfile | null {
@@ -39,7 +44,11 @@ export function useProfile(user: AuthUserDto | null): StudioProfile | null {
       };
 
       window.addEventListener(PROFILE_UPDATED_EVENT, handler);
-      return () => window.removeEventListener(PROFILE_UPDATED_EVENT, handler);
+      window.addEventListener(AUTH_UPDATED_EVENT, handler);
+      return () => {
+        window.removeEventListener(PROFILE_UPDATED_EVENT, handler);
+        window.removeEventListener(AUTH_UPDATED_EVENT, handler);
+      };
     },
     () => {
       if (!user) {

@@ -43,7 +43,7 @@ export function ProfileMenu() {
   }
 
   const role = normalizeRole(user.role);
-  const displayName = profile?.fullName || user.email;
+  const displayName = profile?.fullName || user.fullName || user.email;
 
   return (
     <>

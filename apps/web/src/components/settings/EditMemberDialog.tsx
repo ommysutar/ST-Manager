@@ -15,7 +15,7 @@ import {
 import { TEAM_ROLE_LABELS } from "@st-manager/constants";
 import type { TeamMemberResponseDto } from "@st-manager/contracts";
 import { updateTeamMemberSchema, type UpdateTeamMemberInput } from "@st-manager/validation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import type { PermissionResponseDto } from "@st-manager/contracts";
@@ -52,9 +52,13 @@ export function EditMemberDialog({
     formState: { errors, isSubmitting },
   } = form;
 
-  function handleOpenChange(nextOpen: boolean) {
-    if (nextOpen && member) {
-      const custom = member.customPermissions ?? [];
+  useEffect(() => {
+    if (!open || !member) {
+      return;
+    }
+
+    const custom = member.customPermissions ?? [];
+    void Promise.resolve().then(() => {
       reset({
         fullName: member.fullName ?? "",
         phone: member.phone ?? "",
@@ -62,9 +66,8 @@ export function EditMemberDialog({
       });
       setShowCustomPermissions(custom.length > 0);
       setSelectedPermissions(custom);
-    }
-    onOpenChange(nextOpen);
-  }
+    });
+  }, [open, member, reset]);
 
   async function handleFormSubmit(values: UpdateTeamMemberInput) {
     await onSubmit({
@@ -88,7 +91,7 @@ export function EditMemberDialog({
   const isOwner = member.role === "owner";
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Edit Team Member</DialogTitle>

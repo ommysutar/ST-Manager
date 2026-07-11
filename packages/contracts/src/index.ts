@@ -188,3 +188,10 @@ export type {
   StudioLicenseDto,
   StudioLicenseResponseDto,
 } from "./platform-admin/platform-admin.dto";
+
+export type {
+  StudioUserProfileDto,
+  UpdateStudioUserProfileRequestDto,
+  GetStudioUserProfileResponseDto,
+  UpdateStudioUserProfileResponseDto,
+} from "./profile/studio-profile.dto";

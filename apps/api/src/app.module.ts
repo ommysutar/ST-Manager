@@ -19,6 +19,7 @@ import { InvoicesModule } from "./modules/invoices/invoices.module";
 import { ReportsModule } from "./modules/reports/reports.module";
 import { TeamModule } from "./modules/team/team.module";
 import { PlatformAdminModule } from "./modules/platform-admin/platform-admin.module";
+import { ProfileModule } from "./modules/profile/profile.module";
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { PlatformAdminModule } from "./modules/platform-admin/platform-admin.mod
     ReportsModule,
     TeamModule,
     PlatformAdminModule,
+    ProfileModule,
   ],
   providers: [StManagerNestLoggerService, { provide: APP_FILTER, useClass: HttpExceptionFilter }],
 })

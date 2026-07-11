@@ -38,7 +38,14 @@ function isSameUser(left: AuthUserDto | null, right: AuthUserDto | null): boolea
   if (!left || !right) {
     return false;
   }
-  return left.id === right.id && left.email === right.email && left.role === right.role;
+  return (
+    left.id === right.id &&
+    left.email === right.email &&
+    left.role === right.role &&
+    (left.fullName ?? null) === (right.fullName ?? null) &&
+    (left.studioId ?? null) === (right.studioId ?? null) &&
+    (left.status ?? null) === (right.status ?? null)
+  );
 }
 
 /** Returns the cached user snapshot; reads localStorage at most once until the next auth mutation. */
@@ -89,6 +96,13 @@ export const tokenStore = {
     localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
     localStorage.setItem(USER_KEY, JSON.stringify(user));
     setAuthUserSnapshot(user);
+    notifyAuthUpdated();
+  },
+
+  updateUser(user: AuthUserDto): void {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    authUserSnapshot = user;
+    authSnapshotInitialized = true;
     notifyAuthUpdated();
   },
 
