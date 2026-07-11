@@ -63,12 +63,12 @@ export class PlatformAdminService implements OnModuleInit {
   }
 
   async bootstrapPlatformAdmin(): Promise<void> {
-    const email = this.configService.get("PLATFORM_ADMIN_EMAIL", { infer: true });
+    const email = this.configService.get("PLATFORM_ADMIN_EMAIL", { infer: true })?.trim();
     const password = this.configService.get("PLATFORM_ADMIN_PASSWORD", { infer: true });
 
     if (!email || !password) {
-      this.logger.log(
-        "Platform admin bootstrap skipped (PLATFORM_ADMIN_EMAIL / PLATFORM_ADMIN_PASSWORD not set)",
+      this.logger.warn(
+        `Platform admin bootstrap skipped (PLATFORM_ADMIN_EMAIL / PLATFORM_ADMIN_PASSWORD missing or empty). emailLoaded=${Boolean(email)} passwordLoaded=${Boolean(password)}`,
       );
       return;
     }
