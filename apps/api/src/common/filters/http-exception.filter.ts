@@ -23,7 +23,7 @@ interface StructuredExceptionResponse {
 }
 
 function mapStatusToErrorCode(statusCode: number): ApiErrorCode {
-  if (statusCode === 400) {
+  if (statusCode === 400 || statusCode === 413) {
     return API_ERROR_CODES.VALIDATION_ERROR;
   }
   if (statusCode === 404) {
@@ -39,6 +39,20 @@ function mapStatusToErrorCode(statusCode: number): ApiErrorCode {
     return API_ERROR_CODES.AI_PROVIDER_ERROR;
   }
   return API_ERROR_CODES.INTERNAL_ERROR;
+}
+
+function isPayloadTooLarge(exception: unknown): boolean {
+  if (!exception || typeof exception !== "object") {
+    return false;
+  }
+  const candidate = exception as { type?: string; status?: number; statusCode?: number; message?: string };
+  if (candidate.type === "entity.too.large") {
+    return true;
+  }
+  if (candidate.status === 413 || candidate.statusCode === 413) {
+    return true;
+  }
+  return typeof candidate.message === "string" && /request entity too large/i.test(candidate.message);
 }
 
 function resolveErrorCode(statusCode: number, structured?: StructuredExceptionResponse): ApiErrorCode {
@@ -84,7 +98,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<MinimalResponse>();
     const request = ctx.getRequest<MinimalRequest>();
 
-    const statusCode = exception instanceof HttpException ? exception.getStatus() : 500;
+    const payloadTooLarge = isPayloadTooLarge(exception);
+    const statusCode = payloadTooLarge
+      ? 413
+      : exception instanceof HttpException
+        ? exception.getStatus()
+        : 500;
     const exceptionResponse =
       exception instanceof HttpException ? exception.getResponse() : undefined;
     const structured = isStructuredExceptionResponse(exceptionResponse)
@@ -95,7 +114,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
       success: false,
       statusCode,
       error: resolveErrorCode(statusCode, structured),
-      message: this.resolveMessage(exception, structured),
+      message: payloadTooLarge
+        ? "Request body is too large. Reduce the studio logo size and try again."
+        : this.resolveMessage(exception, structured),
       details: structured?.details,
       path: request.url,
       timestamp: new Date().toISOString(),
@@ -105,6 +126,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
       // Full detail server-side only — emitted as structured JSON via M9 logging.
       this.logger.error(exception instanceof Error ? exception.stack : exception);
       body.message = "Internal server error"; // never leak internals to the client
+    } else if (payloadTooLarge) {
+      this.logger.warn(`Payload too large for ${request.url}`);
     }
 
     response.status(statusCode).json(body);

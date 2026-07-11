@@ -3,10 +3,14 @@ import "reflect-metadata";
 import helmet from "helmet";
 import { NestFactory } from "@nestjs/core";
 import { ConfigService } from "@nestjs/config";
+import type { NestExpressApplication } from "@nestjs/platform-express";
 import type { ApiEnv } from "@st-manager/validation";
 
 import { AppModule } from "./app.module";
 import { StManagerNestLoggerService } from "./common/logging/st-manager-nest-logger.service";
+
+/** Must fit client-portal snapshot logoDataUrl (validation allows up to 5MB). */
+const JSON_BODY_LIMIT = "6mb";
 
 /** Origins used by the Tauri desktop WebView when loading bundled local assets. */
 const DESKTOP_CORS_ORIGINS = new Set([
@@ -34,7 +38,11 @@ function isLocalDevCorsOrigin(origin: string): boolean {
 }
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  // Disable Nest's default 100kb parsers; client-portal snapshots include studio logos.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+    bodyParser: false,
+  });
   const logger = app.get(StManagerNestLoggerService);
   app.useLogger(logger);
 
@@ -49,6 +57,8 @@ async function bootstrap(): Promise<void> {
         .filter((origin) => origin.length > 0)
     : [];
 
+  app.useBodyParser("json", { limit: JSON_BODY_LIMIT });
+  app.useBodyParser("urlencoded", { limit: JSON_BODY_LIMIT, extended: true });
   app.use(helmet());
   app.enableCors({
     credentials: true,

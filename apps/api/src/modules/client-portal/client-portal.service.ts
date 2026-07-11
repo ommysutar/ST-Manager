@@ -2,6 +2,7 @@ import {
   BadRequestException,
   GoneException,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
@@ -12,6 +13,7 @@ import type {
   ClientPortalLinkMetaDto,
   ClientPortalSnapshotDto,
 } from "@st-manager/contracts";
+import { Prisma } from "@st-manager/database";
 import type {
   ApiEnv,
   ClientPortalCreateOrSyncInput,
@@ -29,6 +31,8 @@ const EXPIRY_DAYS_AFTER_COMPLETE = 7;
 
 @Injectable()
 export class ClientPortalService {
+  private readonly logger = new Logger(ClientPortalService.name);
+
   constructor(
     private readonly repository: ClientPortalRepository,
     private readonly authRepository: AuthRepository,
@@ -56,40 +60,58 @@ export class ClientPortalService {
     projectKey: string,
     input: ClientPortalCreateOrSyncInput,
   ): Promise<ClientPortalCreateResponseDto["data"]> {
+    this.logger.log(`create: request received projectKey=${projectKey} userId=${actor.userId}`);
     const studioId = await this.requireStudioId(actor);
+    this.logger.log(`create: studio resolved studioId=${studioId}`);
+
+    this.logger.log("create: validation/normalize snapshot");
+    const snapshot = this.normalizeSnapshot(input.snapshot);
+    const logoBytes = snapshot.studio.logoDataUrl?.length ?? 0;
+    this.logger.log(
+      `create: snapshot ready logoChars=${logoBytes} docs=${snapshot.documents.length} timeline=${snapshot.timeline.length}`,
+    );
+
+    this.logger.log("create: database lookup by studio+project");
     const existing = await this.repository.findByStudioAndProject(studioId, projectKey);
     if (existing && existing.status !== "expired") {
+      this.logger.log(`create: existing active/disabled link id=${existing.id} → regenerate`);
       return this.regenerate(actor, projectKey, input);
     }
 
     const { token, tokenHash } = this.generateToken();
-    const snapshot = this.normalizeSnapshot(input.snapshot);
     const expiryFields = this.computeExpiryFields(snapshot.projectStatus, null);
     const studioMessage = input.studioMessage ?? snapshot.studioMessage ?? null;
 
-    const link = existing
-      ? await this.repository.update(existing.id, {
-          tokenHash,
-          status: "active",
-          disabledAt: null,
-          expiresAt: expiryFields.expiresAt,
-          completedAt: expiryFields.completedAt,
-          snapshot,
-          studioMessage,
-        })
-      : await this.repository.create({
-          studioId,
-          projectKey,
-          tokenHash,
-          status: "active",
-          expiresAt: expiryFields.expiresAt,
-          completedAt: expiryFields.completedAt,
-          snapshot,
-          studioMessage,
-        });
+    try {
+      this.logger.log(`create: Prisma ${existing ? "update" : "create"}`);
+      const link = existing
+        ? await this.repository.update(existing.id, {
+            tokenHash,
+            status: "active",
+            disabledAt: null,
+            expiresAt: expiryFields.expiresAt,
+            completedAt: expiryFields.completedAt,
+            snapshot,
+            studioMessage,
+          })
+        : await this.repository.create({
+            studioId,
+            projectKey,
+            tokenHash,
+            status: "active",
+            expiresAt: expiryFields.expiresAt,
+            completedAt: expiryFields.completedAt,
+            snapshot,
+            studioMessage,
+          });
 
-    const portalUrl = this.buildPortalUrl(token);
-    return { meta: this.toMeta(link, "active", portalUrl), token, portalUrl };
+      const portalUrl = this.buildPortalUrl(token);
+      this.logger.log(`create: response ready linkId=${link.id}`);
+      return { meta: this.toMeta(link, "active", portalUrl), token, portalUrl };
+    } catch (error) {
+      this.logger.error(`create: Prisma failed projectKey=${projectKey}`, error instanceof Error ? error.stack : error);
+      throw this.mapPersistenceError(error);
+    }
   }
 
   async regenerate(
@@ -104,29 +126,33 @@ export class ClientPortalService {
     const expiryFields = this.computeExpiryFields(snapshot.projectStatus, existing?.completedAt ?? null);
     const studioMessage = input.studioMessage ?? snapshot.studioMessage ?? existing?.studioMessage ?? null;
 
-    const link = existing
-      ? await this.repository.update(existing.id, {
-          tokenHash,
-          status: "active",
-          disabledAt: null,
-          expiresAt: expiryFields.expiresAt,
-          completedAt: expiryFields.completedAt,
-          snapshot,
-          studioMessage,
-        })
-      : await this.repository.create({
-          studioId,
-          projectKey,
-          tokenHash,
-          status: "active",
-          expiresAt: expiryFields.expiresAt,
-          completedAt: expiryFields.completedAt,
-          snapshot,
-          studioMessage,
-        });
+    try {
+      const link = existing
+        ? await this.repository.update(existing.id, {
+            tokenHash,
+            status: "active",
+            disabledAt: null,
+            expiresAt: expiryFields.expiresAt,
+            completedAt: expiryFields.completedAt,
+            snapshot,
+            studioMessage,
+          })
+        : await this.repository.create({
+            studioId,
+            projectKey,
+            tokenHash,
+            status: "active",
+            expiresAt: expiryFields.expiresAt,
+            completedAt: expiryFields.completedAt,
+            snapshot,
+            studioMessage,
+          });
 
-    const portalUrl = this.buildPortalUrl(token);
-    return { meta: this.toMeta(link, "active", portalUrl), token, portalUrl };
+      const portalUrl = this.buildPortalUrl(token);
+      return { meta: this.toMeta(link, "active", portalUrl), token, portalUrl };
+    } catch (error) {
+      throw this.mapPersistenceError(error);
+    }
   }
 
   async syncSnapshot(
@@ -245,6 +271,25 @@ export class ClientPortalService {
       estimatedCompletionDate: snapshot.estimate.estimatedCompletionDate,
       expiresAtLabel: expiryLabel,
     });
+  }
+
+  private mapPersistenceError(error: unknown): never {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2002") {
+        throw new BadRequestException("A portal link already exists for this project. Regenerate instead.");
+      }
+      if (error.code === "P2003") {
+        throw new BadRequestException("Studio context is missing or invalid for this portal link.");
+      }
+      if (error.code === "P2025") {
+        throw new NotFoundException("Client portal link not found");
+      }
+      throw new BadRequestException(`Unable to save portal link (${error.code}).`);
+    }
+    if (error instanceof Prisma.PrismaClientValidationError) {
+      throw new BadRequestException("Portal snapshot failed validation for database storage.");
+    }
+    throw error;
   }
 
   private async requireStudioId(actor: AuthenticatedUser): Promise<string> {
