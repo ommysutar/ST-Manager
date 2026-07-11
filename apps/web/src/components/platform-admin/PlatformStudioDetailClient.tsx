@@ -50,6 +50,8 @@ export function PlatformStudioDetailClient() {
   const [busy, setBusy] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [permanentOpen, setPermanentOpen] = useState(false);
+  const [permanentConfirm, setPermanentConfirm] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -112,6 +114,22 @@ export function PlatformStudioDetailClient() {
     }
   }
 
+  async function permanentlyDeleteStudio() {
+    setBusy(true);
+    try {
+      await platformAdminApi.permanentlyDeleteStudio(studioId, {
+        confirmation: "DELETE FOREVER",
+      });
+      toast.success("Studio permanently deleted");
+      setPermanentOpen(false);
+      router.replace("/platform-admin/users");
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Failed to permanently delete studio"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (!isAuthenticated) {
     return <div className="min-h-screen bg-background" />;
   }
@@ -169,6 +187,44 @@ export function PlatformStudioDetailClient() {
                   value={
                     studio.owner?.lastLoginAt
                       ? new Date(studio.owner.lastLoginAt).toLocaleString()
+                      : "—"
+                  }
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>License</CardTitle>
+                <CardDescription>Activation / license bound to this studio</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <Row label="Code" value={studio.license?.code ?? "—"} />
+                <Row label="Type" value={studio.license?.licenseType ?? "—"} />
+                <Row label="Status" value={studio.license?.status ?? "—"} />
+                <Row
+                  label="Activated"
+                  value={
+                    studio.license?.activatedAt
+                      ? new Date(studio.license.activatedAt).toLocaleString()
+                      : "—"
+                  }
+                />
+                <Row
+                  label="Expires"
+                  value={
+                    studio.license?.expiresAt
+                      ? new Date(studio.license.expiresAt).toLocaleString()
+                      : "—"
+                  }
+                />
+                <Row
+                  label="Verified"
+                  value={
+                    studio.license
+                      ? studio.license.verified
+                        ? "Yes"
+                        : "No"
                       : "—"
                   }
                 />
@@ -248,9 +304,38 @@ export function PlatformStudioDetailClient() {
                 >
                   Delete Studio
                 </Button>
+                <Button
+                  variant="destructive"
+                  disabled={busy}
+                  onClick={() => {
+                    setPermanentConfirm("");
+                    setPermanentOpen(true);
+                  }}
+                >
+                  Permanent Delete
+                </Button>
               </CardContent>
             </Card>
-          ) : null}
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>Actions</CardTitle>
+                <CardDescription>Archived studio controls</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-wrap gap-3">
+                <Button
+                  variant="destructive"
+                  disabled={busy}
+                  onClick={() => {
+                    setPermanentConfirm("");
+                    setPermanentOpen(true);
+                  }}
+                >
+                  Permanent Delete
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </>
       ) : null}
 
@@ -283,6 +368,41 @@ export function PlatformStudioDetailClient() {
                 onClick={() => void deleteStudio()}
               >
                 Confirm Delete
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={permanentOpen} onOpenChange={setPermanentOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Permanently delete studio</DialogTitle>
+            <DialogDescription>
+              This permanently removes the studio and all related data. Type DELETE FOREVER to
+              confirm. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="permanent-confirm">Confirmation</Label>
+              <Input
+                id="permanent-confirm"
+                value={permanentConfirm}
+                onChange={(event) => setPermanentConfirm(event.target.value)}
+                placeholder="DELETE FOREVER"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setPermanentOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={busy || permanentConfirm !== "DELETE FOREVER"}
+                onClick={() => void permanentlyDeleteStudio()}
+              >
+                Delete forever
               </Button>
             </div>
           </div>

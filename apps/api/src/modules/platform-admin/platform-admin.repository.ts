@@ -1,10 +1,12 @@
 import { Injectable } from "@nestjs/common";
 import {
   ACTIVATION_CODE_STATUSES,
+  LICENSE_STATUSES,
   LICENSE_TYPES,
   PLATFORM_ROLES,
   STUDIO_STATUSES,
   TEAM_ROLES,
+  WIRE_STATUS_TO_LICENSE,
 } from "@st-manager/constants";
 import type { PostgresPrismaClient } from "@st-manager/database";
 import type { PlatformLicenseListQueryInput, PlatformStudioListQueryInput } from "@st-manager/validation";
@@ -84,6 +86,21 @@ export class PlatformAdminRepository {
     await client.user.update({
       where: { id: userId },
       data: { passwordHash },
+    });
+  }
+
+  async updatePlatformAdminProfile(
+    userId: string,
+    data: { email?: string; passwordHash?: string; fullName?: string },
+  ): Promise<PlatformAdminUserRecord> {
+    const client = asClient(this.prismaService.getClient());
+    return client.user.update({
+      where: { id: userId },
+      data: {
+        ...(data.email !== undefined ? { email: data.email } : {}),
+        ...(data.passwordHash !== undefined ? { passwordHash: data.passwordHash } : {}),
+        ...(data.fullName !== undefined ? { fullName: data.fullName } : {}),
+      },
     });
   }
 
@@ -177,6 +194,16 @@ export class PlatformAdminRepository {
               lastLoginAt: true,
             },
           },
+          activationCodes: {
+            orderBy: { activatedAt: "desc" },
+            take: 1,
+            select: {
+              code: true,
+              licenseType: true,
+              status: true,
+              expiresAt: true,
+            },
+          },
           _count: { select: { members: true } },
         },
         orderBy:
@@ -192,6 +219,14 @@ export class PlatformAdminRepository {
 
     let rows = studios.map((studio) => {
       const owner = studio.members.find((m) => m.role === TEAM_ROLES.OWNER) ?? null;
+      const license = studio.activationCodes[0] ?? null;
+      const licenseStatus = license
+        ? (WIRE_STATUS_TO_LICENSE[license.status] ?? license.status)
+        : undefined;
+      const verified = license
+        ? licenseStatus === LICENSE_STATUSES.ACTIVATED &&
+          (!license.expiresAt || license.expiresAt.getTime() > Date.now())
+        : undefined;
       return {
         id: studio.id,
         name: studio.name,
@@ -200,6 +235,14 @@ export class PlatformAdminRepository {
         createdAt: studio.createdAt.toISOString(),
         totalUsers: studio._count.members,
         status: studio.status,
+        ...(license
+          ? {
+              licenseCode: license.code,
+              licenseType: license.licenseType,
+              licenseStatus,
+              verified,
+            }
+          : {}),
       };
     });
 
@@ -241,17 +284,39 @@ export class PlatformAdminRepository {
       return null;
     }
 
-    const clientIds = await client.booking.findMany({
-      where: { studioId, deletedAt: null, clientId: { not: null } },
-      select: { clientId: true },
-      distinct: ["clientId"],
-    });
+    const [clientIds, license] = await Promise.all([
+      client.booking.findMany({
+        where: { studioId, deletedAt: null, clientId: { not: null } },
+        select: { clientId: true },
+        distinct: ["clientId"],
+      }),
+      client.activationCode.findFirst({
+        where: { usedByStudioId: studioId },
+        orderBy: { activatedAt: "desc" },
+        select: {
+          code: true,
+          licenseType: true,
+          status: true,
+          activatedAt: true,
+          expiresAt: true,
+        },
+      }),
+    ]);
 
     const owner = studio.members.find((m) => m.role === TEAM_ROLES.OWNER) ?? null;
     const lastLoginAt = studio.members
       .map((m) => m.lastLoginAt)
       .filter((d): d is Date => Boolean(d))
       .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+
+    const licenseStatus = license
+      ? (WIRE_STATUS_TO_LICENSE[license.status] ?? license.status)
+      : null;
+    const verified = Boolean(
+      license &&
+        licenseStatus === LICENSE_STATUSES.ACTIVATED &&
+        (!license.expiresAt || license.expiresAt.getTime() > Date.now()),
+    );
 
     return {
       id: studio.id,
@@ -281,7 +346,98 @@ export class PlatformAdminRepository {
       totalClients: clientIds.length,
       storageUsed: "—",
       lastLoginAt: lastLoginAt?.toISOString() ?? null,
+      license: license
+        ? {
+            code: license.code,
+            licenseType: license.licenseType,
+            status: licenseStatus ?? license.status,
+            activatedAt: license.activatedAt?.toISOString() ?? null,
+            expiresAt: license.expiresAt?.toISOString() ?? null,
+            verified,
+          }
+        : null,
     };
+  }
+
+  async permanentlyDeleteStudio(studioId: string): Promise<{ id: string; name: string }> {
+    const client = asClient(this.prismaService.getClient());
+
+    return client.$transaction(async (tx) => {
+      const studio = await tx.studio.findUnique({ where: { id: studioId } });
+      if (!studio) {
+        throw new Error("STUDIO_NOT_FOUND");
+      }
+
+      const sessions = await tx.session.findMany({
+        where: { studioId },
+        select: { id: true, clientId: true },
+      });
+      const sessionIds = sessions.map((s) => s.id);
+
+      const bookings = await tx.booking.findMany({
+        where: { studioId },
+        select: { clientId: true },
+      });
+
+      const relatedClientIds = [
+        ...new Set(
+          [...sessions, ...bookings]
+            .map((row) => row.clientId)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ];
+
+      if (sessionIds.length > 0) {
+        await tx.invoice.deleteMany({ where: { sessionId: { in: sessionIds } } });
+      }
+
+      await tx.session.deleteMany({ where: { studioId } });
+      await tx.booking.deleteMany({ where: { studioId } });
+
+      for (const clientId of relatedClientIds) {
+        const [remainingSessions, remainingBookings] = await Promise.all([
+          tx.session.count({ where: { clientId } }),
+          tx.booking.count({ where: { clientId } }),
+        ]);
+        if (remainingSessions === 0 && remainingBookings === 0) {
+          await tx.invoice.deleteMany({ where: { clientId } });
+          await tx.client.delete({ where: { id: clientId } });
+        }
+      }
+
+      await tx.auditLog.deleteMany({ where: { studioId } });
+      await tx.studioInvitation.deleteMany({ where: { studioId } });
+      await tx.roleDefinition.deleteMany({ where: { studioId } });
+
+      await tx.activationCode.deleteMany({
+        where: { usedByStudioId: studioId },
+      });
+
+      const memberIds = (
+        await tx.user.findMany({
+          where: { studioId, role: { not: PLATFORM_ROLES.PLATFORM_ADMIN } },
+          select: { id: true },
+        })
+      ).map((u) => u.id);
+
+      await tx.user.updateMany({
+        where: { studioId },
+        data: { studioId: null },
+      });
+
+      if (memberIds.length > 0) {
+        await tx.user.deleteMany({
+          where: {
+            id: { in: memberIds },
+            role: { not: PLATFORM_ROLES.PLATFORM_ADMIN },
+          },
+        });
+      }
+
+      await tx.studio.delete({ where: { id: studioId } });
+
+      return { id: studio.id, name: studio.name };
+    });
   }
 
   async updateStudioStatus(

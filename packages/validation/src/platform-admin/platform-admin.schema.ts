@@ -17,6 +17,36 @@ export const platformDeleteStudioSchema = z.object({
 
 export type PlatformDeleteStudioInput = z.infer<typeof platformDeleteStudioSchema>;
 
+export const platformUpdateProfileSchema = z
+  .object({
+    currentPassword: z.string().min(8),
+    email: z.string().trim().email().optional(),
+    newPassword: z.string().min(8).optional(),
+    confirmNewPassword: z.string().min(8).optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.newPassword || data.confirmNewPassword) {
+        return data.newPassword === data.confirmNewPassword;
+      }
+      return true;
+    },
+    { message: "Passwords do not match", path: ["confirmNewPassword"] },
+  )
+  .refine((data) => Boolean(data.email?.trim()) || Boolean(data.newPassword), {
+    message: "Provide a new email and/or new password",
+  });
+
+export type PlatformUpdateProfileInput = z.infer<typeof platformUpdateProfileSchema>;
+
+export const platformPermanentDeleteStudioSchema = z.object({
+  confirmation: z.literal("DELETE FOREVER"),
+});
+
+export type PlatformPermanentDeleteStudioInput = z.infer<
+  typeof platformPermanentDeleteStudioSchema
+>;
+
 export const platformActivationCodeListQuerySchema = z.object({
   search: z.string().trim().optional(),
   page: z.coerce.number().int().positive().default(1),

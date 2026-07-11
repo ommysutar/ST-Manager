@@ -91,6 +91,8 @@ export type {
 export {
   platformStudioListQuerySchema,
   platformDeleteStudioSchema,
+  platformUpdateProfileSchema,
+  platformPermanentDeleteStudioSchema,
   platformActivationCodeListQuerySchema,
   platformGenerateActivationCodesSchema,
   platformDeleteActivationCodeSchema,
@@ -101,6 +103,8 @@ export {
 export type {
   PlatformStudioListQueryInput,
   PlatformDeleteStudioInput,
+  PlatformUpdateProfileInput,
+  PlatformPermanentDeleteStudioInput,
   PlatformActivationCodeListQueryInput,
   PlatformGenerateActivationCodesInput,
   PlatformDeleteActivationCodeInput,

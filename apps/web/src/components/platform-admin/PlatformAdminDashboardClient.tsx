@@ -51,13 +51,16 @@ export function PlatformAdminDashboardClient() {
         </div>
         <div className="flex items-center gap-2">
           <Button asChild variant="outline">
+            <Link href="/platform-admin/users">User Management</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/platform-admin/profile">Profile</Link>
+          </Button>
+          <Button asChild variant="outline">
             <Link href="/platform-admin/licensing">Licensing</Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/platform-admin/activation-codes">Activation Codes</Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/platform-admin/audit-logs">Audit Log</Link>
+            <Link href="/platform-admin/audit-logs">Audit</Link>
           </Button>
           <Button variant="outline" onClick={handleLogout}>
             Sign out

@@ -17,9 +17,11 @@ export const DISABLED_STUDIO_MESSAGE =
 
 export const PLATFORM_AUDIT_ACTIONS = {
   PLATFORM_ADMIN_LOGIN: "platform_admin.login",
+  PLATFORM_ADMIN_PROFILE_UPDATED: "platform_admin.profile_updated",
   STUDIO_DISABLED: "studio.disabled",
   STUDIO_ENABLED: "studio.enabled",
   STUDIO_DELETED: "studio.deleted",
+  STUDIO_PERMANENTLY_DELETED: "studio.permanently_deleted",
   STUDIO_ACTIVATED: "studio.activated",
   ACTIVATION_CODE_GENERATED: "activation_code.generated",
   ACTIVATION_CODE_VALIDATED: "activation_code.validated",

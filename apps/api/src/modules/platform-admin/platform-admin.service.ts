@@ -23,6 +23,7 @@ import type {
   PlatformActivationCodeDto,
   PlatformAdminDashboardDto,
   PlatformAdminLoginResponseDataDto,
+  PlatformAdminProfileDto,
   PlatformLicenseDto,
   PlatformLicenseSummaryDto,
   PlatformStudioDetailDto,
@@ -39,7 +40,9 @@ import type {
   PlatformGenerateActivationCodesInput,
   PlatformGenerateLicensesInput,
   PlatformLicenseListQueryInput,
+  PlatformPermanentDeleteStudioInput,
   PlatformStudioListQueryInput,
+  PlatformUpdateProfileInput,
 } from "@st-manager/validation";
 import * as bcrypt from "bcrypt";
 import { randomBytes } from "node:crypto";
@@ -171,6 +174,62 @@ export class PlatformAdminService implements OnModuleInit {
     };
   }
 
+  async getProfile(actor: AuthenticatedUser): Promise<PlatformAdminProfileDto> {
+    const user = await this.repository.findUserById(actor.userId);
+    if (!user || user.role !== PLATFORM_ROLES.PLATFORM_ADMIN) {
+      throw new NotFoundException("Platform admin not found");
+    }
+    return this.toProfileDto(user);
+  }
+
+  async updateProfile(
+    actor: AuthenticatedUser,
+    input: PlatformUpdateProfileInput,
+  ): Promise<PlatformAdminProfileDto> {
+    const user = await this.repository.findUserById(actor.userId);
+    if (!user || user.role !== PLATFORM_ROLES.PLATFORM_ADMIN) {
+      throw new NotFoundException("Platform admin not found");
+    }
+
+    const passwordMatches = await bcrypt.compare(input.currentPassword, user.passwordHash);
+    if (!passwordMatches) {
+      throw new UnauthorizedException("Current password is incorrect");
+    }
+
+    const email = input.email?.trim().toLowerCase();
+    const newPassword = input.newPassword;
+    const willChangeEmail = Boolean(email && email !== user.email);
+
+    if (!willChangeEmail && !newPassword) {
+      throw new BadRequestException("Provide a new email and/or new password");
+    }
+
+    if (willChangeEmail && email) {
+      const existing = await this.repository.findByEmail(email);
+      if (existing && existing.id !== user.id) {
+        throw new BadRequestException("Email is already in use");
+      }
+    }
+
+    const passwordHash = newPassword ? await bcrypt.hash(newPassword, 10) : undefined;
+    const updated = await this.repository.updatePlatformAdminProfile(user.id, {
+      ...(willChangeEmail && email ? { email } : {}),
+      ...(passwordHash ? { passwordHash } : {}),
+    });
+
+    await this.repository.createPlatformAuditLog({
+      actorUserId: actor.userId,
+      actorEmail: actor.email,
+      action: PLATFORM_AUDIT_ACTIONS.PLATFORM_ADMIN_PROFILE_UPDATED,
+      metadata: {
+        emailChanged: willChangeEmail,
+        passwordChanged: Boolean(passwordHash),
+      },
+    });
+
+    return this.toProfileDto(updated);
+  }
+
   async listStudios(query: PlatformStudioListQueryInput) {
     const { total, rows } = await this.repository.listStudios(query);
     return {
@@ -269,6 +328,41 @@ export class PlatformAdminService implements OnModuleInit {
       studioName: studio.name,
     });
     return this.toListItem(updated);
+  }
+
+  async permanentlyDeleteStudio(
+    studioId: string,
+    input: PlatformPermanentDeleteStudioInput,
+    actor: AuthenticatedUser,
+  ): Promise<{ id: string; name: string }> {
+    if (input.confirmation !== "DELETE FOREVER") {
+      throw new BadRequestException('Type "DELETE FOREVER" to confirm permanent deletion');
+    }
+
+    const studio = await this.requireStudio(studioId);
+
+    let deleted: { id: string; name: string };
+    try {
+      deleted = await this.repository.permanentlyDeleteStudio(studioId);
+    } catch (error) {
+      if (error instanceof Error && error.message === "STUDIO_NOT_FOUND") {
+        throw new NotFoundException("Studio not found");
+      }
+      throw error;
+    }
+
+    await this.repository.createPlatformAuditLog({
+      actorUserId: actor.userId,
+      actorEmail: actor.email,
+      action: PLATFORM_AUDIT_ACTIONS.STUDIO_PERMANENTLY_DELETED,
+      studioId: deleted.id,
+      studioName: deleted.name,
+      metadata: {
+        previousStatus: studio.status,
+      },
+    });
+
+    return deleted;
   }
 
   async listAuditLogs() {
@@ -949,6 +1043,24 @@ export class PlatformAdminService implements OnModuleInit {
       createdAt: studio.createdAt.toISOString(),
       totalUsers: studio._count.members,
       status: studio.status,
+    };
+  }
+
+  private toProfileDto(user: {
+    id: string;
+    email: string;
+    fullName: string | null;
+    role: string;
+    status: string;
+    lastLoginAt: Date | null;
+  }): PlatformAdminProfileDto {
+    return {
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+      status: user.status,
+      lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
     };
   }
 

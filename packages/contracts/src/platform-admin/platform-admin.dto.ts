@@ -32,6 +32,24 @@ export interface PlatformAdminDashboardDto {
 
 export type PlatformAdminDashboardResponseDto = ApiSuccessResponseDto<PlatformAdminDashboardDto>;
 
+export interface PlatformAdminProfileDto {
+  id: string;
+  email: string;
+  fullName: string | null;
+  role: string;
+  status: string;
+  lastLoginAt: string | null;
+}
+
+export type PlatformAdminProfileResponseDto = ApiSuccessResponseDto<PlatformAdminProfileDto>;
+
+export interface PlatformUpdateProfileRequestDto {
+  currentPassword: string;
+  email?: string;
+  newPassword?: string;
+  confirmNewPassword?: string;
+}
+
 export interface PlatformStudioListItemDto {
   id: string;
   name: string;
@@ -40,6 +58,10 @@ export interface PlatformStudioListItemDto {
   createdAt: string;
   totalUsers: number;
   status: string;
+  licenseCode?: string;
+  licenseType?: string;
+  licenseStatus?: string;
+  verified?: boolean;
 }
 
 export interface PlatformStudioListQueryDto {
@@ -62,6 +84,15 @@ export interface PlatformStudioMemberDto {
   lastLoginAt: string | null;
 }
 
+export interface PlatformStudioLicenseInfoDto {
+  code: string;
+  licenseType: string;
+  status: string;
+  activatedAt: string | null;
+  expiresAt: string | null;
+  verified: boolean;
+}
+
 export interface PlatformStudioDetailDto {
   id: string;
   name: string;
@@ -81,6 +112,7 @@ export interface PlatformStudioDetailDto {
   totalClients: number;
   storageUsed: string;
   lastLoginAt: string | null;
+  license?: PlatformStudioLicenseInfoDto | null;
 }
 
 export type PlatformStudioDetailResponseDto = ApiSuccessResponseDto<PlatformStudioDetailDto>;
@@ -90,6 +122,15 @@ export type PlatformStudioActionResponseDto = ApiSuccessResponseDto<PlatformStud
 export interface PlatformDeleteStudioRequestDto {
   confirmation: string;
 }
+
+export interface PlatformPermanentDeleteStudioRequestDto {
+  confirmation: string;
+}
+
+export type PlatformPermanentDeleteStudioResponseDto = ApiSuccessResponseDto<{
+  id: string;
+  name: string;
+}>;
 
 export interface PlatformAuditLogDto {
   id: string;

@@ -14,12 +14,14 @@ import type {
   PlatformActivationCodesExportResponseDto,
   PlatformAdminDashboardResponseDto,
   PlatformAdminLoginResponseDto,
+  PlatformAdminProfileResponseDto,
   PlatformAuditLogListResponseDto,
   PlatformGenerateActivationCodesResponseDto,
   PlatformGenerateLicensesResponseDto,
   PlatformLicenseActionResponseDto,
   PlatformLicenseListResponseDto,
   PlatformLicensesExportResponseDto,
+  PlatformPermanentDeleteStudioResponseDto,
   PlatformStudioActionResponseDto,
   PlatformStudioDetailResponseDto,
   PlatformStudioListResponseDto,
@@ -33,7 +35,9 @@ import {
   platformGenerateActivationCodesSchema,
   platformGenerateLicensesSchema,
   platformLicenseListQuerySchema,
+  platformPermanentDeleteStudioSchema,
   platformStudioListQuerySchema,
+  platformUpdateProfileSchema,
   type LoginInput,
   type PlatformActivationCodeListQueryInput,
   type PlatformDeleteActivationCodeInput,
@@ -42,7 +46,9 @@ import {
   type PlatformGenerateActivationCodesInput,
   type PlatformGenerateLicensesInput,
   type PlatformLicenseListQueryInput,
+  type PlatformPermanentDeleteStudioInput,
   type PlatformStudioListQueryInput,
+  type PlatformUpdateProfileInput,
 } from "@st-manager/validation";
 
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
@@ -68,6 +74,23 @@ export class PlatformAdminController {
   @UseGuards(JwtAuthGuard, PlatformAdminGuard)
   async dashboard(): Promise<PlatformAdminDashboardResponseDto> {
     const data = await this.platformAdminService.getDashboard();
+    return { success: true, data };
+  }
+
+  @Get("profile")
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  async getProfile(@CurrentUser() user: AuthenticatedUser): Promise<PlatformAdminProfileResponseDto> {
+    const data = await this.platformAdminService.getProfile(user);
+    return { success: true, data };
+  }
+
+  @Post("profile/update")
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  async updateProfile(
+    @Body(new ZodValidationPipe(platformUpdateProfileSchema)) body: PlatformUpdateProfileInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<PlatformAdminProfileResponseDto> {
+    const data = await this.platformAdminService.updateProfile(user, body);
     return { success: true, data };
   }
 
@@ -116,6 +139,18 @@ export class PlatformAdminController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<PlatformStudioActionResponseDto> {
     const data = await this.platformAdminService.deleteStudio(id, body, user);
+    return { success: true, data };
+  }
+
+  @Post("studios/:id/permanent-delete")
+  @UseGuards(JwtAuthGuard, PlatformAdminGuard)
+  async permanentlyDeleteStudio(
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(platformPermanentDeleteStudioSchema))
+    body: PlatformPermanentDeleteStudioInput,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<PlatformPermanentDeleteStudioResponseDto> {
+    const data = await this.platformAdminService.permanentlyDeleteStudio(id, body, user);
     return { success: true, data };
   }
 

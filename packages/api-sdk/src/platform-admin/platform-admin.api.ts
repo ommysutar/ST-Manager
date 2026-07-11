@@ -7,6 +7,7 @@ import type {
   PlatformAdminDashboardResponseDto,
   PlatformAdminLoginRequestDto,
   PlatformAdminLoginResponseDto,
+  PlatformAdminProfileResponseDto,
   PlatformAuditLogListResponseDto,
   PlatformDeleteActivationCodeRequestDto,
   PlatformDeleteLicenseRequestDto,
@@ -19,10 +20,13 @@ import type {
   PlatformLicenseListQueryDto,
   PlatformLicenseListResponseDto,
   PlatformLicensesExportResponseDto,
+  PlatformPermanentDeleteStudioRequestDto,
+  PlatformPermanentDeleteStudioResponseDto,
   PlatformStudioActionResponseDto,
   PlatformStudioDetailResponseDto,
   PlatformStudioListQueryDto,
   PlatformStudioListResponseDto,
+  PlatformUpdateProfileRequestDto,
 } from "@st-manager/contracts";
 import {
   loginSchema,
@@ -33,7 +37,9 @@ import {
   platformGenerateActivationCodesSchema,
   platformGenerateLicensesSchema,
   platformLicenseListQuerySchema,
+  platformPermanentDeleteStudioSchema,
   platformStudioListQuerySchema,
+  platformUpdateProfileSchema,
 } from "@st-manager/validation";
 
 import type { HttpClient, QueryParams } from "../client/types";
@@ -41,11 +47,19 @@ import type { HttpClient, QueryParams } from "../client/types";
 export interface PlatformAdminApi {
   login(input: PlatformAdminLoginRequestDto): Promise<PlatformAdminLoginResponseDto["data"]>;
   getDashboard(): Promise<PlatformAdminDashboardResponseDto["data"]>;
+  getProfile(): Promise<PlatformAdminProfileResponseDto["data"]>;
+  updateProfile(
+    input: PlatformUpdateProfileRequestDto,
+  ): Promise<PlatformAdminProfileResponseDto["data"]>;
   listStudios(query?: PlatformStudioListQueryDto): Promise<PlatformStudioListResponseDto>;
   getStudio(id: string): Promise<PlatformStudioDetailResponseDto["data"]>;
   disableStudio(id: string): Promise<PlatformStudioActionResponseDto["data"]>;
   enableStudio(id: string): Promise<PlatformStudioActionResponseDto["data"]>;
   deleteStudio(id: string, input: PlatformDeleteStudioRequestDto): Promise<PlatformStudioActionResponseDto["data"]>;
+  permanentlyDeleteStudio(
+    id: string,
+    input: PlatformPermanentDeleteStudioRequestDto,
+  ): Promise<PlatformPermanentDeleteStudioResponseDto["data"]>;
   listAuditLogs(): Promise<PlatformAuditLogListResponseDto["data"]>;
   listActivationCodes(
     query?: PlatformActivationCodeListQueryDto,
@@ -87,6 +101,22 @@ export function createPlatformAdminApi(client: HttpClient): PlatformAdminApi {
       return response.data;
     },
 
+    getProfile: async () => {
+      const response = await client.get<PlatformAdminProfileResponseDto>(
+        `${ROUTES.PLATFORM_ADMIN}/profile`,
+      );
+      return response.data;
+    },
+
+    updateProfile: async (input) => {
+      const validated = platformUpdateProfileSchema.parse(input);
+      const response = await client.post<PlatformAdminProfileResponseDto>(
+        `${ROUTES.PLATFORM_ADMIN}/profile/update`,
+        validated,
+      );
+      return response.data;
+    },
+
     listStudios: async (query = {}) => {
       const validated = platformStudioListQuerySchema.parse(query);
       return client.get<PlatformStudioListResponseDto>(
@@ -122,6 +152,15 @@ export function createPlatformAdminApi(client: HttpClient): PlatformAdminApi {
       const validated = platformDeleteStudioSchema.parse(input);
       const response = await client.post<PlatformStudioActionResponseDto>(
         `${ROUTES.PLATFORM_ADMIN}/studios/${encodeURIComponent(id)}/delete`,
+        validated,
+      );
+      return response.data;
+    },
+
+    permanentlyDeleteStudio: async (id, input) => {
+      const validated = platformPermanentDeleteStudioSchema.parse(input);
+      const response = await client.post<PlatformPermanentDeleteStudioResponseDto>(
+        `${ROUTES.PLATFORM_ADMIN}/studios/${encodeURIComponent(id)}/permanent-delete`,
         validated,
       );
       return response.data;
