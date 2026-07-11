@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as bcrypt from "bcrypt";
 
 import { PlatformAdminService } from "./platform-admin.service";
 
@@ -13,6 +14,7 @@ describe("PlatformAdminService bootstrap", () => {
     countPlatformAdmins: ReturnType<typeof vi.fn>;
     findByEmail: ReturnType<typeof vi.fn>;
     createPlatformAdmin: ReturnType<typeof vi.fn>;
+    updatePlatformAdminPassword: ReturnType<typeof vi.fn>;
   };
   let configService: {
     get: ReturnType<typeof vi.fn>;
@@ -23,6 +25,7 @@ describe("PlatformAdminService bootstrap", () => {
       countPlatformAdmins: vi.fn(),
       findByEmail: vi.fn(),
       createPlatformAdmin: vi.fn(),
+      updatePlatformAdminPassword: vi.fn(),
     };
     configService = {
       get: vi.fn((key: string) => {
@@ -37,6 +40,9 @@ describe("PlatformAdminService bootstrap", () => {
       { signAsync: vi.fn() } as never,
       configService as never,
     );
+
+    vi.mocked(bcrypt.compare).mockReset();
+    vi.mocked(bcrypt.hash).mockClear();
   });
 
   it("creates exactly one platform admin when none exist", async () => {
@@ -58,14 +64,40 @@ describe("PlatformAdminService bootstrap", () => {
     });
   });
 
-  it("does nothing on second bootstrap when a platform admin already exists", async () => {
+  it("does not create duplicates when admin exists and password matches", async () => {
     repository.countPlatformAdmins.mockResolvedValue(1);
+    repository.findByEmail.mockResolvedValue({
+      id: "admin-1",
+      email: "platform-admin@stmanager.app",
+      role: "platform_admin",
+      passwordHash: "$2b$10$existing",
+    });
+    vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
 
     await service.bootstrapPlatformAdmin();
     await service.bootstrapPlatformAdmin();
 
     expect(repository.createPlatformAdmin).not.toHaveBeenCalled();
-    expect(repository.findByEmail).not.toHaveBeenCalled();
+    expect(repository.updatePlatformAdminPassword).not.toHaveBeenCalled();
+  });
+
+  it("resets password once when existing admin hash does not match env", async () => {
+    repository.countPlatformAdmins.mockResolvedValue(1);
+    repository.findByEmail.mockResolvedValue({
+      id: "admin-1",
+      email: "platform-admin@stmanager.app",
+      role: "platform_admin",
+      passwordHash: "$2b$10$old-hash",
+    });
+    vi.mocked(bcrypt.compare).mockResolvedValue(false as never);
+
+    await service.bootstrapPlatformAdmin();
+
+    expect(repository.createPlatformAdmin).not.toHaveBeenCalled();
+    expect(repository.updatePlatformAdminPassword).toHaveBeenCalledWith(
+      "admin-1",
+      "$2b$10$hashed-platform-admin-password",
+    );
   });
 
   it("never overwrites an existing account email that is not a platform admin", async () => {

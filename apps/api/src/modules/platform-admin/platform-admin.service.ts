@@ -63,8 +63,13 @@ export class PlatformAdminService implements OnModuleInit {
   }
 
   async bootstrapPlatformAdmin(): Promise<void> {
-    const email = this.configService.get("PLATFORM_ADMIN_EMAIL", { infer: true })?.trim();
+    const emailRaw = this.configService.get("PLATFORM_ADMIN_EMAIL", { infer: true });
     const password = this.configService.get("PLATFORM_ADMIN_PASSWORD", { infer: true });
+    const email = emailRaw?.trim() || undefined;
+
+    this.logger.log(
+      `Platform admin bootstrap env check: email=${email ?? "(unset)"} passwordLength=${password?.length ?? 0}`,
+    );
 
     if (!email || !password) {
       this.logger.warn(
@@ -73,13 +78,34 @@ export class PlatformAdminService implements OnModuleInit {
       return;
     }
 
+    const normalizedEmail = email.toLowerCase();
     const existingCount = await this.repository.countPlatformAdmins();
+
     if (existingCount > 0) {
-      this.logger.log("Platform admin already exists — bootstrap skipped");
+      const existingAdmin = await this.repository.findByEmail(normalizedEmail);
+      if (!existingAdmin || existingAdmin.role !== PLATFORM_ROLES.PLATFORM_ADMIN) {
+        this.logger.log(
+          "Platform admin already exists (different account) — bootstrap skipped (no duplicates)",
+        );
+        return;
+      }
+
+      const passwordMatches = await bcrypt.compare(password, existingAdmin.passwordHash);
+      if (passwordMatches) {
+        this.logger.log(
+          `Platform admin already exists for ${normalizedEmail} — password matches env — bootstrap skipped`,
+        );
+        return;
+      }
+
+      const passwordHash = await bcrypt.hash(password, 10);
+      await this.repository.updatePlatformAdminPassword(existingAdmin.id, passwordHash);
+      this.logger.warn(
+        `Platform admin password reset from PLATFORM_ADMIN_PASSWORD for ${normalizedEmail} (one-time sync; hash did not match env)`,
+      );
       return;
     }
 
-    const normalizedEmail = email.toLowerCase();
     const existingUser = await this.repository.findByEmail(normalizedEmail);
     if (existingUser) {
       this.logger.warn(

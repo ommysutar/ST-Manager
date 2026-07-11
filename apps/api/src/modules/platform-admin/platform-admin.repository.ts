@@ -76,6 +76,17 @@ export class PlatformAdminRepository {
     });
   }
 
+  async updatePlatformAdminPassword(
+    userId: string,
+    passwordHash: string,
+  ): Promise<void> {
+    const client = asClient(this.prismaService.getClient());
+    await client.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+  }
+
   async updateLastLogin(userId: string): Promise<void> {
     const client = asClient(this.prismaService.getClient());
     await client.user.update({
