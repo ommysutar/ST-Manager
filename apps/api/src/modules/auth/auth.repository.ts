@@ -223,4 +223,97 @@ export class AuthRepository {
       data: { lastLoginAt: new Date() },
     });
   }
+
+  async countRateLimitHits(key: string, since: Date): Promise<number> {
+    const client = asAuthClient(this.prismaService.getClient());
+    return client.passwordResetRateLimit.count({
+      where: { key, createdAt: { gte: since } },
+    });
+  }
+
+  async recordRateLimitHit(key: string): Promise<void> {
+    const client = asAuthClient(this.prismaService.getClient());
+    await client.passwordResetRateLimit.create({ data: { key } });
+  }
+
+  async invalidateActiveResetTokens(userId: string): Promise<void> {
+    const client = asAuthClient(this.prismaService.getClient());
+    await client.passwordResetToken.updateMany({
+      where: { userId, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+  }
+
+  async createPasswordResetToken(input: {
+    userId: string;
+    tokenHash: string;
+    expiresAt: Date;
+    requestIp: string | null;
+  }): Promise<void> {
+    const client = asAuthClient(this.prismaService.getClient());
+    await client.passwordResetToken.create({
+      data: {
+        userId: input.userId,
+        tokenHash: input.tokenHash,
+        expiresAt: input.expiresAt,
+        requestIp: input.requestIp,
+      },
+    });
+  }
+
+  async findPasswordResetTokenByHash(tokenHash: string): Promise<{
+    id: string;
+    userId: string;
+    expiresAt: Date;
+    usedAt: Date | null;
+  } | null> {
+    const client = asAuthClient(this.prismaService.getClient());
+    return client.passwordResetToken.findUnique({
+      where: { tokenHash },
+      select: { id: true, userId: true, expiresAt: true, usedAt: true },
+    });
+  }
+
+  async markPasswordResetTokenUsed(id: string): Promise<void> {
+    const client = asAuthClient(this.prismaService.getClient());
+    await client.passwordResetToken.update({
+      where: { id },
+      data: { usedAt: new Date() },
+    });
+  }
+
+  async updatePasswordHash(userId: string, passwordHash: string): Promise<void> {
+    const client = asAuthClient(this.prismaService.getClient());
+    await client.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+  }
+
+  async consumePasswordResetToken(input: {
+    tokenId: string;
+    userId: string;
+    passwordHash: string;
+  }): Promise<void> {
+    const client = asAuthClient(this.prismaService.getClient());
+    await client.$transaction(async (tx) => {
+      const updated = await tx.passwordResetToken.updateMany({
+        where: { id: input.tokenId, usedAt: null },
+        data: { usedAt: new Date() },
+      });
+      if (updated.count !== 1) {
+        throw new Error("PASSWORD_RESET_TOKEN_ALREADY_USED");
+      }
+
+      await tx.user.update({
+        where: { id: input.userId },
+        data: { passwordHash: input.passwordHash },
+      });
+
+      await tx.passwordResetToken.updateMany({
+        where: { userId: input.userId, usedAt: null },
+        data: { usedAt: new Date() },
+      });
+    });
+  }
 }

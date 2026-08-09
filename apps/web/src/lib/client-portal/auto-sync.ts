@@ -12,6 +12,7 @@ import { getAuthUserSnapshot, tokenStore } from "@/lib/token-store";
 
 import { clientPortalApi } from "@/lib/api-client";
 
+import { CLIENT_PORTAL_SETTINGS_UPDATED_EVENT } from "./events";
 import {
   buildClientPortalSnapshot,
   isPortalLinked,
@@ -117,6 +118,7 @@ export function startClientPortalAutoSync(): () => void {
     DOCUMENTS_UPDATED_EVENT,
     PROFILE_UPDATED_EVENT,
     STUDIOS_UPDATED_EVENT,
+    CLIENT_PORTAL_SETTINGS_UPDATED_EVENT,
   ];
   for (const event of events) {
     window.addEventListener(event, onChange);

@@ -99,7 +99,17 @@ function LoginForm() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="login-password">Password</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="login-password">Password</Label>
+                {!invitationToken ? (
+                  <Link
+                    href="/login/forgot-password"
+                    className="text-xs text-muted-foreground underline-offset-4 hover:underline"
+                  >
+                    Forgot Password?
+                  </Link>
+                ) : null}
+              </div>
               <Input
                 id="login-password"
                 type="password"

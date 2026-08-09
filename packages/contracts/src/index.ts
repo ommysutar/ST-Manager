@@ -15,6 +15,14 @@ export type {
   RegisterResponseDto,
 } from "./auth/register.dto";
 export type { RefreshRequestDto, RefreshResponseDataDto, RefreshResponseDto } from "./auth/refresh.dto";
+export type {
+  ForgotPasswordRequestDto,
+  ForgotPasswordResponseDataDto,
+  ForgotPasswordResponseDto,
+  ResetPasswordRequestDto,
+  ResetPasswordResponseDataDto,
+  ResetPasswordResponseDto,
+} from "./auth/password-reset.dto";
 
 export type {
   SyncStudiosPushItemDto,

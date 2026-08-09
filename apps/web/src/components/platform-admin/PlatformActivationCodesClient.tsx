@@ -429,7 +429,7 @@ export function PlatformActivationCodesClient() {
           <DialogHeader>
             <DialogTitle>Generate Activation Code</DialogTitle>
             <DialogDescription>
-              Create secure STM-XXXX-XXXX-XXXX codes. Registration does not require them yet.
+              Create secure STM-XXXX-XXXX-XXXX codes. Required when registering a new studio.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

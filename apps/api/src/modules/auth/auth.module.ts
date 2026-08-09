@@ -5,6 +5,7 @@ import { PassportModule } from "@nestjs/passport";
 import type { ApiEnv } from "@st-manager/validation";
 
 import { PrismaModule } from "../../common/prisma/prisma.module";
+import { EmailModule } from "../email/email.module";
 import { AuthController } from "./auth.controller";
 import { AuthRepository } from "./auth.repository";
 import { AuthService } from "./auth.service";
@@ -14,6 +15,7 @@ import { JwtStrategy } from "./jwt.strategy";
 @Module({
   imports: [
     PrismaModule,
+    EmailModule,
     PassportModule.register({ defaultStrategy: "jwt" }),
     JwtModule.registerAsync({
       imports: [ConfigModule],

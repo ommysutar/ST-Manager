@@ -321,7 +321,22 @@ export function ProjectClientPortalCard({ project }: ProjectClientPortalCardProp
               onChange={(e) => {
                 const next = e.target.value as PortalEstimateInput["scheduleStatus"];
                 setScheduleStatus(next);
-                persistSettings();
+                // Persist with `next` immediately — do not call persistSettings() here;
+                // React state is still stale until the next render.
+                savePortalSettings(project.id, {
+                  studioMessage: studioMessage.trim() || null,
+                  estimate: {
+                    estimatedCompletionDate: estimateDate
+                      ? new Date(estimateDate).toISOString()
+                      : null,
+                    scheduleStatus: next,
+                    expectedCompletionDate:
+                      next === "delayed" && expectedDate
+                        ? new Date(expectedDate).toISOString()
+                        : null,
+                    delayReason: next === "delayed" ? delayReason.trim() || null : null,
+                  },
+                });
               }}
             >
               <option value="on_schedule">On Schedule</option>
@@ -335,11 +350,50 @@ export function ProjectClientPortalCard({ project }: ProjectClientPortalCardProp
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Expected Completion Date</Label>
-              <Input type="date" value={expectedDate} onChange={(e) => setExpectedDate(e.target.value)} />
+              <Input
+                type="date"
+                value={expectedDate}
+                onChange={(e) => {
+                  const nextExpected = e.target.value;
+                  setExpectedDate(nextExpected);
+                  savePortalSettings(project.id, {
+                    studioMessage: studioMessage.trim() || null,
+                    estimate: {
+                      estimatedCompletionDate: estimateDate
+                        ? new Date(estimateDate).toISOString()
+                        : null,
+                      scheduleStatus,
+                      expectedCompletionDate: nextExpected
+                        ? new Date(nextExpected).toISOString()
+                        : null,
+                      delayReason: delayReason.trim() || null,
+                    },
+                  });
+                }}
+              />
             </div>
             <div className="space-y-2">
               <Label>Delay Reason (optional)</Label>
-              <Input value={delayReason} onChange={(e) => setDelayReason(e.target.value)} />
+              <Input
+                value={delayReason}
+                onChange={(e) => {
+                  const nextReason = e.target.value;
+                  setDelayReason(nextReason);
+                  savePortalSettings(project.id, {
+                    studioMessage: studioMessage.trim() || null,
+                    estimate: {
+                      estimatedCompletionDate: estimateDate
+                        ? new Date(estimateDate).toISOString()
+                        : null,
+                      scheduleStatus,
+                      expectedCompletionDate: expectedDate
+                        ? new Date(expectedDate).toISOString()
+                        : null,
+                      delayReason: nextReason.trim() || null,
+                    },
+                  });
+                }}
+              />
             </div>
           </div>
         ) : null}

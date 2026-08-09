@@ -1,18 +1,44 @@
-import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService, type JwtSignOptions } from "@nestjs/jwt";
-import { DISABLED_STUDIO_MESSAGE, PLATFORM_ROLES, STUDIO_STATUSES } from "@st-manager/constants";
+import {
+  DISABLED_STUDIO_MESSAGE,
+  PASSWORD_RESET,
+  PLATFORM_ROLES,
+  STUDIO_STATUSES,
+} from "@st-manager/constants";
 import type {
   AuthUserDto,
+  ForgotPasswordResponseDataDto,
   LoginResponseDataDto,
   RefreshResponseDataDto,
+  ResetPasswordResponseDataDto,
 } from "@st-manager/contracts";
-import type { ApiEnv, LoginInput, RefreshInput, RegisterInput } from "@st-manager/validation";
+import type {
+  ApiEnv,
+  ForgotPasswordInput,
+  LoginInput,
+  RefreshInput,
+  RegisterInput,
+  ResetPasswordInput,
+} from "@st-manager/validation";
 import * as bcrypt from "bcrypt";
+import { createHash, randomBytes } from "node:crypto";
 
+import { EmailService } from "../email/email.service";
 import { ActivationCodeRedeemError, AuthRepository } from "./auth.repository";
 import type { JwtTokenPayload } from "./auth.types";
 import { expiresInToSeconds } from "./auth.utils";
+
+const FORGOT_PASSWORD_MESSAGE =
+  "If an account exists for that email, a password reset link has been sent.";
 
 @Injectable()
 export class AuthService {
@@ -20,6 +46,7 @@ export class AuthService {
     private readonly authRepository: AuthRepository,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService<ApiEnv, true>,
+    private readonly emailService: EmailService,
   ) {}
 
   async login(input: LoginInput): Promise<LoginResponseDataDto> {
@@ -126,6 +153,117 @@ export class AuthService {
     }
 
     return this.issueTokenPair(user.id, user.email, user.role);
+  }
+
+  async forgotPassword(
+    input: ForgotPasswordInput,
+    requestIp: string | null,
+  ): Promise<ForgotPasswordResponseDataDto> {
+    const email = input.email.trim().toLowerCase();
+    await this.assertForgotPasswordRateLimit(email, requestIp);
+
+    const user = await this.authRepository.findByEmail(email);
+    if (!user || user.status === "disabled" || user.role === PLATFORM_ROLES.PLATFORM_ADMIN) {
+      return { message: FORGOT_PASSWORD_MESSAGE };
+    }
+
+    await this.authRepository.invalidateActiveResetTokens(user.id);
+
+    const { token, tokenHash } = this.generateResetToken();
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET.TOKEN_TTL_MS);
+    await this.authRepository.createPasswordResetToken({
+      userId: user.id,
+      tokenHash,
+      expiresAt,
+      requestIp,
+    });
+
+    const resetUrl = this.emailService.buildPasswordResetUrl(token);
+    await this.emailService.sendPasswordReset({
+      to: user.email,
+      fullName: user.fullName,
+      resetUrl,
+      expiresAt,
+    });
+
+    return { message: FORGOT_PASSWORD_MESSAGE };
+  }
+
+  async resetPassword(input: ResetPasswordInput): Promise<ResetPasswordResponseDataDto> {
+    const tokenHash = this.hashToken(input.token.trim());
+    const record = await this.authRepository.findPasswordResetTokenByHash(tokenHash);
+
+    if (!record || record.usedAt) {
+      throw new BadRequestException("This password reset link is invalid or has already been used.");
+    }
+
+    if (record.expiresAt.getTime() <= Date.now()) {
+      throw new BadRequestException("This password reset link has expired. Please request a new one.");
+    }
+
+    const user = await this.authRepository.findById(record.userId);
+    if (!user || user.status === "disabled" || user.role === PLATFORM_ROLES.PLATFORM_ADMIN) {
+      throw new BadRequestException("This password reset link is invalid or has already been used.");
+    }
+
+    const passwordHash = await bcrypt.hash(input.password, 10);
+    try {
+      await this.authRepository.consumePasswordResetToken({
+        tokenId: record.id,
+        userId: user.id,
+        passwordHash,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === "PASSWORD_RESET_TOKEN_ALREADY_USED") {
+        throw new BadRequestException(
+          "This password reset link is invalid or has already been used.",
+        );
+      }
+      throw error;
+    }
+
+    return { message: "Password updated successfully. You can now sign in with your new password." };
+  }
+
+  private async assertForgotPasswordRateLimit(
+    email: string,
+    requestIp: string | null,
+  ): Promise<void> {
+    const since = new Date(Date.now() - PASSWORD_RESET.RATE_LIMIT_WINDOW_MS);
+    const emailKey = `email:${this.hashToken(email)}`;
+    const ipKey = requestIp ? `ip:${this.hashToken(requestIp)}` : null;
+
+    const emailHits = await this.authRepository.countRateLimitHits(emailKey, since);
+    if (emailHits >= PASSWORD_RESET.MAX_REQUESTS_PER_EMAIL) {
+      throw new HttpException(
+        "Too many password reset requests. Please try again later.",
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    if (ipKey) {
+      const ipHits = await this.authRepository.countRateLimitHits(ipKey, since);
+      if (ipHits >= PASSWORD_RESET.MAX_REQUESTS_PER_IP) {
+        throw new HttpException(
+          "Too many password reset requests. Please try again later.",
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+    }
+
+    await this.authRepository.recordRateLimitHit(emailKey);
+    if (ipKey) {
+      await this.authRepository.recordRateLimitHit(ipKey);
+    }
+  }
+
+  private generateResetToken(): { token: string; tokenHash: string } {
+    const token = randomBytes(32).toString("hex");
+    return { token, tokenHash: this.hashToken(token) };
+  }
+
+  private hashToken(token: string): string {
+    return createHash("sha256").update(token).digest("hex");
   }
 
   private async issueTokenPair(

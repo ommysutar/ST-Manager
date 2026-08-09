@@ -1,3 +1,5 @@
+import { notifyClientPortalSettingsUpdated } from "./events";
+
 export interface PortalEstimateInput {
   estimatedCompletionDate: string | null;
   scheduleStatus: "on_schedule" | "delayed" | "unknown";
@@ -52,4 +54,5 @@ export function savePortalSettings(projectId: string, settings: PortalProjectSet
       estimate: settings.estimate,
     }),
   );
+  notifyClientPortalSettingsUpdated();
 }

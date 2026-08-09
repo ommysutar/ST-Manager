@@ -26,14 +26,19 @@ function mapStatusToErrorCode(statusCode: number): ApiErrorCode {
   if (statusCode === 400 || statusCode === 413) {
     return API_ERROR_CODES.VALIDATION_ERROR;
   }
-  if (statusCode === 404) {
+  if (statusCode === 404 || statusCode === 410) {
     return API_ERROR_CODES.NOT_FOUND;
   }
-  if (statusCode === 401) {
+  if (statusCode === 401 || statusCode === 403) {
     return API_ERROR_CODES.UNAUTHORIZED;
   }
   if (statusCode === 409) {
-    return API_ERROR_CODES.BOOKING_CONFLICT;
+    // Booking/session/invoice conflicts attach details.code; bare 409s (auth/team)
+    // must not be mislabeled as BOOKING_CONFLICT.
+    return API_ERROR_CODES.VALIDATION_ERROR;
+  }
+  if (statusCode === 429) {
+    return API_ERROR_CODES.VALIDATION_ERROR;
   }
   if (statusCode === 503) {
     return API_ERROR_CODES.AI_PROVIDER_ERROR;

@@ -50,9 +50,33 @@ model User {
   studio             Studio?             @relation(fields: [studioId], references: [id])
   sentInvitations    StudioInvitation[]  @relation("InvitationSender")
   auditLogs          AuditLog[]          @relation("AuditActor")
+  passwordResetTokens PasswordResetToken[]
 
   @@index([studioId])
   @@map("users")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique @db.VarChar(64)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  requestIp String?   @db.VarChar(64)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("password_reset_tokens")
+}
+
+model PasswordResetRateLimit {
+  id        String   @id @default(cuid())
+  key       String   @db.VarChar(128)
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+  @@map("password_reset_rate_limits")
 }
 
 model Permission {

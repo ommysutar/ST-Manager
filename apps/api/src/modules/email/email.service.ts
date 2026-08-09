@@ -96,6 +96,57 @@ export class EmailService {
     return `${baseUrl.replace(/\/$/, "")}/invite/accept?token=${encodeURIComponent(token)}`;
   }
 
+  buildPasswordResetUrl(token: string): string {
+    const baseUrl =
+      this.configService.get("APP_BASE_URL", { infer: true }) ?? "http://localhost:3000";
+    return `${baseUrl.replace(/\/$/, "")}/login/reset-password?token=${encodeURIComponent(token)}`;
+  }
+
+  async sendPasswordReset(params: {
+    to: string;
+    fullName: string | null;
+    resetUrl: string;
+    expiresAt: Date;
+  }): Promise<void> {
+    const greeting = params.fullName?.trim() ? `Hi ${params.fullName.trim()},` : "Hi,";
+    const expiryLabel = params.expiresAt.toLocaleString("en-IN", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const message: EmailMessage = {
+      to: params.to,
+      subject: "Reset your ST Manager password",
+      html: `
+        <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto;">
+          <h2>Password reset</h2>
+          <p>${greeting}</p>
+          <p>We received a request to reset your ST Manager password.</p>
+          <p>This link expires at <strong>${expiryLabel}</strong> and can be used only once.</p>
+          <p style="margin: 32px 0;">
+            <a href="${params.resetUrl}" style="background:#111;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;">
+              Reset Password
+            </a>
+          </p>
+          <p style="color:#666;font-size:14px;">If you did not request a password reset, you can ignore this email.</p>
+        </div>
+      `,
+      text: [
+        greeting,
+        "We received a request to reset your ST Manager password.",
+        `This link expires at ${expiryLabel} and can be used only once.`,
+        `Reset: ${params.resetUrl}`,
+        "If you did not request a password reset, you can ignore this email.",
+      ].join("\n"),
+    };
+
+    this.logger.log(`Sending password reset email to=${params.to} via provider=${this.providerId}...`);
+    await this.provider.send(message);
+  }
+
   async sendClientPortalLink(params: {
     to: string;
     studioName: string;

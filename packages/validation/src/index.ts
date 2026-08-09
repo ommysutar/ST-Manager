@@ -16,6 +16,9 @@ export type { RegisterInput } from "./auth/register.schema";
 export { refreshSchema } from "./auth/refresh.schema";
 export type { RefreshInput } from "./auth/refresh.schema";
 
+export { forgotPasswordSchema, resetPasswordSchema } from "./auth/forgot-password.schema";
+export type { ForgotPasswordInput, ResetPasswordInput } from "./auth/forgot-password.schema";
+
 export { syncStudiosPushSchema } from "./sync/sync-studios-push.schema";
 export type { SyncStudiosPushInput } from "./sync/sync-studios-push.schema";
 
