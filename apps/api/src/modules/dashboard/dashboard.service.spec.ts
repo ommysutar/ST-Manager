@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { AuthenticatedUser } from "../auth/auth.types";
+import { AuthRepository } from "../auth/auth.repository";
 import { BookingsRepository } from "../bookings/bookings.repository";
 import { ClientsRepository } from "../clients/clients.repository";
 import { InvoicesRepository } from "../invoices/invoices.repository";
@@ -7,6 +9,12 @@ import { ReportsService } from "../reports/reports.service";
 import { SessionsRepository } from "../sessions/sessions.repository";
 import { StudiosRepository } from "../studios/studios.repository";
 import { DashboardService } from "./dashboard.service";
+
+const actor: AuthenticatedUser = {
+  userId: "user-1",
+  email: "owner@studio.test",
+  role: "owner",
+};
 
 describe("DashboardService", () => {
   let service: DashboardService;
@@ -33,6 +41,9 @@ describe("DashboardService", () => {
     getCurrentMonthUtilizationPercent: ReturnType<typeof vi.fn>;
     getRecentRevenueTrend: ReturnType<typeof vi.fn>;
   };
+  let authRepository: {
+    findById: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     studiosRepository = {
@@ -58,6 +69,9 @@ describe("DashboardService", () => {
       getCurrentMonthUtilizationPercent: vi.fn(),
       getRecentRevenueTrend: vi.fn(),
     };
+    authRepository = {
+      findById: vi.fn().mockResolvedValue({ id: "user-1", studioId: "studio-1" }),
+    };
 
     service = new DashboardService(
       studiosRepository as unknown as StudiosRepository,
@@ -66,6 +80,7 @@ describe("DashboardService", () => {
       sessionsRepository as unknown as SessionsRepository,
       invoicesRepository as unknown as InvoicesRepository,
       reportsService as unknown as ReportsService,
+      authRepository as unknown as AuthRepository,
     );
   });
 
@@ -78,9 +93,12 @@ describe("DashboardService", () => {
     };
     const client = {
       id: "client-1",
+      studioId: "studio-1",
       name: "Acme Records",
       email: null,
       phone: null,
+      whatsappNumber: null,
+      whatsappSameAsPhone: false,
       company: "Acme",
       notes: null,
       deletedAt: null,
@@ -164,7 +182,7 @@ describe("DashboardService", () => {
       { date: "2026-07-02", revenue: 150 },
     ]);
 
-    await expect(service.getSummary()).resolves.toEqual({
+    await expect(service.getSummary(actor)).resolves.toEqual({
       studioCount: 3,
       recentStudios: [
         {
@@ -235,6 +253,13 @@ describe("DashboardService", () => {
         { date: "2026-07-02", revenue: 150 },
       ],
     });
+
+    expect(clientsRepository.count).toHaveBeenCalledWith("studio-1");
+    expect(clientsRepository.findMany).toHaveBeenCalledWith({
+      studioId: "studio-1",
+      skip: 0,
+      take: 5,
+    });
   });
 
   it("returns empty recent collections when none exist", async () => {
@@ -250,7 +275,7 @@ describe("DashboardService", () => {
     reportsService.getCurrentMonthUtilizationPercent.mockResolvedValue(0);
     reportsService.getRecentRevenueTrend.mockResolvedValue([]);
 
-    const summary = await service.getSummary();
+    const summary = await service.getSummary(actor);
 
     expect(summary.recentStudios).toEqual([]);
     expect(summary.recentClients).toEqual([]);

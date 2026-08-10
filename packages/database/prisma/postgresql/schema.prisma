@@ -29,6 +29,7 @@ model Studio {
   roleDefs        RoleDefinition[]
   activationCodes ActivationCode[]
   clientPortalLinks ClientPortalLink[]
+  clients         Client[]
 
   @@index([status])
   @@map("studios")
@@ -196,6 +197,7 @@ model ActivationCode {
 
 model Client {
   id                  String    @id @default(cuid())
+  studioId            String
   name                String    @db.VarChar(120)
   email               String?   @db.VarChar(255)
   phone               String?   @db.VarChar(64)
@@ -206,10 +208,13 @@ model Client {
   deletedAt           DateTime?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+  studio              Studio    @relation(fields: [studioId], references: [id])
   bookings            Booking[]
   sessions            Session[]
   invoices            Invoice[]
 
+  @@index([studioId, updatedAt])
+  @@index([studioId, deletedAt])
   @@map("clients")
 }
 

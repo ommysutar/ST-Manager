@@ -41,6 +41,9 @@ export {
 export { listClientsQuerySchema } from "./client/list-clients-query.schema";
 export type { ListClientsQueryInput } from "./client/list-clients-query.schema";
 
+export { syncClientsPullQuerySchema } from "./client/sync-clients-pull-query.schema";
+export type { SyncClientsPullQueryInput } from "./client/sync-clients-pull-query.schema";
+
 export {
   createBookingSchema,
   updateBookingSchema,

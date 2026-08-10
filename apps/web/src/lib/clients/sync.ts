@@ -12,12 +12,17 @@ import { loadAllProjects, updateProject } from "@/lib/projects/storage";
 
 import { notifyClientsUpdated } from "./events";
 import { toClientCreatePayload } from "./normalize-client-payload";
-import { getClientsSnapshot, refreshClientsSnapshot, upsertClientInSnapshot } from "./store";
+import {
+  createClientOfflineAware,
+  getClientsSnapshot,
+  refreshClientsSnapshot,
+  upsertClientInSnapshot,
+} from "./store";
 import type { ClientSyncInput } from "./types";
 
 export type { ClientSyncInput } from "./types";
 
-/** Master client resolver — reuses by ID, phone, or email; otherwise creates via API. */
+/** Master client resolver — reuses by ID, phone, or email; otherwise creates (offline-aware). */
 export async function resolveOrCreateClient(input: ClientSyncInput): Promise<ClientResponseDto> {
   await refreshClientsSnapshot().catch(() => undefined);
   const clients = getClientsSnapshot();
@@ -49,10 +54,15 @@ export async function resolveOrCreateClient(input: ClientSyncInput): Promise<Cli
     return duplicate;
   }
 
-  const created = await clientsApi.createClient(payload);
-  upsertClientInSnapshot(created);
-  notifyClientsUpdated();
-  return created;
+  return createClientOfflineAware({
+    name: payload.name,
+    phone: payload.phone ?? "",
+    whatsappNumber: payload.whatsappNumber ?? "",
+    whatsappSameAsPhone: payload.whatsappSameAsPhone ?? false,
+    email: payload.email ?? "",
+    company: payload.company ?? "",
+    notes: payload.notes ?? "",
+  });
 }
 
 /** Applies resolved client fields back onto an inquiry wizard form. */

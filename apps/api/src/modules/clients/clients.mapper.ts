@@ -5,6 +5,7 @@ import type { Client } from "@st-manager/types";
 export function toClientResponseDto(client: Client): ClientResponseDto {
   return {
     id: client.id,
+    studioId: client.studioId,
     name: client.name,
     email: client.email,
     phone: client.phone,
@@ -12,6 +13,7 @@ export function toClientResponseDto(client: Client): ClientResponseDto {
     whatsappSameAsPhone: client.whatsappSameAsPhone,
     company: client.company,
     notes: client.notes,
+    deletedAt: client.deletedAt ? client.deletedAt.toISOString() : null,
     createdAt: client.createdAt.toISOString(),
     updatedAt: client.updatedAt.toISOString(),
   };

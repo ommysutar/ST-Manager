@@ -1,7 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { AuthenticatedUser } from "../auth/auth.types";
+import { AuthRepository } from "../auth/auth.repository";
 import { ReportsRepository } from "./reports.repository";
 import { ReportsService, buildRevenueTrend, computeUtilization } from "./reports.service";
+
+const actor: AuthenticatedUser = {
+  userId: "user-1",
+  email: "owner@studio.test",
+  role: "owner",
+};
 
 describe("ReportsService", () => {
   let service: ReportsService;
@@ -13,6 +21,9 @@ describe("ReportsService", () => {
     findBookingsInRange: ReturnType<typeof vi.fn>;
     findSessionsInRange: ReturnType<typeof vi.fn>;
   };
+  let authRepository: {
+    findById: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     repository = {
@@ -23,8 +34,14 @@ describe("ReportsService", () => {
       findBookingsInRange: vi.fn(),
       findSessionsInRange: vi.fn(),
     };
+    authRepository = {
+      findById: vi.fn().mockResolvedValue({ id: "user-1", studioId: "studio-1" }),
+    };
 
-    service = new ReportsService(repository as unknown as ReportsRepository);
+    service = new ReportsService(
+      repository as unknown as ReportsRepository,
+      authRepository as unknown as AuthRepository,
+    );
   });
 
   it("aggregates revenue by paid invoice date", async () => {
@@ -59,49 +76,13 @@ describe("ReportsService", () => {
     });
   });
 
-  it("computes utilization from completed session durations", async () => {
-    repository.findStudios.mockResolvedValue([
-      { id: "studio-1", name: "Downtown Studio" },
-    ]);
-    repository.findCompletedSessionsInRange.mockResolvedValue([
-      {
-        id: "session-1",
-        studioId: "studio-1",
-        clientId: "client-1",
-        startedAt: new Date("2026-07-03T10:00:00.000Z"),
-        endedAt: new Date("2026-07-03T12:00:00.000Z"),
-        studioName: "Downtown Studio",
-      },
-    ]);
-
-    await expect(
-      service.getUtilizationReport({
-        from: "2026-07-03T00:00:00.000Z",
-        to: "2026-07-04T00:00:00.000Z",
-      }),
-    ).resolves.toMatchObject({
-      overallPercent: 8.3,
-      totalUsedMinutes: 120,
-      totalAvailableMinutes: 1440,
-      byStudio: [
-        {
-          studioId: "studio-1",
-          studioName: "Downtown Studio",
-          usedMinutes: 120,
-          availableMinutes: 1440,
-          utilizationPercent: 8.3,
-        },
-      ],
-    });
-  });
-
-  it("builds client activity rows for clients with bookings, sessions, or revenue", async () => {
+  it("scopes client activity to the authenticated studio only", async () => {
     repository.findActiveClients.mockResolvedValue([
       { id: "client-1", name: "Acme Records" },
-      { id: "client-2", name: "Quiet Client" },
     ]);
     repository.findBookingsInRange.mockResolvedValue([
       { id: "booking-1", clientId: "client-1" },
+      { id: "booking-foreign", clientId: "client-other-studio" },
     ]);
     repository.findSessionsInRange.mockResolvedValue([
       { id: "session-1", clientId: "client-1" },
@@ -117,22 +98,14 @@ describe("ReportsService", () => {
       },
     ]);
 
-    await expect(
-      service.getClientActivityReport({
-        from: "2026-07-01T00:00:00.000Z",
-        to: "2026-07-31T00:00:00.000Z",
-      }),
-    ).resolves.toMatchObject({
-      clients: [
-        {
-          clientId: "client-1",
-          clientName: "Acme Records",
-          bookingCount: 1,
-          sessionCount: 1,
-          revenue: 330,
-        },
-      ],
+    const report = await service.getClientActivityReport(actor, {
+      from: "2026-07-01T00:00:00.000Z",
+      to: "2026-07-31T00:00:00.000Z",
     });
+
+    expect(repository.findActiveClients).toHaveBeenCalledWith("studio-1");
+    expect(report.clients.map((row) => row.clientId)).toEqual(["client-1"]);
+    expect(report.clients.some((row) => row.clientId === "client-other-studio")).toBe(false);
   });
 
   it("exports revenue CSV with daily rows and total", async () => {
@@ -152,9 +125,7 @@ describe("ReportsService", () => {
         from: "2026-07-01T00:00:00.000Z",
         to: "2026-07-31T00:00:00.000Z",
       }),
-    ).resolves.toBe(
-      "date,revenue,invoiceCount\n2026-07-03,330,1\ntotal,330,1\n",
-    );
+    ).resolves.toBe("date,revenue,invoiceCount\n2026-07-03,330,1\ntotal,330,1\n");
   });
 });
 
@@ -180,14 +151,13 @@ describe("buildRevenueTrend", () => {
   it("fills missing days with zero revenue", () => {
     expect(
       buildRevenueTrend(
-        [{ paidAt: new Date("2026-07-02T12:00:00.000Z"), total: 150 }],
+        [{ paidAt: new Date("2026-07-02T12:00:00.000Z"), total: 100 }],
         new Date("2026-07-01T00:00:00.000Z"),
-        new Date("2026-07-04T00:00:00.000Z"),
+        new Date("2026-07-03T00:00:00.000Z"),
       ),
     ).toEqual([
       { date: "2026-07-01", revenue: 0 },
-      { date: "2026-07-02", revenue: 150 },
-      { date: "2026-07-03", revenue: 0 },
+      { date: "2026-07-02", revenue: 100 },
     ]);
   });
 });

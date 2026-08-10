@@ -1,5 +1,6 @@
 export interface Client {
   id: string;
+  studioId: string;
   name: string;
   email: string | null;
   phone: string | null;

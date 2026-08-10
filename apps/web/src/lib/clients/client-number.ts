@@ -51,3 +51,20 @@ export function getClientDisplayNumber(clientId: string | undefined): string {
   writeRegistry(registry);
   return next;
 }
+
+/** Transfer a display number when an offline local client id is replaced by the server id. */
+export function remapClientDisplayNumber(localId: string, serverId: string): void {
+  if (!localId.trim() || !serverId.trim() || localId === serverId) {
+    return;
+  }
+  const registry = readRegistry();
+  const existing = registry[localId];
+  if (!existing) {
+    return;
+  }
+  if (!registry[serverId]) {
+    registry[serverId] = existing;
+  }
+  delete registry[localId];
+  writeRegistry(registry);
+}

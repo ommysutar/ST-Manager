@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { SYNC } from "@st-manager/constants";
 import type { PostgresPrismaClient } from "@st-manager/database";
 import type { Client } from "@st-manager/types";
 
@@ -37,6 +38,7 @@ export class ClientsRepository {
   }
 
   async create(data: {
+    studioId: string;
     name: string;
     email: string | null;
     phone: string | null;
@@ -49,14 +51,22 @@ export class ClientsRepository {
     return client.client.create({ data });
   }
 
-  async findById(id: string): Promise<Client | null> {
+  /**
+   * Find an active client. When studioId is provided, enforces tenant ownership.
+   */
+  async findById(id: string, studioId?: string): Promise<Client | null> {
     const client = asClientClient(this.prismaService.getClient());
     return client.client.findFirst({
-      where: { id, ...ACTIVE_CLIENT_FILTER },
+      where: {
+        id,
+        ...(studioId ? { studioId } : {}),
+        ...ACTIVE_CLIENT_FILTER,
+      },
     });
   }
 
   async findMany(params: {
+    studioId: string;
     skip: number;
     take: number;
     search?: string;
@@ -64,6 +74,7 @@ export class ClientsRepository {
     const client = asClientClient(this.prismaService.getClient());
     return client.client.findMany({
       where: {
+        studioId: params.studioId,
         ...ACTIVE_CLIENT_FILTER,
         ...this.buildSearchFilter(params.search),
       },
@@ -73,18 +84,39 @@ export class ClientsRepository {
     });
   }
 
-  async count(search?: string): Promise<number> {
+  async count(studioId: string, search?: string): Promise<number> {
     const client = asClientClient(this.prismaService.getClient());
     return client.client.count({
       where: {
+        studioId,
         ...ACTIVE_CLIENT_FILTER,
         ...this.buildSearchFilter(search),
       },
     });
   }
 
+  async findChangesSince(params: {
+    studioId: string;
+    since?: Date;
+    take?: number;
+  }): Promise<Client[]> {
+    const client = asClientClient(this.prismaService.getClient());
+    const take = params.take ?? SYNC.MAX_CLIENTS_PULL_BATCH;
+    return client.client.findMany({
+      where: {
+        studioId: params.studioId,
+        ...(params.since
+          ? { updatedAt: { gt: params.since } }
+          : { ...ACTIVE_CLIENT_FILTER }),
+      },
+      orderBy: { updatedAt: "asc" },
+      take,
+    });
+  }
+
   async update(
     id: string,
+    studioId: string,
     data: Partial<{
       name: string;
       email: string | null;
@@ -96,14 +128,28 @@ export class ClientsRepository {
     }>,
   ): Promise<Client> {
     const client = asClientClient(this.prismaService.getClient());
+    const existing = await client.client.findFirst({
+      where: { id, studioId, ...ACTIVE_CLIENT_FILTER },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new Error(`CLIENT_NOT_FOUND:${id}`);
+    }
     return client.client.update({
       where: { id },
       data,
     });
   }
 
-  async softDelete(id: string): Promise<Client> {
+  async softDelete(id: string, studioId: string): Promise<Client> {
     const client = asClientClient(this.prismaService.getClient());
+    const existing = await client.client.findFirst({
+      where: { id, studioId, ...ACTIVE_CLIENT_FILTER },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new Error(`CLIENT_NOT_FOUND:${id}`);
+    }
     return client.client.update({
       where: { id },
       data: { deletedAt: new Date() },

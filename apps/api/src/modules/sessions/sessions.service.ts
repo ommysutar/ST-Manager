@@ -38,7 +38,7 @@ export class SessionsService {
     }
 
     await this.assertStudioExists(input.studioId);
-    await this.assertClientActive(input.clientId ?? null);
+    await this.assertClientActive(input.clientId ?? null, input.studioId);
 
     return this.sessionsRepository.create({
       studioId: input.studioId,
@@ -86,7 +86,7 @@ export class SessionsService {
     const notes = input.notes !== undefined ? input.notes : existing.notes;
 
     await this.assertStudioExists(studioId);
-    await this.assertClientActive(clientId);
+    await this.assertClientActive(clientId, studioId);
 
     return this.sessionsRepository.update(id, {
       studioId,
@@ -149,7 +149,7 @@ export class SessionsService {
     const startedAt = input.startedAt ? new Date(input.startedAt) : booking.startAt;
 
     await this.assertStudioExists(studioId);
-    await this.assertClientActive(clientId);
+    await this.assertClientActive(clientId, studioId);
 
     return this.sessionsRepository.create({
       studioId,
@@ -168,12 +168,16 @@ export class SessionsService {
     }
   }
 
-  private async assertClientActive(clientId: string | null): Promise<void> {
+  /** Ensures the client exists, is active, and belongs to the same studio as the session. */
+  private async assertClientActive(
+    clientId: string | null,
+    studioId: string,
+  ): Promise<void> {
     if (!clientId) {
       return;
     }
 
-    const client = await this.clientsRepository.findById(clientId);
+    const client = await this.clientsRepository.findById(clientId, studioId);
     if (!client) {
       throw new NotFoundException(`Client ${clientId} not found`);
     }

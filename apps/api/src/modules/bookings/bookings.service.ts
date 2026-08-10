@@ -22,7 +22,7 @@ export class BookingsService {
 
   async create(input: CreateBookingInput): Promise<BookingWithRelations> {
     await this.assertStudioExists(input.studioId);
-    await this.assertClientActive(input.clientId ?? null);
+    await this.assertClientActive(input.clientId ?? null, input.studioId);
 
     const startAt = new Date(input.startAt);
     const endAt = new Date(input.endAt);
@@ -69,7 +69,7 @@ export class BookingsService {
     const notes = input.notes !== undefined ? input.notes : existing.notes;
 
     await this.assertStudioExists(studioId);
-    await this.assertClientActive(clientId);
+    await this.assertClientActive(clientId, studioId);
     this.assertValidInterval(startAt, endAt);
     await this.assertNoConflict(studioId, startAt, endAt, id);
 
@@ -95,12 +95,16 @@ export class BookingsService {
     }
   }
 
-  private async assertClientActive(clientId: string | null): Promise<void> {
+  /** Ensures the client exists, is active, and belongs to the same studio as the booking. */
+  private async assertClientActive(
+    clientId: string | null,
+    studioId: string,
+  ): Promise<void> {
     if (!clientId) {
       return;
     }
 
-    const client = await this.clientsRepository.findById(clientId);
+    const client = await this.clientsRepository.findById(clientId, studioId);
     if (!client) {
       throw new NotFoundException(`Client ${clientId} not found`);
     }

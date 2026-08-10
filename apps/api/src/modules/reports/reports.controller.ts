@@ -7,7 +7,9 @@ import type {
 } from "@st-manager/contracts";
 import { reportsDateRangeQuerySchema, type ReportsDateRangeQueryInput } from "@st-manager/validation";
 
+import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { ZodValidationPipe } from "../../common/pipes/zod-validation.pipe";
+import type { AuthenticatedUser } from "../auth/auth.types";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { ReportsService } from "./reports.service";
 
@@ -34,9 +36,10 @@ export class ReportsController {
 
   @Get("clients")
   async getClientActivityReport(
+    @CurrentUser() user: AuthenticatedUser,
     @Query(new ZodValidationPipe(reportsDateRangeQuerySchema)) query: ReportsDateRangeQueryInput,
   ): Promise<ClientActivityReportResponseDto> {
-    const data = await this.reportsService.getClientActivityReport(query);
+    const data = await this.reportsService.getClientActivityReport(user, query);
     return { success: true, data };
   }
 
