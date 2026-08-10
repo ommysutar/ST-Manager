@@ -6,6 +6,8 @@ import type {
   GetClientResponseDto,
   ListClientsQueryDto,
   ListClientsResponseDto,
+  SyncClientsPullQueryDto,
+  SyncClientsPullResponseDto,
   UpdateClientDto,
   UpdateClientResponseDto,
 } from "@st-manager/contracts";
@@ -17,6 +19,7 @@ import type { HttpClient } from "../client/types";
 export interface ClientsApi {
   createClient(input: CreateClientDto): Promise<ClientResponseDto>;
   listClients(query?: ListClientsQueryDto): Promise<ListClientsResponseDto>;
+  pullClientChanges(query?: SyncClientsPullQueryDto): Promise<SyncClientsPullResponseDto["data"]>;
   getClient(id: string): Promise<ClientResponseDto>;
   updateClient(id: string, input: UpdateClientDto): Promise<ClientResponseDto>;
   deleteClient(id: string): Promise<void>;
@@ -39,6 +42,13 @@ export function createClientsApi(client: HttpClient): ClientsApi {
         pageSize: query.pageSize,
         search: query.search,
       }),
+
+    pullClientChanges: async (query = {}) => {
+      const response = await client.get<SyncClientsPullResponseDto>(`${ROUTES.CLIENTS}/changes`, {
+        since: query.since,
+      });
+      return response.data;
+    },
 
     getClient: async (id) => {
       const response = await client.get<GetClientResponseDto>(`${ROUTES.CLIENTS}/${id}`);

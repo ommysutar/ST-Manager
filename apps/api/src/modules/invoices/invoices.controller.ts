@@ -29,7 +29,9 @@ import {
   type UpdateInvoiceInput,
 } from "@st-manager/validation";
 
+import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { ZodValidationPipe } from "../../common/pipes/zod-validation.pipe";
+import type { AuthenticatedUser } from "../auth/auth.types";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { toInvoiceResponseDto } from "./invoices.mapper";
 import { InvoicesService } from "./invoices.service";
@@ -42,9 +44,10 @@ export class InvoicesController {
   @Post()
   @HttpCode(201)
   async create(
+    @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(createInvoiceSchema)) body: CreateInvoiceInput,
   ): Promise<CreateInvoiceResponseDto> {
-    const invoice = await this.invoicesService.create(body);
+    const invoice = await this.invoicesService.create(user, body);
     return { success: true, data: toInvoiceResponseDto(invoice) };
   }
 
@@ -84,10 +87,11 @@ export class InvoicesController {
 
   @Patch(":id")
   async update(
+    @CurrentUser() user: AuthenticatedUser,
     @Param("id") id: string,
     @Body(new ZodValidationPipe(updateInvoiceSchema)) body: UpdateInvoiceInput,
   ): Promise<UpdateInvoiceResponseDto> {
-    const invoice = await this.invoicesService.update(id, body);
+    const invoice = await this.invoicesService.update(user, id, body);
     return { success: true, data: toInvoiceResponseDto(invoice) };
   }
 

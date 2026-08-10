@@ -27,3 +27,19 @@ export type GetClientResponseDto = {
 export type DeleteClientResponseDto = {
   success: true;
 };
+
+/** Incremental Client API sync pull (studio-scoped; includes soft-deletes). */
+export interface SyncClientsPullQueryDto {
+  since?: string;
+}
+
+export interface SyncClientsPullResponseDataDto {
+  records: ClientResponseDto[];
+  serverTime: string;
+  hasMore: boolean;
+}
+
+export type SyncClientsPullResponseDto = {
+  success: true;
+  data: SyncClientsPullResponseDataDto;
+};

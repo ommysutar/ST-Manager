@@ -53,6 +53,9 @@ export type {
   GetClientResponseDto,
   ListClientsQueryDto,
   ListClientsResponseDto,
+  SyncClientsPullQueryDto,
+  SyncClientsPullResponseDataDto,
+  SyncClientsPullResponseDto,
   UpdateClientResponseDto,
 } from "./client/list-clients.dto";
 

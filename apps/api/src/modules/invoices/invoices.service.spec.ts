@@ -1,10 +1,18 @@
 import { ConflictException, NotFoundException } from "@nestjs/common";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { AuthenticatedUser } from "../auth/auth.types";
+import { AuthRepository } from "../auth/auth.repository";
 import { ClientsRepository } from "../clients/clients.repository";
 import { SessionsRepository } from "../sessions/sessions.repository";
 import { InvoicesRepository } from "./invoices.repository";
 import { InvoicesService } from "./invoices.service";
+
+const actor: AuthenticatedUser = {
+  userId: "user-1",
+  email: "owner@studio.test",
+  role: "owner",
+};
 
 describe("InvoicesService", () => {
   let service: InvoicesService;
@@ -23,6 +31,9 @@ describe("InvoicesService", () => {
     findById: ReturnType<typeof vi.fn>;
   };
   let sessionsRepository: {
+    findById: ReturnType<typeof vi.fn>;
+  };
+  let authRepository: {
     findById: ReturnType<typeof vi.fn>;
   };
 
@@ -66,11 +77,15 @@ describe("InvoicesService", () => {
     sessionsRepository = {
       findById: vi.fn(),
     };
+    authRepository = {
+      findById: vi.fn().mockResolvedValue({ id: "user-1", studioId: "studio-1" }),
+    };
 
     service = new InvoicesService(
       invoicesRepository as unknown as InvoicesRepository,
       clientsRepository as unknown as ClientsRepository,
       sessionsRepository as unknown as SessionsRepository,
+      authRepository as unknown as AuthRepository,
     );
   });
 
@@ -80,7 +95,7 @@ describe("InvoicesService", () => {
     invoicesRepository.create.mockResolvedValue(invoice);
 
     await expect(
-      service.create({
+      service.create(actor, {
         clientId: "client-1",
         sessionId: null,
         lineItems: [{ description: "Studio time", quantity: 1, unitPrice: 150, amount: 150 }],
@@ -89,11 +104,14 @@ describe("InvoicesService", () => {
         notes: null,
       }),
     ).resolves.toEqual(invoice);
+
+    expect(clientsRepository.findById).toHaveBeenCalledWith("client-1", "studio-1");
   });
 
   it("creates an invoice from a completed session", async () => {
     sessionsRepository.findById.mockResolvedValue({
       id: "session-1",
+      studioId: "studio-1",
       clientId: "client-1",
       status: "completed",
       title: "Tracking session",
@@ -110,7 +128,7 @@ describe("InvoicesService", () => {
     });
 
     await expect(
-      service.create({
+      service.create(actor, {
         clientId: "client-1",
         sessionId: "session-1",
         lineItems: [{ description: "Tracking session", quantity: 1, unitPrice: 0, amount: 0 }],
@@ -124,6 +142,7 @@ describe("InvoicesService", () => {
   it("rejects duplicate session invoices", async () => {
     sessionsRepository.findById.mockResolvedValue({
       id: "session-1",
+      studioId: "studio-1",
       clientId: "client-1",
       status: "completed",
       title: "Tracking session",
@@ -132,7 +151,7 @@ describe("InvoicesService", () => {
     invoicesRepository.findBySessionId.mockResolvedValue(invoice);
 
     await expect(
-      service.create({
+      service.create(actor, {
         clientId: "client-1",
         sessionId: "session-1",
         lineItems: [{ description: "Tracking session", quantity: 1, unitPrice: 0, amount: 0 }],
@@ -166,9 +185,9 @@ describe("InvoicesService", () => {
   it("rejects editing a sent invoice", async () => {
     invoicesRepository.findById.mockResolvedValue({ ...invoice, status: "sent" });
 
-    await expect(service.update("invoice-1", { notes: "Updated" })).rejects.toBeInstanceOf(
-      ConflictException,
-    );
+    await expect(
+      service.update(actor, "invoice-1", { notes: "Updated" }),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it("throws when invoice is missing", async () => {

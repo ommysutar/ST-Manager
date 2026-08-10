@@ -9,6 +9,8 @@ export const PAGINATION = {
 export const SYNC = {
   MAX_PUSH_BATCH: 50,
   MAX_PULL_BATCH: 500,
+  /** Max records returned by one clients sync pull. */
+  MAX_CLIENTS_PULL_BATCH: 500,
 } as const;
 
 /** Studio-user password reset (forgot-password flow). */

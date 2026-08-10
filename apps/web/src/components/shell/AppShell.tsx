@@ -9,6 +9,7 @@ import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsClientMounted } from "@/hooks/useInquiryStorage";
 import { startClientPortalAutoSync } from "@/lib/client-portal/auto-sync";
+import { startClientApiSync } from "@/lib/clients/reconcile";
 
 import { Header } from "./Header";
 import { MobileNavDrawer } from "./MobileNavDrawer";
@@ -31,7 +32,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (!mounted || !isAuthenticated || isPlatformAdminRoute || isAuthRoute) {
       return;
     }
-    return startClientPortalAutoSync();
+    const stopPortal = startClientPortalAutoSync();
+    const stopClientSync = startClientApiSync();
+    return () => {
+      stopPortal();
+      stopClientSync();
+    };
   }, [mounted, isAuthenticated, isPlatformAdminRoute, isAuthRoute]);
 
   useEffect(() => {

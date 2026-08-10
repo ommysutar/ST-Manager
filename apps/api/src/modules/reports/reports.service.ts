@@ -1,4 +1,5 @@
-import { Injectable } from "@nestjs/common";
+import { ForbiddenException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { PLATFORM_ROLES } from "@st-manager/constants";
 import type {
   ClientActivityReportDataDto,
   DashboardRevenueTrendPointDto,
@@ -7,6 +8,8 @@ import type {
 } from "@st-manager/contracts";
 import type { ReportsDateRangeQueryInput } from "@st-manager/validation";
 
+import { AuthRepository } from "../auth/auth.repository";
+import type { AuthenticatedUser } from "../auth/auth.types";
 import type { CompletedSessionRecord, StudioRecord } from "./reports.repository";
 import { ReportsRepository } from "./reports.repository";
 
@@ -109,7 +112,10 @@ export function buildRevenueTrend(
 
 @Injectable()
 export class ReportsService {
-  constructor(private readonly reportsRepository: ReportsRepository) {}
+  constructor(
+    private readonly reportsRepository: ReportsRepository,
+    private readonly authRepository: AuthRepository,
+  ) {}
 
   private parseRange(query: ReportsDateRangeQueryInput): { from: Date; to: Date } {
     return {
@@ -164,11 +170,13 @@ export class ReportsService {
   }
 
   async getClientActivityReport(
+    actor: AuthenticatedUser,
     query: ReportsDateRangeQueryInput,
   ): Promise<ClientActivityReportDataDto> {
+    const studioId = await this.requireStudioId(actor);
     const { from, to } = this.parseRange(query);
     const [clients, bookings, sessions, invoices] = await Promise.all([
-      this.reportsRepository.findActiveClients(),
+      this.reportsRepository.findActiveClients(studioId),
       this.reportsRepository.findBookingsInRange(from, to),
       this.reportsRepository.findSessionsInRange(from, to),
       this.reportsRepository.findPaidInvoicesInRange(from, to),
@@ -248,5 +256,16 @@ export class ReportsService {
 
     const invoices = await this.reportsRepository.findPaidInvoicesInRange(start, end);
     return buildRevenueTrend(invoices, start, end);
+  }
+
+  private async requireStudioId(actor: AuthenticatedUser): Promise<string> {
+    if (actor.role === PLATFORM_ROLES.PLATFORM_ADMIN) {
+      throw new ForbiddenException("Platform admin cannot access studio reports");
+    }
+    const user = await this.authRepository.findById(actor.userId);
+    if (!user?.studioId) {
+      throw new UnauthorizedException("Studio context required");
+    }
+    return user.studioId;
   }
 }

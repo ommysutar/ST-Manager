@@ -4,4 +4,5 @@ export interface ClientResponseDto
   extends Omit<Client, "createdAt" | "updatedAt" | "deletedAt"> {
   createdAt: string;
   updatedAt: string;
+  deletedAt: string | null;
 }

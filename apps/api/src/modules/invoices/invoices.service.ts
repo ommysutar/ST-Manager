@@ -1,9 +1,11 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from "@nestjs/common";
-import { API_ERROR_CODES } from "@st-manager/constants";
+import { API_ERROR_CODES, PLATFORM_ROLES } from "@st-manager/constants";
 import type { InvoiceWithRelations } from "@st-manager/types";
 import type {
   CreateInvoiceInput,
@@ -12,6 +14,8 @@ import type {
 } from "@st-manager/validation";
 import { computeInvoiceTotals } from "@st-manager/validation";
 
+import { AuthRepository } from "../auth/auth.repository";
+import type { AuthenticatedUser } from "../auth/auth.types";
 import { ClientsRepository } from "../clients/clients.repository";
 import { SessionsRepository } from "../sessions/sessions.repository";
 import { InvoicesRepository } from "./invoices.repository";
@@ -22,14 +26,16 @@ export class InvoicesService {
     private readonly invoicesRepository: InvoicesRepository,
     private readonly clientsRepository: ClientsRepository,
     private readonly sessionsRepository: SessionsRepository,
+    private readonly authRepository: AuthRepository,
   ) {}
 
-  async create(input: CreateInvoiceInput): Promise<InvoiceWithRelations> {
+  async create(actor: AuthenticatedUser, input: CreateInvoiceInput): Promise<InvoiceWithRelations> {
     if (input.sessionId) {
-      return this.createFromSession(input);
+      return this.createFromSession(actor, input);
     }
 
-    await this.assertClientActive(input.clientId);
+    const studioId = await this.requireStudioId(actor);
+    await this.assertClientActive(input.clientId, studioId);
 
     const totals = computeInvoiceTotals(input.lineItems, input.taxRate ?? 0);
     const number = await this.invoicesRepository.generateNumber();
@@ -69,7 +75,11 @@ export class InvoicesService {
     return invoice;
   }
 
-  async update(id: string, input: UpdateInvoiceInput): Promise<InvoiceWithRelations> {
+  async update(
+    actor: AuthenticatedUser,
+    id: string,
+    input: UpdateInvoiceInput,
+  ): Promise<InvoiceWithRelations> {
     const existing = await this.getById(id);
     if (existing.status !== "draft") {
       throw this.invalidTransition("Only draft invoices can be edited");
@@ -81,7 +91,8 @@ export class InvoicesService {
     const dueDate = input.dueDate ? new Date(input.dueDate) : existing.dueDate;
     const notes = input.notes !== undefined ? input.notes : existing.notes;
 
-    await this.assertClientActive(clientId);
+    const studioId = await this.requireStudioId(actor);
+    await this.assertClientActive(clientId, studioId);
     const totals = computeInvoiceTotals(lineItems, taxRate);
 
     return this.invoicesRepository.update(id, {
@@ -121,7 +132,10 @@ export class InvoicesService {
     await this.invoicesRepository.void(id);
   }
 
-  private async createFromSession(input: CreateInvoiceInput): Promise<InvoiceWithRelations> {
+  private async createFromSession(
+    actor: AuthenticatedUser,
+    input: CreateInvoiceInput,
+  ): Promise<InvoiceWithRelations> {
     const sessionId = input.sessionId!;
     const session = await this.sessionsRepository.findById(sessionId);
     if (!session) {
@@ -139,6 +153,11 @@ export class InvoicesService {
       });
     }
 
+    const actorStudioId = await this.requireStudioId(actor);
+    if (session.studioId !== actorStudioId) {
+      throw new NotFoundException(`Session ${sessionId} not found`);
+    }
+
     const existingInvoice = await this.invoicesRepository.findBySessionId(sessionId);
     if (existingInvoice) {
       throw new ConflictException({
@@ -148,7 +167,7 @@ export class InvoicesService {
     }
 
     const clientId = input.clientId || session.clientId;
-    await this.assertClientActive(clientId);
+    await this.assertClientActive(clientId, session.studioId);
 
     const lineItems =
       input.lineItems.length > 0
@@ -177,11 +196,23 @@ export class InvoicesService {
     });
   }
 
-  private async assertClientActive(clientId: string): Promise<void> {
-    const client = await this.clientsRepository.findById(clientId);
+  /** Ensures the client exists, is active, and belongs to the same studio. */
+  private async assertClientActive(clientId: string, studioId: string): Promise<void> {
+    const client = await this.clientsRepository.findById(clientId, studioId);
     if (!client) {
       throw new NotFoundException(`Client ${clientId} not found`);
     }
+  }
+
+  private async requireStudioId(actor: AuthenticatedUser): Promise<string> {
+    if (actor.role === PLATFORM_ROLES.PLATFORM_ADMIN) {
+      throw new ForbiddenException("Platform admin cannot manage studio invoices");
+    }
+    const user = await this.authRepository.findById(actor.userId);
+    if (!user?.studioId) {
+      throw new UnauthorizedException("Studio context required");
+    }
+    return user.studioId;
   }
 
   private invalidTransition(message: string): ConflictException {

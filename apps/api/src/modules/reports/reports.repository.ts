@@ -58,10 +58,10 @@ export class ReportsRepository {
     });
   }
 
-  async findActiveClients(): Promise<ClientRecord[]> {
+  async findActiveClients(studioId: string): Promise<ClientRecord[]> {
     const client = asReportsClient(this.prismaService.getClient());
     return client.client.findMany({
-      where: { deletedAt: null },
+      where: { studioId, deletedAt: null },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     });

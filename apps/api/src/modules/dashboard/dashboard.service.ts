@@ -1,6 +1,9 @@
-import { Injectable } from "@nestjs/common";
+import { ForbiddenException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { PLATFORM_ROLES } from "@st-manager/constants";
 import type { DashboardSummaryDataDto } from "@st-manager/contracts";
 
+import { AuthRepository } from "../auth/auth.repository";
+import type { AuthenticatedUser } from "../auth/auth.types";
 import { toDashboardBookingSummaryDto } from "../bookings/bookings.mapper";
 import { BookingsRepository } from "../bookings/bookings.repository";
 import { toDashboardClientSummaryDto } from "../clients/clients.mapper";
@@ -25,9 +28,11 @@ export class DashboardService {
     private readonly sessionsRepository: SessionsRepository,
     private readonly invoicesRepository: InvoicesRepository,
     private readonly reportsService: ReportsService,
+    private readonly authRepository: AuthRepository,
   ) {}
 
-  async getSummary(): Promise<DashboardSummaryDataDto> {
+  async getSummary(actor: AuthenticatedUser): Promise<DashboardSummaryDataDto> {
+    const studioId = await this.requireStudioId(actor);
     const [
       studioCount,
       recentStudios,
@@ -43,8 +48,8 @@ export class DashboardService {
     ] = await Promise.all([
       this.studiosRepository.count(),
       this.studiosRepository.findMany({ skip: 0, take: RECENT_STUDIOS_LIMIT }),
-      this.clientsRepository.count(),
-      this.clientsRepository.findMany({ skip: 0, take: RECENT_CLIENTS_LIMIT }),
+      this.clientsRepository.count(studioId),
+      this.clientsRepository.findMany({ studioId, skip: 0, take: RECENT_CLIENTS_LIMIT }),
       this.bookingsRepository.findToday(),
       this.sessionsRepository.findInProgress(),
       this.sessionsRepository.findCompletedToday(),
@@ -72,5 +77,16 @@ export class DashboardService {
       utilizationPercent,
       revenueTrend,
     };
+  }
+
+  private async requireStudioId(actor: AuthenticatedUser): Promise<string> {
+    if (actor.role === PLATFORM_ROLES.PLATFORM_ADMIN) {
+      throw new ForbiddenException("Platform admin cannot access studio dashboard");
+    }
+    const user = await this.authRepository.findById(actor.userId);
+    if (!user?.studioId) {
+      throw new UnauthorizedException("Studio context required");
+    }
+    return user.studioId;
   }
 }
