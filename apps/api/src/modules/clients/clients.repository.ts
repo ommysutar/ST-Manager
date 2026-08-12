@@ -12,6 +12,16 @@ function asClientClient(client: DatabaseClient): PostgresPrismaClient {
 
 const ACTIVE_CLIENT_FILTER = { deletedAt: null } as const;
 
+function parseDisplayNumber(value: string | null | undefined): number {
+  if (!value) return 0;
+  const match = value.match(/^CL-(\d+)$/i);
+  return match ? Number.parseInt(match[1], 10) : 0;
+}
+
+function formatDisplayNumber(n: number): string {
+  return `CL-${String(n).padStart(4, "0")}`;
+}
+
 @Injectable()
 export class ClientsRepository {
   constructor(private readonly prismaService: PrismaService) {}
@@ -37,6 +47,21 @@ export class ClientsRepository {
     };
   }
 
+  private async nextDisplayNumber(
+    tx: { client: PostgresPrismaClient["client"] },
+    studioId: string,
+  ): Promise<string> {
+    const rows = await tx.client.findMany({
+      where: { studioId },
+      select: { displayNumber: true },
+    });
+    const max = rows.reduce(
+      (acc, row) => Math.max(acc, parseDisplayNumber(row.displayNumber)),
+      0,
+    );
+    return formatDisplayNumber(max + 1);
+  }
+
   async create(data: {
     studioId: string;
     name: string;
@@ -48,7 +73,15 @@ export class ClientsRepository {
     notes: string | null;
   }): Promise<Client> {
     const client = asClientClient(this.prismaService.getClient());
-    return client.client.create({ data });
+    return client.$transaction(async (tx) => {
+      const displayNumber = await this.nextDisplayNumber(tx, data.studioId);
+      return tx.client.create({
+        data: {
+          ...data,
+          displayNumber,
+        },
+      });
+    });
   }
 
   /**
@@ -112,6 +145,48 @@ export class ClientsRepository {
       orderBy: { updatedAt: "asc" },
       take,
     });
+  }
+
+  async findActiveByPhoneOrEmail(params: {
+    studioId: string;
+    phone?: string | null;
+    email?: string | null;
+  }): Promise<Client | null> {
+    const phone = params.phone?.trim() || null;
+    const email = params.email?.trim().toLowerCase() || null;
+    if (!phone && !email) {
+      return null;
+    }
+
+    const client = asClientClient(this.prismaService.getClient());
+    const or: Array<{ phone?: string; email?: string }> = [];
+    if (phone) {
+      or.push({ phone });
+    }
+    if (email) {
+      or.push({ email });
+    }
+
+    const rows = await client.client.findMany({
+      where: {
+        studioId: params.studioId,
+        ...ACTIVE_CLIENT_FILTER,
+        OR: or,
+      },
+      take: 5,
+    });
+
+    if (phone) {
+      const byPhone = rows.find((row) => (row.phone?.trim() ?? "") === phone);
+      if (byPhone) return byPhone;
+    }
+    if (email) {
+      const byEmail = rows.find(
+        (row) => (row.email?.trim().toLowerCase() ?? "") === email,
+      );
+      if (byEmail) return byEmail;
+    }
+    return null;
   }
 
   async update(

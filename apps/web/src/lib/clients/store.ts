@@ -3,7 +3,7 @@ import type { ClientResponseDto } from "@st-manager/contracts";
 import { clientsApi } from "@/lib/api-client";
 import { loadAllProjects, updateProject } from "@/lib/projects/storage";
 
-import { remapClientDisplayNumber } from "./client-number";
+import { remapClientDisplayNumber, rememberClientDisplayNumber } from "./client-number";
 import { notifyClientsUpdated } from "./events";
 import {
   buildOptimisticClient,
@@ -31,7 +31,59 @@ let refreshPromise: Promise<ClientResponseDto[]> | null = null;
 let reconcilePromise: Promise<ClientResponseDto[]> | null = null;
 let flushPromise: Promise<void> | null = null;
 
+/** In-flight online creates keyed by payload fingerprint — prevents double POST. */
+const inFlightCreates = new Map<string, Promise<ClientResponseDto>>();
+
 type ClientTombstones = Record<string, string>;
+
+function normalizePhoneDigits(value: string | null | undefined): string {
+  return (value ?? "").replace(/\D/g, "");
+}
+
+function normalizeEmailValue(value: string | null | undefined): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function createPayloadFingerprint(payload: PendingClientCreatePayload): string {
+  return [
+    payload.name.trim().toLowerCase(),
+    normalizePhoneDigits(payload.phone),
+    normalizeEmailValue(payload.email),
+  ].join("|");
+}
+
+function rememberDisplayNumbers(clients: ClientResponseDto[]): void {
+  for (const client of clients) {
+    if (client.displayNumber) {
+      rememberClientDisplayNumber(client.id, client.displayNumber);
+    }
+  }
+}
+
+function findDuplicateInSnapshot(
+  payload: PendingClientCreatePayload,
+  excludeLocalId?: string,
+): ClientResponseDto | undefined {
+  const phone = normalizePhoneDigits(payload.phone);
+  const email = normalizeEmailValue(payload.email);
+  const name = payload.name.trim().toLowerCase();
+
+  return clientsSnapshot.find((client) => {
+    if (isLocalClientId(client.id) || client.id === excludeLocalId) {
+      return false;
+    }
+    if (phone.length >= 10 && normalizePhoneDigits(client.phone) === phone) {
+      return true;
+    }
+    if (email && normalizeEmailValue(client.email) === email) {
+      return true;
+    }
+    if (!phone && !email && name && client.name.trim().toLowerCase() === name) {
+      return true;
+    }
+    return false;
+  });
+}
 
 export function getClientsSnapshot(): ClientResponseDto[] {
   return clientsSnapshot;
@@ -116,6 +168,8 @@ export function hydrateClientsSnapshotFromCache(): ClientResponseDto[] {
     byId.set(client.id, client);
   }
   setClientsSnapshot(sortClients([...byId.values()]));
+  rememberDisplayNumbers(clientsSnapshot);
+  notifyClientsUpdated();
   return clientsSnapshot;
 }
 
@@ -201,6 +255,7 @@ export function applyClientChangeRecords(records: ClientResponseDto[]): ClientRe
   const next = sortClients(activeOnly([...byId.values()]));
   setClientsSnapshot(next);
   writeCachedClients(next);
+  rememberDisplayNumbers(next);
   return next;
 }
 
@@ -225,6 +280,7 @@ export async function refreshClientsSnapshot(): Promise<ClientResponseDto[]> {
         delete tombstones[client.id];
       }
       writeTombstones(tombstones);
+      rememberDisplayNumbers(next);
       return next;
     })
     .finally(() => {
@@ -284,6 +340,10 @@ export function upsertClientInSnapshot(client: ClientResponseDto): void {
     return;
   }
 
+  if (client.displayNumber) {
+    rememberClientDisplayNumber(client.id, client.displayNumber);
+  }
+
   const next = sortClients([
     client,
     ...clientsSnapshot.filter((entry) => entry.id !== client.id),
@@ -304,6 +364,9 @@ export function removeClientFromSnapshot(clientId: string): void {
 /** Remap offline local client id → server id across snapshot + linked projects. */
 export function remapLocalClientId(localId: string, serverClient: ClientResponseDto): void {
   remapClientDisplayNumber(localId, serverClient.id);
+  if (serverClient.displayNumber) {
+    rememberClientDisplayNumber(serverClient.id, serverClient.displayNumber);
+  }
 
   for (const project of loadAllProjects()) {
     if (project.clientId === localId) {
@@ -321,7 +384,8 @@ export function remapLocalClientId(localId: string, serverClient: ClientResponse
 
 /**
  * Offline-safe create: appear immediately with a local id, enqueue for API flush.
- * Online path creates via API exactly once.
+ * Online path creates via API exactly once — never falls through to a second create
+ * after a failed online request (that previously caused duplicate server records).
  */
 export async function createClientOfflineAware(
   payload: PendingClientCreatePayload,
@@ -331,36 +395,47 @@ export async function createClientOfflineAware(
     throw new Error("Studio context required");
   }
 
-  const online = typeof navigator === "undefined" ? true : navigator.onLine;
-
-  if (online) {
-    try {
-      const created = await clientsApi.createClient(payload);
-      upsertClientInSnapshot(created);
-      notifyClientsUpdated();
-      return created;
-    } catch (error) {
-      // Fall through to offline queue when the network fails mid-request.
-      if (typeof navigator !== "undefined" && navigator.onLine) {
-        throw error;
-      }
-    }
+  const existing = findDuplicateInSnapshot(payload);
+  if (existing) {
+    return existing;
   }
 
-  const localId = createLocalClientId();
-  const optimistic = buildOptimisticClient(localId, studioId, payload);
-  enqueuePendingClientCreate({
-    localId,
-    studioId,
-    payload,
-    enqueuedAt: new Date().toISOString(),
+  const online = typeof navigator === "undefined" ? true : navigator.onLine;
+
+  if (!online) {
+    const localId = createLocalClientId();
+    const optimistic = buildOptimisticClient(localId, studioId, payload);
+    enqueuePendingClientCreate({
+      localId,
+      studioId,
+      payload,
+      enqueuedAt: new Date().toISOString(),
+    });
+    upsertClientInSnapshot(optimistic);
+    notifyClientsUpdated();
+    return optimistic;
+  }
+
+  const fingerprint = createPayloadFingerprint(payload);
+  const inflight = inFlightCreates.get(fingerprint);
+  if (inflight) {
+    return inflight;
+  }
+
+  const createPromise = (async () => {
+    const created = await clientsApi.createClient(payload);
+    upsertClientInSnapshot(created);
+    notifyClientsUpdated();
+    return created;
+  })().finally(() => {
+    inFlightCreates.delete(fingerprint);
   });
-  upsertClientInSnapshot(optimistic);
-  notifyClientsUpdated();
-  return optimistic;
+
+  inFlightCreates.set(fingerprint, createPromise);
+  return createPromise;
 }
 
-/** Flush pending offline creates exactly once each (idempotent via serverId). */
+/** Flush pending offline creates exactly once each (idempotent via serverId + contact dedupe). */
 export async function flushPendingClientCreates(): Promise<void> {
   if (flushPromise) {
     return flushPromise;
@@ -394,24 +469,15 @@ export async function flushPendingClientCreates(): Promise<void> {
           }
         }
 
-        // Duplicate prevention: reuse an existing server client with same phone/email.
-        const duplicate = clientsSnapshot.find((client) => {
-          if (isLocalClientId(client.id) || client.id === entry.localId) {
-            return false;
-          }
-          const phone = entry.payload.phone.trim();
-          const email = entry.payload.email.trim().toLowerCase();
-          const samePhone = Boolean(phone) && (client.phone?.trim() ?? "") === phone;
-          const sameEmail =
-            Boolean(email) && (client.email?.trim().toLowerCase() ?? "") === email;
-          return samePhone || sameEmail;
-        });
+        const duplicate = findDuplicateInSnapshot(entry.payload, entry.localId);
         if (duplicate) {
+          updatePendingClientCreate(entry.localId, { serverId: duplicate.id }, studioId);
           remapLocalClientId(entry.localId, duplicate);
           continue;
         }
 
         const created = await clientsApi.createClient(entry.payload);
+        // Persist serverId BEFORE remap so a crash mid-remap still retries idempotently.
         updatePendingClientCreate(entry.localId, { serverId: created.id }, studioId);
         remapLocalClientId(entry.localId, created);
       } catch {

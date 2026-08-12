@@ -7,6 +7,7 @@ export function toClientResponseDto(client: Client): ClientResponseDto {
     id: client.id,
     studioId: client.studioId,
     name: client.name,
+    displayNumber: client.displayNumber,
     email: client.email,
     phone: client.phone,
     whatsappNumber: client.whatsappNumber,

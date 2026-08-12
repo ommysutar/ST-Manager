@@ -1,4 +1,5 @@
 import { getClientDisplayNumber } from "@/lib/clients/client-number";
+import { getClientsSnapshot } from "@/lib/clients/store";
 import { formatINR } from "@/lib/currency";
 import { getInquiry } from "@/lib/inquiry/storage";
 import type { QuotationBreakdown } from "@/lib/inquiry/types";
@@ -7,6 +8,14 @@ import { getProject } from "@/lib/projects/storage";
 import type { StudioProject } from "@/lib/projects/types";
 
 import type { DocumentLineItemSnapshot, DocumentSnapshot } from "./types";
+
+function resolveClientDisplayNumber(clientId: string | undefined): string {
+  if (!clientId) {
+    return "";
+  }
+  const fromApi = getClientsSnapshot().find((client) => client.id === clientId)?.displayNumber;
+  return getClientDisplayNumber(clientId, fromApi);
+}
 
 function flattenQuotation(quotation: QuotationBreakdown): {
   lineItems: DocumentLineItemSnapshot[];
@@ -52,7 +61,7 @@ function snapshotFromProject(project: StudioProject): DocumentSnapshot | null {
 
   return {
     clientId,
-    clientDisplayNumber: getClientDisplayNumber(clientId || undefined),
+    clientDisplayNumber: resolveClientDisplayNumber(clientId || undefined),
     clientName: project.clientName,
     clientMobile: project.clientMobile ?? "",
     clientEmail: project.clientEmail ?? "",
@@ -78,7 +87,7 @@ function snapshotFromInquiry(inquiryId: string): DocumentSnapshot | null {
 
   return {
     clientId,
-    clientDisplayNumber: getClientDisplayNumber(clientId || undefined),
+    clientDisplayNumber: resolveClientDisplayNumber(clientId || undefined),
     clientName: inquiry.form.clientName,
     clientMobile: inquiry.form.mobileNumber,
     clientEmail: inquiry.form.email,
@@ -131,7 +140,7 @@ function buildReceiptSnapshot(paymentId: string, projectId?: string): DocumentSn
     const clientId = project.clientId ?? "";
     return {
       clientId,
-      clientDisplayNumber: getClientDisplayNumber(clientId || undefined),
+      clientDisplayNumber: resolveClientDisplayNumber(clientId || undefined),
       clientName: project.clientName,
       clientMobile: project.clientMobile ?? "",
       clientEmail: project.clientEmail ?? "",
@@ -187,7 +196,7 @@ export function mergeProjectIntoSnapshot(
   return {
     ...snapshot,
     clientId,
-    clientDisplayNumber: getClientDisplayNumber(clientId || undefined) || snapshot.clientDisplayNumber,
+    clientDisplayNumber: resolveClientDisplayNumber(clientId || undefined) || snapshot.clientDisplayNumber,
     clientName: project.clientName || snapshot.clientName,
     clientMobile: project.clientMobile ?? snapshot.clientMobile,
     clientEmail: project.clientEmail ?? snapshot.clientEmail,

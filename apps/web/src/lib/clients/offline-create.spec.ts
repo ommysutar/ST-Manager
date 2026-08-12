@@ -47,7 +47,9 @@ import {
   getClientsSnapshot,
   hydrateClientsSnapshotFromCache,
   reconcileClientsFromApi,
+  removeClientFromSnapshot,
   setClientsSnapshot,
+  upsertClientInSnapshot,
   writeClientsSyncCursor,
 } from "./store";
 
@@ -66,6 +68,7 @@ function serverClient(overrides: Partial<ClientResponseDto> = {}): ClientRespons
     id: "server-cli-1",
     studioId: "studio-a",
     name: payload.name,
+    displayNumber: "CL-0001",
     email: payload.email,
     phone: payload.phone,
     whatsappNumber: payload.whatsappNumber,
@@ -99,6 +102,43 @@ describe("offline client create + reconcile", () => {
     vi.restoreAllMocks();
   });
 
+  it("A: normal online create → exactly one server record", async () => {
+    Object.defineProperty(navigator, "onLine", {
+      configurable: true,
+      get: () => true,
+    });
+    const created = serverClient();
+    clientsApiMock.createClient.mockResolvedValue(created);
+
+    const first = await createClientOfflineAware(payload);
+    const second = await createClientOfflineAware(payload);
+
+    expect(clientsApiMock.createClient).toHaveBeenCalledTimes(1);
+    expect(first.id).toBe(created.id);
+    expect(second.id).toBe(created.id);
+    expect(getClientsSnapshot().filter((c) => c.id === created.id)).toHaveLength(1);
+  });
+
+  it("B: create → update path keeps a single server id", async () => {
+    Object.defineProperty(navigator, "onLine", {
+      configurable: true,
+      get: () => true,
+    });
+    const created = serverClient();
+    clientsApiMock.createClient.mockResolvedValue(created);
+    await createClientOfflineAware(payload);
+
+    const updated = serverClient({
+      company: "Updated Co",
+      updatedAt: "2026-08-10T02:00:00.000Z",
+    });
+    upsertClientInSnapshot(updated);
+
+    expect(getClientsSnapshot().filter((c) => c.name === payload.name)).toHaveLength(1);
+    expect(getClientsSnapshot()[0]?.company).toBe("Updated Co");
+    expect(clientsApiMock.createClient).toHaveBeenCalledTimes(1);
+  });
+
   it("appears locally immediately while offline and queues a non-secret payload", async () => {
     const created = await createClientOfflineAware(payload);
 
@@ -112,7 +152,7 @@ describe("offline client create + reconcile", () => {
     expect(JSON.stringify(pending[0])).not.toMatch(/password|refreshToken|accessToken|secret/i);
   });
 
-  it("flushes to the API exactly once when connection returns", async () => {
+  it("C: offline create → reconnect → exactly one server record", async () => {
     const local = await createClientOfflineAware(payload);
     const created = serverClient();
     clientsApiMock.createClient.mockResolvedValue(created);
@@ -132,7 +172,7 @@ describe("offline client create + reconcile", () => {
     expect(listPendingClientCreates("studio-a")).toHaveLength(0);
   });
 
-  it("does not duplicate when retrying after a successful create with remembered serverId", async () => {
+  it("D/E: retry after successful server create with remembered serverId → no duplicate + remap", async () => {
     const localId = "local_cli_retrytest";
     const created = serverClient();
 
@@ -147,6 +187,7 @@ describe("offline client create + reconcile", () => {
       {
         ...created,
         id: localId,
+        displayNumber: "",
       },
       created,
     ]);
@@ -165,8 +206,7 @@ describe("offline client create + reconcile", () => {
     expect(listPendingClientCreates("studio-a")).toHaveLength(0);
   });
 
-  it("new device receives the created client via incremental pull", async () => {
-    // Simulate a second device for the same studio, already past full hydrate.
+  it("F: remote client pull updates snapshot without duplicates", async () => {
     writeClientsSyncCursor("2026-08-09T00:00:00.000Z", "studio-a");
     setClientsSnapshot([]);
     hydrateClientsSnapshotFromCache();
@@ -174,6 +214,7 @@ describe("offline client create + reconcile", () => {
     const remote = serverClient({
       id: "server-cli-remote",
       name: "From Device A",
+      displayNumber: "CL-0002",
       updatedAt: "2026-08-10T01:00:00.000Z",
     });
     clientsApiMock.pullClientChanges.mockResolvedValue({
@@ -196,11 +237,66 @@ describe("offline client create + reconcile", () => {
     });
   });
 
+  it("J: delete/tombstone removes client and survives reconcile", async () => {
+    const remote = serverClient({ id: "server-cli-del", name: "To Delete" });
+    setClientsSnapshot([remote]);
+    removeClientFromSnapshot(remote.id);
+    expect(getClientsSnapshot().some((c) => c.id === remote.id)).toBe(false);
+
+    applyClientChangeRecords([
+      {
+        ...remote,
+        deletedAt: "2026-08-10T03:00:00.000Z",
+        updatedAt: "2026-08-10T03:00:00.000Z",
+      },
+    ]);
+    expect(getClientsSnapshot().some((c) => c.id === remote.id)).toBe(false);
+  });
+
+  it("K: LWW stale update does not overwrite newer local", () => {
+    const local = serverClient({
+      id: "server-cli-lww",
+      company: "New",
+      updatedAt: "2026-08-10T05:00:00.000Z",
+    });
+    setClientsSnapshot([local]);
+    applyClientChangeRecords([
+      {
+        ...local,
+        company: "Stale",
+        updatedAt: "2026-08-10T04:00:00.000Z",
+      },
+    ]);
+    expect(getClientsSnapshot().find((c) => c.id === local.id)?.company).toBe("New");
+  });
+
+  it("L: stable CL-xxxx display number is retained from server", async () => {
+    Object.defineProperty(navigator, "onLine", {
+      configurable: true,
+      get: () => true,
+    });
+    const created = serverClient({ displayNumber: "CL-0007" });
+    clientsApiMock.createClient.mockResolvedValue(created);
+    const result = await createClientOfflineAware(payload);
+    expect(result.displayNumber).toBe("CL-0007");
+    expect(getClientsSnapshot()[0]?.displayNumber).toBe("CL-0007");
+  });
 
   it("applyClientChangeRecords merges remote creates without duplication", () => {
-    const remote = serverClient({ id: "server-cli-2", name: "Remote" });
+    const remote = serverClient({ id: "server-cli-2", name: "Remote", displayNumber: "CL-0003" });
     setClientsSnapshot([remote]);
     applyClientChangeRecords([remote, { ...remote, updatedAt: "2026-08-10T02:00:00.000Z" }]);
     expect(getClientsSnapshot().filter((client) => client.id === remote.id)).toHaveLength(1);
+  });
+
+  it("online create failure does not enqueue a second create", async () => {
+    Object.defineProperty(navigator, "onLine", {
+      configurable: true,
+      get: () => true,
+    });
+    clientsApiMock.createClient.mockRejectedValue(new Error("network blip"));
+
+    await expect(createClientOfflineAware(payload)).rejects.toThrow("network blip");
+    expect(listPendingClientCreates("studio-a")).toHaveLength(0);
   });
 });

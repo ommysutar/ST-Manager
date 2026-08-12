@@ -51,6 +51,7 @@ describe("ClientsService", () => {
       id: "client-1",
       studioId: "studio-1",
       name: "Acme Records",
+      displayNumber: "CL-0001",
       email: "contact@acme.test",
       phone: null,
       whatsappNumber: null,

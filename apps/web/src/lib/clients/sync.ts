@@ -48,6 +48,7 @@ export async function resolveOrCreateClient(input: ClientSyncInput): Promise<Cli
   const duplicate = findDuplicateClient(clients, {
     mobileNumber: payload.phone ?? "",
     email: payload.email ?? "",
+    name: payload.name,
     excludeClientId: existingId,
   });
   if (duplicate) {
