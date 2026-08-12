@@ -140,7 +140,11 @@ jobs:
           node-version: 20
           cache: pnpm
 
+      # Job NODE_ENV=production would omit turbo (devDependency); install with
+      # development so the workspace build tooling is available.
       - name: Install dependencies
+        env:
+          NODE_ENV: development
         run: pnpm install --frozen-lockfile
 
       - name: Build workspace
