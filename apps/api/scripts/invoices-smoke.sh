@@ -5,7 +5,6 @@ BASE_URL="${API_BASE_URL:-http://localhost:4000}"
 EMAIL="${DEV_AUTH_EMAIL:-dev@st-manager.local}"
 PASSWORD="${DEV_AUTH_PASSWORD:-devpassword}"
 CLIENT_NAME="${INVOICES_SMOKE_CLIENT:-M18 Invoices Smoke Client}"
-STUDIO_NAME="${INVOICES_SMOKE_STUDIO:-M18 Invoices Smoke Studio}"
 
 echo "M18 invoices smoke against ${BASE_URL}"
 
@@ -22,6 +21,9 @@ LOGIN=$(curl -s -X POST "${BASE_URL}/auth/login" \
   -d "{\"email\":\"${EMAIL}\",\"password\":\"${PASSWORD}\"}")
 
 ACCESS=$(node -e "const d=JSON.parse(process.argv[1]); if(!d.data?.accessToken){process.exit(1)}; process.stdout.write(d.data.accessToken)" "${LOGIN}")
+# Client create is studio-scoped to the authenticated user; session/invoice must use
+# that same studio (POST /studios does not reassign the user).
+STUDIO_ID=$(node -e "const d=JSON.parse(process.argv[1]); if(!d.data?.user?.studioId){process.exit(1)}; process.stdout.write(d.data.user.studioId)" "${LOGIN}")
 
 CLIENT=$(curl -s -o /tmp/m18-invoices-client.json -w "%{http_code}" -X POST "${BASE_URL}/clients" \
   -H "Content-Type: application/json" \
@@ -35,19 +37,6 @@ if [[ "${CLIENT}" != "201" ]]; then
 fi
 
 CLIENT_ID=$(node -e "const d=JSON.parse(process.argv[1]); if(!d.data?.id){process.exit(1)}; process.stdout.write(d.data.id)" "$(cat /tmp/m18-invoices-client.json)")
-
-STUDIO=$(curl -s -o /tmp/m18-invoices-studio.json -w "%{http_code}" -X POST "${BASE_URL}/studios" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${ACCESS}" \
-  -d "{\"name\":\"${STUDIO_NAME}\"}")
-
-if [[ "${STUDIO}" != "201" ]]; then
-  echo "Expected POST /studios to return 201, got ${STUDIO}"
-  cat /tmp/m18-invoices-studio.json
-  exit 1
-fi
-
-STUDIO_ID=$(node -e "const d=JSON.parse(process.argv[1]); if(!d.data?.id){process.exit(1)}; process.stdout.write(d.data.id)" "$(cat /tmp/m18-invoices-studio.json)")
 
 SESSION=$(curl -s -o /tmp/m18-invoices-session.json -w "%{http_code}" -X POST "${BASE_URL}/sessions" \
   -H "Content-Type: application/json" \
