@@ -80,8 +80,10 @@ INVOICE_ID=$(node -e "const d=JSON.parse(process.argv[1]); if(!d.data?.id){proce
 curl -s -X POST "${BASE_URL}/invoices/${INVOICE_ID}/send" -H "Authorization: Bearer ${ACCESS}" > /dev/null
 curl -s -X POST "${BASE_URL}/invoices/${INVOICE_ID}/mark-paid" -H "Authorization: Bearer ${ACCESS}" > /dev/null
 
-FROM="2026-07-01T00:00:00.000Z"
-TO="2026-07-31T00:00:00.000Z"
+# mark-paid / session complete stamp paidAt and endedAt as wall-clock "now";
+# query a short UTC window around today so the smoke is date-stable in CI.
+FROM=$(node -e "const d=new Date(); d.setUTCDate(d.getUTCDate()-1); d.setUTCHours(0,0,0,0); process.stdout.write(d.toISOString())")
+TO=$(node -e "const d=new Date(); d.setUTCDate(d.getUTCDate()+2); d.setUTCHours(0,0,0,0); process.stdout.write(d.toISOString())")
 
 REVENUE=$(curl -s "${BASE_URL}/reports/revenue?from=${FROM}&to=${TO}" \
   -H "Authorization: Bearer ${ACCESS}")
