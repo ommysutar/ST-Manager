@@ -39,8 +39,10 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # Exclude desktop: bundle-web rebuilds apps/web into the shared .next tree and
+      # races the normal web/PWA build. Desktop remains covered by desktop-build.
       - name: Build
-        run: pnpm build
+        run: pnpm exec turbo run build --filter=!@st-manager/desktop
 
   test:
     runs-on: ubuntu-latest
