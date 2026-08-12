@@ -76,8 +76,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Exclude desktop: its bundle-web script rebuilds apps/web into the same
+      # .next tree and races the normal web/PWA build (truncated pages-manifest).
       - name: Build workspace
-        run: pnpm build
+        run: pnpm exec turbo run build --filter=!@st-manager/desktop
 
       - name: Prepare SQLite database
         working-directory: packages/database
@@ -147,8 +149,9 @@ jobs:
           NODE_ENV: development
         run: pnpm install --frozen-lockfile
 
+      # Same desktop/web .next race as api-integration — desktop not needed here.
       - name: Build workspace
-        run: pnpm build
+        run: pnpm exec turbo run build --filter=!@st-manager/desktop
 
       - name: Prepare PostgreSQL database
         working-directory: packages/database
@@ -156,7 +159,10 @@ jobs:
           pnpm run db:migrate:postgresql:deploy
           pnpm run db:seed:dev
 
+      # Production-like runtime without real Resend credentials (console is supported).
       - name: Start API (PostgreSQL)
+        env:
+          EMAIL_PROVIDER: console
         run: |
           pnpm --filter @st-manager/api start:prod > /tmp/st-manager-api-pg.log 2>&1 &
           echo $! > /tmp/st-manager-api-pg.pid
