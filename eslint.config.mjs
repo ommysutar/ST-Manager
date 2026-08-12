@@ -42,6 +42,7 @@ export default [
       "**/build/**",
       "**/src-tauri/target/**",
       "**/src/generated/**",
+      "apps/api/scripts/**",
       "apps/web/next-env.d.ts",
       "pnpm-lock.yaml",
     ],
