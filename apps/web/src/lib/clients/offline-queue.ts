@@ -109,6 +109,7 @@ export function buildOptimisticClient(
     id: localId,
     studioId,
     name: payload.name,
+    displayNumber: "",
     email: payload.email || null,
     phone: payload.phone || null,
     whatsappNumber: payload.whatsappNumber || null,

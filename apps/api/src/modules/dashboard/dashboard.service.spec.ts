@@ -95,6 +95,7 @@ describe("DashboardService", () => {
       id: "client-1",
       studioId: "studio-1",
       name: "Acme Records",
+      displayNumber: "CL-0001",
       email: null,
       phone: null,
       whatsappNumber: null,

@@ -5,7 +5,6 @@ BASE_URL="${API_BASE_URL:-http://localhost:4000}"
 EMAIL="${DEV_AUTH_EMAIL:-dev@st-manager.local}"
 PASSWORD="${DEV_AUTH_PASSWORD:-devpassword}"
 CLIENT_NAME="${REPORTS_SMOKE_CLIENT:-M19 Reports Smoke Client}"
-STUDIO_NAME="${REPORTS_SMOKE_STUDIO:-M19 Reports Smoke Studio}"
 
 echo "M19 reports smoke against ${BASE_URL}"
 
@@ -22,6 +21,9 @@ LOGIN=$(curl -s -X POST "${BASE_URL}/auth/login" \
   -d "{\"email\":\"${EMAIL}\",\"password\":\"${PASSWORD}\"}")
 
 ACCESS=$(node -e "const d=JSON.parse(process.argv[1]); if(!d.data?.accessToken){process.exit(1)}; process.stdout.write(d.data.accessToken)" "${LOGIN}")
+# Client create is studio-scoped to the authenticated user; booking/session/invoice
+# must use that same studio (POST /studios does not reassign the user).
+STUDIO_ID=$(node -e "const d=JSON.parse(process.argv[1]); if(!d.data?.user?.studioId){process.exit(1)}; process.stdout.write(d.data.user.studioId)" "${LOGIN}")
 
 CLIENT=$(curl -s -o /tmp/m19-reports-client.json -w "%{http_code}" -X POST "${BASE_URL}/clients" \
   -H "Content-Type: application/json" \
@@ -36,24 +38,10 @@ fi
 
 CLIENT_ID=$(node -e "const d=JSON.parse(process.argv[1]); if(!d.data?.id){process.exit(1)}; process.stdout.write(d.data.id)" "$(cat /tmp/m19-reports-client.json)")
 
-STUDIO=$(curl -s -o /tmp/m19-reports-studio.json -w "%{http_code}" -X POST "${BASE_URL}/studios" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${ACCESS}" \
-  -d "{\"name\":\"${STUDIO_NAME}\"}")
-
-if [[ "${STUDIO}" != "201" ]]; then
-  echo "Expected POST /studios to return 201, got ${STUDIO}"
-  cat /tmp/m19-reports-studio.json
-  exit 1
-fi
-
-STUDIO_ID=$(node -e "const d=JSON.parse(process.argv[1]); if(!d.data?.id){process.exit(1)}; process.stdout.write(d.data.id)" "$(cat /tmp/m19-reports-studio.json)")
-
 BOOKING=$(curl -s -o /tmp/m19-reports-booking.json -w "%{http_code}" -X POST "${BASE_URL}/bookings" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${ACCESS}" \
   -d "{\"studioId\":\"${STUDIO_ID}\",\"clientId\":\"${CLIENT_ID}\",\"title\":\"M19 Reports Booking\",\"startAt\":\"2026-07-03T10:00:00.000Z\",\"endAt\":\"2026-07-03T12:00:00.000Z\"}")
-
 if [[ "${BOOKING}" != "201" ]]; then
   echo "Expected POST /bookings to return 201, got ${BOOKING}"
   cat /tmp/m19-reports-booking.json
@@ -92,8 +80,10 @@ INVOICE_ID=$(node -e "const d=JSON.parse(process.argv[1]); if(!d.data?.id){proce
 curl -s -X POST "${BASE_URL}/invoices/${INVOICE_ID}/send" -H "Authorization: Bearer ${ACCESS}" > /dev/null
 curl -s -X POST "${BASE_URL}/invoices/${INVOICE_ID}/mark-paid" -H "Authorization: Bearer ${ACCESS}" > /dev/null
 
-FROM="2026-07-01T00:00:00.000Z"
-TO="2026-07-31T00:00:00.000Z"
+# mark-paid / session complete stamp paidAt and endedAt as wall-clock "now";
+# query a short UTC window around today so the smoke is date-stable in CI.
+FROM=$(node -e "const d=new Date(); d.setUTCDate(d.getUTCDate()-1); d.setUTCHours(0,0,0,0); process.stdout.write(d.toISOString())")
+TO=$(node -e "const d=new Date(); d.setUTCDate(d.getUTCDate()+2); d.setUTCHours(0,0,0,0); process.stdout.write(d.toISOString())")
 
 REVENUE=$(curl -s "${BASE_URL}/reports/revenue?from=${FROM}&to=${TO}" \
   -H "Authorization: Bearer ${ACCESS}")

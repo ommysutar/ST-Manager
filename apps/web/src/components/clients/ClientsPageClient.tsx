@@ -148,6 +148,11 @@ export function ClientsPageClient() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <CardTitle>{client.name}</CardTitle>
+                        {client.displayNumber ? (
+                          <span className="text-xs font-medium text-muted-foreground">
+                            {client.displayNumber}
+                          </span>
+                        ) : null}
                         <WhatsAppNotifyIcon
                           whatsappNumber={getClientWhatsAppNumber(client)}
                           type="inquiry_received"

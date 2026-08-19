@@ -196,6 +196,7 @@ model Client {
   id                  String    @id @default(cuid())
   studioId            String
   name                String
+  displayNumber       String
   email               String?
   phone               String?
   whatsappNumber      String?
@@ -210,6 +211,7 @@ model Client {
   sessions            Session[]
   invoices            Invoice[]
 
+  @@unique([studioId, displayNumber])
   @@index([studioId, updatedAt])
   @@index([studioId, deletedAt])
   @@map("clients")
