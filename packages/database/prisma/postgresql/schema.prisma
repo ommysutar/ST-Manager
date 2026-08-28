@@ -29,7 +29,9 @@ model Studio {
   roleDefs        RoleDefinition[]
   activationCodes ActivationCode[]
   clientPortalLinks ClientPortalLink[]
-  clients         Client[]
+  clients          Client[]
+  projects         Project[]
+  projectBookings  ProjectBooking[]
 
   @@index([status])
   @@map("studios")
@@ -213,11 +215,72 @@ model Client {
   bookings            Booking[]
   sessions            Session[]
   invoices            Invoice[]
+  projects            Project[]
 
   @@unique([studioId, displayNumber])
   @@index([studioId, updatedAt])
   @@index([studioId, deletedAt])
   @@map("clients")
+}
+
+model Project {
+  id               String    @id @default(cuid())
+  studioId         String
+  projectNumber    String    @db.VarChar(16)
+  source           String    @db.VarChar(16)
+  inquiryId        String?   @db.VarChar(64)
+  clientId         String?
+  projectName      String    @db.VarChar(120)
+  clientName       String    @db.VarChar(120)
+  clientMobile     String?   @db.VarChar(64)
+  clientEmail      String?   @db.VarChar(255)
+  projectCategory  String?   @db.VarChar(120)
+  status           String    @default("active") @db.VarChar(32)
+  assignedEngineer String    @default("") @db.VarChar(120)
+  planId           String?   @db.VarChar(64)
+  advanceReceived  Float     @default(0)
+  remainingBalance Float     @default(0)
+  grandTotal       Float     @default(0)
+  notes            String?   @db.Text
+  payload          Json
+  deletedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  studio           Studio           @relation(fields: [studioId], references: [id])
+  client           Client?          @relation(fields: [clientId], references: [id])
+  projectBookings  ProjectBooking[]
+
+  @@unique([studioId, projectNumber])
+  @@index([studioId, updatedAt])
+  @@index([studioId, deletedAt])
+  @@map("projects")
+}
+
+model ProjectBooking {
+  id            String    @id @default(cuid())
+  studioId      String
+  projectId     String
+  roomStudioId  String    @db.VarChar(64)
+  clientId      String?
+  bookingFor    String    @db.VarChar(120)
+  notes         String    @default("") @db.VarChar(2000)
+  date          String    @db.VarChar(10)
+  slotId        String    @db.VarChar(64)
+  status        String    @default("booked") @db.VarChar(32)
+  clientName    String    @db.VarChar(120)
+  projectName   String    @db.VarChar(120)
+  projectNumber String    @db.VarChar(32)
+  payload       Json
+  deletedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  studio  Studio  @relation(fields: [studioId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
+
+  @@index([studioId, updatedAt])
+  @@index([studioId, deletedAt])
+  @@map("project_bookings")
 }
 
 model Booking {

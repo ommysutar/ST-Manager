@@ -59,7 +59,7 @@ export function BookingWizardDialog({
         });
         toast.success("Booking updated");
       } else {
-        createBooking({ ...values, status: "booked" });
+        await createBooking({ ...values, status: "booked" });
         toast.success("Booking saved");
       }
       onOpenChange(false);

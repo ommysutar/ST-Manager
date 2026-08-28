@@ -4,15 +4,17 @@ import { useSyncExternalStore } from "react";
 
 import { EMPTY_BOOKINGS } from "@/hooks/empty-server-snapshots";
 import { BOOKINGS_UPDATED_EVENT } from "@/lib/bookings/events";
+import { requestProjectBookingApiReconcile } from "@/lib/bookings/reconcile";
+import { hydrateBookingsSnapshotFromCache } from "@/lib/bookings/store";
 import {
   getBookingsSnapshot,
-  initializeBookingSnapshots,
   listBookings,
   listBookingsByProject,
 } from "@/lib/bookings/storage";
 import type { ProjectBooking } from "@/lib/bookings/types";
 
 let snapshotsReady = false;
+let reconcileStarted = false;
 
 function ensureBookingSnapshotsReady(): void {
   if (typeof window === "undefined" || snapshotsReady) {
@@ -23,10 +25,23 @@ function ensureBookingSnapshotsReady(): void {
   snapshotsReady = true;
 }
 
+function initializeBookingSnapshots(): void {
+  hydrateBookingsSnapshotFromCache();
+}
+
+function ensureBookingReconcile(): void {
+  if (typeof window === "undefined" || reconcileStarted) {
+    return;
+  }
+  reconcileStarted = true;
+  void requestProjectBookingApiReconcile();
+}
+
 export function useBookings(): ProjectBooking[] {
   return useSyncExternalStore(
     (onStoreChange) => {
       ensureBookingSnapshotsReady();
+      ensureBookingReconcile();
 
       const handler = () => {
         initializeBookingSnapshots();

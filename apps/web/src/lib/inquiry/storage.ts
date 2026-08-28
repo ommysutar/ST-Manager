@@ -181,6 +181,20 @@ export function linkInquiryToProject(inquiryId: string, projectId: string): void
   );
 }
 
+/** Rewrites inquiry.projectId when a project id is remapped during sync/backfill. */
+export function remapInquiryProjectReferences(oldProjectId: string, newProjectId: string): void {
+  if (oldProjectId === newProjectId) {
+    return;
+  }
+  persistInquiries(
+    loadInquiries().map((inquiry) =>
+      inquiry.projectId === oldProjectId
+        ? { ...inquiry, projectId: newProjectId, updatedAt: new Date().toISOString() }
+        : inquiry,
+    ),
+  );
+}
+
 export function initializeInquirySnapshots(): void {
   setInquiriesSnapshot(listInquiries());
 }

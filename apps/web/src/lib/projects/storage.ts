@@ -1,11 +1,24 @@
 import { notifyProjectsUpdated } from "@/lib/inquiry/events";
-import { generateId } from "@/lib/inquiry/services";
+import { isBrowserOnline } from "@/lib/sync";
 
-import type { CreateProjectInput, ProjectFile, ProjectTask, StudioProject } from "./types";
+import { projectsApi } from "@/lib/api-client";
+
+import { dtoToStudioProject, studioProjectToUpdateDto } from "./map-dto";
+import { isLocalProjectId, updatePendingProjectCreate } from "./offline-queue";
+import {
+  createProjectOptimistic,
+  flushPendingProjectCreates,
+  getProjectsSnapshot,
+  hydrateProjectsSnapshotFromCache,
+  setProjectsSnapshot,
+  upsertProjectInSnapshot,
+} from "./store";
+import type { CreateProjectInput, ProjectTask, StudioProject } from "./types";
 import { PROJECTS_STORAGE_KEY } from "./types";
 import type { InquiryWizardFormValues } from "@/lib/inquiry/types";
 
-import { ensureMandatoryTasks, generateTasksFromServices } from "./tasks";
+import { generateTasksFromServices } from "./tasks";
+import type { PendingProjectCreatePayload } from "./offline-queue";
 
 function parseProjectNumber(value: string | undefined): number {
   if (!value) {
@@ -20,13 +33,11 @@ function formatProjectNumber(sequence: number): string {
   return `PRJ-${String(sequence).padStart(4, "0")}`;
 }
 
-function nextProjectNumber(projects: StudioProject[]): string {
-  const max = projects.reduce((acc, project) => Math.max(acc, parseProjectNumber(project.projectNumber)), 0);
-  return formatProjectNumber(max + 1);
-}
-
 function assignMissingProjectNumbers(projects: StudioProject[]): StudioProject[] {
-  let max = projects.reduce((acc, project) => Math.max(acc, parseProjectNumber(project.projectNumber)), 0);
+  let max = projects.reduce(
+    (acc, project) => Math.max(acc, parseProjectNumber(project.projectNumber)),
+    0,
+  );
   let changed = false;
 
   const normalized = projects.map((project) => {
@@ -39,122 +50,56 @@ function assignMissingProjectNumbers(projects: StudioProject[]): StudioProject[]
     return { ...project, projectNumber: formatProjectNumber(max) };
   });
 
-  if (changed && typeof window !== "undefined") {
-    persistProjects(normalized);
+  if (changed) {
+    for (const project of normalized) {
+      upsertProjectInSnapshot(project);
+    }
+    notifyProjectsUpdated();
     return normalized;
   }
 
   return normalized;
 }
 
-let projectsSnapshot: StudioProject[] = [];
-
-export function getProjectsSnapshot(): StudioProject[] {
-  return projectsSnapshot;
+function ensureProjectsHydrated(): StudioProject[] {
+  if (getProjectsSnapshot().length === 0) {
+    hydrateProjectsSnapshotFromCache();
+  }
+  return assignMissingProjectNumbers(getProjectsSnapshot());
 }
 
-export function setProjectsSnapshot(next: StudioProject[]): StudioProject[] {
-  projectsSnapshot = next;
-  return projectsSnapshot;
-}
-
-/** Migrates legacy data-URL file entries into the cloud-metadata shape (never re-persists binary data). */
-function normalizeLegacyFile(raw: Record<string, unknown>): ProjectFile {
+function buildCreatePayload(input: CreateProjectInput): PendingProjectCreatePayload {
+  const assignedEngineer = input.assignedEngineer ?? "";
   return {
-    id: String(raw.id ?? generateId("file")),
-    name: String(raw.name ?? "Untitled file"),
-    type: String(raw.type ?? raw.mimeType ?? "file"),
-    size: raw.size !== undefined ? Number(raw.size) : undefined,
-    cloudUrl: String(raw.cloudUrl ?? raw.dataUrl ?? ""),
-    provider: (raw.provider as ProjectFile["provider"]) ?? "other",
-    uploadedAt: String(raw.uploadedAt ?? new Date().toISOString()),
-    uploadedBy: String(raw.uploadedBy ?? ""),
-  };
-}
-
-function normalizeLegacyProject(raw: Record<string, unknown>): StudioProject {
-  const now = new Date().toISOString();
-  const selectedServiceIds = Array.isArray(raw.selectedServiceIds)
-    ? (raw.selectedServiceIds as string[])
-    : [];
-  const assignedEngineer = String(raw.assignedEngineer ?? "");
-  const rawTasks = Array.isArray(raw.tasks)
-    ? (raw.tasks as ProjectTask[])
-    : generateTasksFromServices(selectedServiceIds, assignedEngineer);
-
-  return {
-    id: String(raw.id),
-    projectNumber: raw.projectNumber ? String(raw.projectNumber) : "",
-    source: raw.source === "manual" ? "manual" : "inquiry",
-    inquiryId: raw.inquiryId ? String(raw.inquiryId) : undefined,
-    clientId: raw.clientId ? String(raw.clientId) : undefined,
-    projectName: String(raw.projectName ?? "Untitled Project"),
-    clientName: String(raw.clientName ?? "Unknown Client"),
-    projectCategory: raw.projectCategory ? String(raw.projectCategory) : undefined,
-    clientMobile: raw.clientMobile ? String(raw.clientMobile) : undefined,
-    clientEmail: raw.clientEmail ? String(raw.clientEmail) : undefined,
-    status: (raw.status as StudioProject["status"]) ?? "active",
+    source: input.source,
+    inquiryId: input.inquiryId ?? null,
+    clientId: input.clientId || input.form?.existingClientId || null,
+    projectName: input.projectName.trim(),
+    clientName: input.clientName.trim(),
+    clientMobile: input.clientMobile?.trim() || input.form?.mobileNumber || null,
+    clientEmail: input.clientEmail?.trim() || input.form?.email || null,
+    projectCategory: input.projectCategory ?? input.form?.projectCategory ?? null,
+    status: "active",
     assignedEngineer,
-    selectedServiceIds,
-    planId: raw.planId ? String(raw.planId) : undefined,
-    quotation: raw.quotation as StudioProject["quotation"],
-    advanceReceived: Number(raw.advanceReceived ?? 0),
-    remainingBalance: Number(raw.remainingBalance ?? 0),
-    grandTotal: Number(raw.grandTotal ?? 0),
-    tasks: ensureMandatoryTasks(rawTasks, assignedEngineer),
-    sessionIds: Array.isArray(raw.sessionIds) ? (raw.sessionIds as string[]) : [],
-    bookingIds: Array.isArray(raw.bookingIds) ? (raw.bookingIds as string[]) : [],
-    invoiceIds: Array.isArray(raw.invoiceIds) ? (raw.invoiceIds as string[]) : [],
-    files: Array.isArray(raw.files)
-      ? (raw.files as Record<string, unknown>[]).map((file) => normalizeLegacyFile(file))
-      : [],
-    links: Array.isArray(raw.links) ? (raw.links as StudioProject["links"]) : [],
-    expenses: Array.isArray(raw.expenses) ? (raw.expenses as StudioProject["expenses"]) : [],
-    notes: String(raw.notes ?? ""),
-    createdAt: String(raw.createdAt ?? now),
-    updatedAt: String(raw.updatedAt ?? raw.createdAt ?? now),
+    selectedServiceIds: input.selectedServiceIds,
+    planId: input.planId ?? null,
+    quotation: input.quotation,
+    advanceReceived: input.advanceReceived ?? 0,
+    remainingBalance: input.remainingBalance ?? 0,
+    grandTotal: input.grandTotal ?? 0,
+    notes: input.notes ?? input.form?.notes ?? null,
+    tasks: generateTasksFromServices(input.selectedServiceIds, assignedEngineer),
+    files: [],
+    links: [],
+    expenses: [],
+    sessionIds: [],
+    bookingIds: [],
+    invoiceIds: [],
   };
-}
-
-function readProjectsFromStorage(): StudioProject[] {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
-  try {
-    const raw = localStorage.getItem(PROJECTS_STORAGE_KEY);
-    if (!raw) {
-      return [];
-    }
-
-    const parsed = JSON.parse(raw) as Record<string, unknown>[];
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed.map((entry) => normalizeLegacyProject(entry));
-  } catch {
-    return [];
-  }
-}
-
-function readProjectsWithMigration(): StudioProject[] {
-  const projects = readProjectsFromStorage();
-  return assignMissingProjectNumbers(projects);
-}
-
-function persistProjects(projects: StudioProject[]): StudioProject[] {
-  const sorted = [...projects].sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-  );
-  localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(sorted));
-  setProjectsSnapshot(sorted);
-  notifyProjectsUpdated();
-  return sorted;
 }
 
 export function loadAllProjects(): StudioProject[] {
-  return readProjectsWithMigration();
+  return ensureProjectsHydrated();
 }
 
 export function listProjects(): StudioProject[] {
@@ -165,43 +110,15 @@ export function getProject(id: string): StudioProject | undefined {
   return loadAllProjects().find((project) => project.id === id);
 }
 
+export { getProjectsSnapshot, setProjectsSnapshot };
+
 export function createProject(input: CreateProjectInput): StudioProject {
-  const now = new Date().toISOString();
-  const assignedEngineer = input.assignedEngineer ?? "";
-
-  const existing = loadAllProjects();
-  const project: StudioProject = {
-    id: generateId("prj"),
-    projectNumber: nextProjectNumber(existing),
-    source: input.source,
-    inquiryId: input.inquiryId,
-    clientId: input.clientId || input.form?.existingClientId || undefined,
-    projectName: input.projectName.trim(),
-    clientName: input.clientName.trim(),
-    clientMobile: input.clientMobile?.trim() || input.form?.mobileNumber,
-    clientEmail: input.clientEmail?.trim() || input.form?.email || undefined,
-    status: "active",
-    assignedEngineer,
-    selectedServiceIds: input.selectedServiceIds,
-    planId: input.planId,
-    projectCategory: input.projectCategory ?? input.form?.projectCategory,
-    quotation: input.quotation,
-    advanceReceived: input.advanceReceived ?? 0,
-    remainingBalance: input.remainingBalance ?? 0,
-    grandTotal: input.grandTotal ?? 0,
-    tasks: generateTasksFromServices(input.selectedServiceIds, assignedEngineer),
-    files: [],
-    links: [],
-    expenses: [],
-    sessionIds: [],
-    bookingIds: [],
-    invoiceIds: [],
-    notes: input.notes ?? input.form?.notes ?? "",
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  persistProjects([project, ...existing]);
+  ensureProjectsHydrated();
+  const payload = buildCreatePayload(input);
+  const project = createProjectOptimistic(payload);
+  if (isBrowserOnline()) {
+    void flushPendingProjectCreates();
+  }
   return project;
 }
 
@@ -221,8 +138,50 @@ export function updateProject(
     updatedAt: new Date().toISOString(),
   };
 
-  projects[index] = updated;
-  persistProjects(projects);
+  upsertProjectInSnapshot(updated);
+  notifyProjectsUpdated();
+
+  if (isLocalProjectId(id)) {
+    updatePendingProjectCreate(id, {
+      payload: {
+        ...buildCreatePayload({
+          source: updated.source,
+          inquiryId: updated.inquiryId,
+          clientId: updated.clientId,
+          projectName: updated.projectName,
+          clientName: updated.clientName,
+          clientMobile: updated.clientMobile,
+          clientEmail: updated.clientEmail,
+          assignedEngineer: updated.assignedEngineer,
+          selectedServiceIds: updated.selectedServiceIds,
+          planId: updated.planId,
+          projectCategory: updated.projectCategory,
+          quotation: updated.quotation,
+          advanceReceived: updated.advanceReceived,
+          remainingBalance: updated.remainingBalance,
+          grandTotal: updated.grandTotal,
+          notes: updated.notes,
+        }),
+        tasks: updated.tasks,
+        files: updated.files,
+        links: updated.links,
+        expenses: updated.expenses,
+        sessionIds: updated.sessionIds,
+        bookingIds: updated.bookingIds,
+        invoiceIds: updated.invoiceIds,
+        status: updated.status,
+      },
+    });
+  } else if (isBrowserOnline()) {
+    void projectsApi
+      .updateProject(id, studioProjectToUpdateDto(patch))
+      .then((dto) => {
+        upsertProjectInSnapshot(dtoToStudioProject(dto));
+        notifyProjectsUpdated();
+      })
+      .catch(() => undefined);
+  }
+
   return updated;
 }
 
@@ -257,13 +216,6 @@ function syncPaymentTaskState(project: StudioProject): ProjectTask[] {
 
 /**
  * Central project-completion rule engine. Runs after any task update or payment change.
- *
- * - The "Payment" mandatory task is auto-synced from `remainingBalance` (single source of truth
- *   stays the payment ledger — see `lib/payments/storage.ts`).
- * - Status becomes `delivered` once the "Project Delivery" task is completed.
- * - Status becomes `completed` once every task is complete AND the project is fully paid — this
- *   automatically covers "Files Shared" and "Project Delivery" since they are tasks themselves.
- * - `on_hold` / `cancelled` are manual-only statuses and are never overridden automatically.
  */
 export function evaluateProjectCompletion(projectId: string): StudioProject | null {
   const project = getProject(projectId);
@@ -302,7 +254,7 @@ export function evaluateProjectCompletion(projectId: string): StudioProject | nu
 }
 
 export function initializeProjectSnapshots(): void {
-  setProjectsSnapshot(listProjects());
+  hydrateProjectsSnapshotFromCache();
 }
 
 /** Backward-compatible wrapper used by inquiry wizard. */
@@ -329,3 +281,5 @@ export function createProjectFromInquiry(input: {
     notes: input.form.notes,
   });
 }
+
+export { PROJECTS_STORAGE_KEY, flushPendingProjectCreates };

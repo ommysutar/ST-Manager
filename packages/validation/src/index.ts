@@ -45,6 +45,35 @@ export { syncClientsPullQuerySchema } from "./client/sync-clients-pull-query.sch
 export type { SyncClientsPullQueryInput } from "./client/sync-clients-pull-query.schema";
 
 export {
+  createProjectSchema,
+  updateProjectSchema,
+} from "./project/project.schema";
+export type { CreateProjectInput, UpdateProjectInput } from "./project/project.schema";
+export { serializeProjectRequestBody } from "./project/normalize-project-fields";
+
+export { listProjectsQuerySchema } from "./project/list-projects-query.schema";
+export type { ListProjectsQueryInput } from "./project/list-projects-query.schema";
+
+export { syncProjectsPullQuerySchema } from "./project/sync-projects-pull-query.schema";
+export type { SyncProjectsPullQueryInput } from "./project/sync-projects-pull-query.schema";
+
+export {
+  createProjectBookingSchema,
+  updateProjectBookingSchema,
+} from "./project-booking/project-booking.schema";
+export type {
+  CreateProjectBookingInput,
+  UpdateProjectBookingInput,
+} from "./project-booking/project-booking.schema";
+export { serializeProjectBookingRequestBody } from "./project-booking/normalize-project-booking-fields";
+
+export { listProjectBookingsQuerySchema } from "./project-booking/list-project-bookings-query.schema";
+export type { ListProjectBookingsQueryInput } from "./project-booking/list-project-bookings-query.schema";
+
+export { syncProjectBookingsPullQuerySchema } from "./project-booking/sync-project-bookings-pull-query.schema";
+export type { SyncProjectBookingsPullQueryInput } from "./project-booking/sync-project-bookings-pull-query.schema";
+
+export {
   createBookingSchema,
   updateBookingSchema,
   listBookingsQuerySchema,

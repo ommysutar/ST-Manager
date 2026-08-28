@@ -59,6 +59,36 @@ export type {
   UpdateClientResponseDto,
 } from "./client/list-clients.dto";
 
+export type { ProjectResponseDto } from "./project/project-response.dto";
+export type { CreateProjectDto } from "./project/create-project.dto";
+export type { UpdateProjectDto } from "./project/update-project.dto";
+export type {
+  CreateProjectResponseDto,
+  DeleteProjectResponseDto,
+  GetProjectResponseDto,
+  ListProjectsQueryDto,
+  ListProjectsResponseDto,
+  SyncProjectsPullQueryDto,
+  SyncProjectsPullResponseDataDto,
+  SyncProjectsPullResponseDto,
+  UpdateProjectResponseDto,
+} from "./project/list-projects.dto";
+
+export type { ProjectBookingResponseDto } from "./project-booking/project-booking-response.dto";
+export type { CreateProjectBookingDto } from "./project-booking/create-project-booking.dto";
+export type { UpdateProjectBookingDto } from "./project-booking/update-project-booking.dto";
+export type {
+  CreateProjectBookingResponseDto,
+  DeleteProjectBookingResponseDto,
+  GetProjectBookingResponseDto,
+  ListProjectBookingsQueryDto,
+  ListProjectBookingsResponseDto,
+  SyncProjectBookingsPullQueryDto,
+  SyncProjectBookingsPullResponseDataDto,
+  SyncProjectBookingsPullResponseDto,
+  UpdateProjectBookingResponseDto,
+} from "./project-booking/list-project-bookings.dto";
+
 export type { BookingResponseDto } from "./booking/booking-response.dto";
 export type { CreateBookingDto } from "./booking/create-booking.dto";
 export type { UpdateBookingDto } from "./booking/update-booking.dto";

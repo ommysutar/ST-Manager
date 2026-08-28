@@ -11,6 +11,10 @@ export const SYNC = {
   MAX_PULL_BATCH: 500,
   /** Max records returned by one clients sync pull. */
   MAX_CLIENTS_PULL_BATCH: 500,
+  /** Max records returned by one projects sync pull. */
+  MAX_PROJECTS_PULL_BATCH: 500,
+  /** Max records returned by one project bookings sync pull. */
+  MAX_PROJECT_BOOKINGS_PULL_BATCH: 500,
 } as const;
 
 /** Studio-user password reset (forgot-password flow). */

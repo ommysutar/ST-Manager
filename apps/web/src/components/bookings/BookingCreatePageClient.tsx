@@ -291,7 +291,7 @@ export function BookingCreatePageClient() {
   async function handleSubmit(values: ProjectBookingFormValues) {
     setIsSubmitting(true);
     try {
-      const booking = createBooking(values);
+      const booking = await createBooking(values);
       toast.success("Booking saved");
       router.push(`/bookings/${booking.id}`);
     } catch (error) {
