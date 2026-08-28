@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { ClientDeleteDialog } from "@/components/clients/ClientDeleteDialog";
 import { ClientForm, type ClientFormValues } from "@/components/clients/ClientForm";
 import { useAuth } from "@/hooks/useAuth";
+import { useClient } from "@/hooks/useClients";
 import { useClientPaymentsSummary } from "@/hooks/useClientPaymentsSummary";
 import { clientsApi } from "@/lib/api-client";
 import {
@@ -27,7 +28,6 @@ import { isTestOrDemoClient } from "@/lib/clients/smoke-clients";
 import {
   getClientFromSnapshot,
   getClientsSnapshot,
-  hydrateClientsSnapshotFromCache,
   upsertClientInSnapshot,
 } from "@/lib/clients/store";
 import { formatINR } from "@/lib/currency";
@@ -52,7 +52,7 @@ function toPayload(values: ClientFormValues) {
 export function ClientEditPageClient({ clientId }: { clientId: string }) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
-  const [client, setClient] = useState<ClientResponseDto | null>(null);
+  const client = useClient(clientId);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -66,27 +66,20 @@ export function ClientEditPageClient({ clientId }: { clientId: string }) {
     }
 
     let cancelled = false;
-    hydrateClientsSnapshotFromCache();
-    const cached = getClientFromSnapshot(clientId);
-    if (cached && !isTestOrDemoClient(cached)) {
-      setClient(cached);
-      setError(null);
-    }
 
     if (isLocalClientId(clientId)) {
+      const initialCached = getClientFromSnapshot(clientId);
       const onUpdate = () => {
         if (cancelled) return;
-        const fromSnapshot = getClientFromSnapshot(clientId);
-        if (fromSnapshot) {
-          setClient(fromSnapshot);
+        if (getClientFromSnapshot(clientId)) {
           return;
         }
         const remapped = getClientsSnapshot().find(
           (entry) =>
             !isLocalClientId(entry.id) &&
-            cached &&
-            ((cached.phone && entry.phone === cached.phone) ||
-              (cached.email && entry.email === cached.email)),
+            initialCached &&
+            ((initialCached.phone && entry.phone === initialCached.phone) ||
+              (initialCached.email && entry.email === initialCached.email)),
         );
         if (remapped) {
           router.replace(`/clients/${remapped.id}`);
@@ -112,7 +105,8 @@ export function ClientEditPageClient({ clientId }: { clientId: string }) {
             return;
           }
 
-          setClient(data);
+          upsertClientInSnapshot(data);
+          notifyClientsUpdated();
           setError(null);
         }
       })
@@ -137,7 +131,6 @@ export function ClientEditPageClient({ clientId }: { clientId: string }) {
       propagateClientDetailsToLocalRecords(updated);
       upsertClientInSnapshot(updated);
       notifyClientsUpdated();
-      setClient(updated);
       toast.success("Client updated");
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Failed to update client";
