@@ -45,6 +45,19 @@ export { syncClientsPullQuerySchema } from "./client/sync-clients-pull-query.sch
 export type { SyncClientsPullQueryInput } from "./client/sync-clients-pull-query.schema";
 
 export {
+  createProjectSchema,
+  updateProjectSchema,
+} from "./project/project.schema";
+export type { CreateProjectInput, UpdateProjectInput } from "./project/project.schema";
+export { serializeProjectRequestBody } from "./project/normalize-project-fields";
+
+export { listProjectsQuerySchema } from "./project/list-projects-query.schema";
+export type { ListProjectsQueryInput } from "./project/list-projects-query.schema";
+
+export { syncProjectsPullQuerySchema } from "./project/sync-projects-pull-query.schema";
+export type { SyncProjectsPullQueryInput } from "./project/sync-projects-pull-query.schema";
+
+export {
   createBookingSchema,
   updateBookingSchema,
   listBookingsQuerySchema,

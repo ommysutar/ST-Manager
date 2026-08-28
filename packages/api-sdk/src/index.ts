@@ -20,6 +20,9 @@ export type { DashboardApi } from "./dashboard/dashboard.api";
 export { createClientsApi } from "./clients/clients.api";
 export type { ClientsApi } from "./clients/clients.api";
 
+export { createProjectsApi } from "./projects/projects.api";
+export type { ProjectsApi } from "./projects/projects.api";
+
 export { createBookingsApi } from "./bookings/bookings.api";
 export type { BookingsApi } from "./bookings/bookings.api";
 

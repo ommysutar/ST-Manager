@@ -9,6 +9,7 @@ export const ROUTES = {
   INVOICES: "invoices",
   REPORTS: "reports",
   CLIENTS: "clients",
+  PROJECTS: "projects",
   DASHBOARD: "dashboard",
   STUDIOS: "studios",
   SYNC: "sync",
