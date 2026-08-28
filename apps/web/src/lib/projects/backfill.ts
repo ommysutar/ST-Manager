@@ -9,7 +9,7 @@ import { isBrowserOnline } from "@/lib/clients/network";
 import { projectsApi } from "@/lib/api-client";
 
 import { cascadeProjectIdRemap } from "./cascade-ids";
-import { dtoToStudioProject, studioProjectToCreateDto } from "./map-dto";
+import { studioProjectToCreateDto } from "./map-dto";
 import { isLocalProjectId } from "./offline-queue";
 import type { StudioProject } from "./types";
 import {
