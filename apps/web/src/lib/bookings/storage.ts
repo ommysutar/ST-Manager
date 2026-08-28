@@ -1,9 +1,22 @@
-import { generateId } from "@/lib/inquiry/services";
+import { ApiError } from "@st-manager/api-sdk";
+
+import { projectBookingsApi } from "@/lib/api-client";
 import { getProject, updateProject } from "@/lib/projects/storage";
+import { isBrowserOnline } from "@/lib/sync";
 
 import { notifyBookingsUpdated } from "./events";
-import { loadAllSlots } from "./slot-storage";
-import { setBookingsSnapshot } from "./snapshots";
+import { dtoToProjectBooking, projectBookingToUpdateDto } from "./map-dto";
+import {
+  createProjectBookingOfflineAware,
+  flushPendingProjectBookingCreates,
+  getBookingsStoreSnapshot,
+  hydrateBookingsSnapshotFromCache,
+  isLocalBookingId,
+  isSlotAvailableInSnapshot,
+  removeBookingFromSnapshot,
+  upsertBookingInSnapshot,
+} from "./store";
+import { getBookingsSnapshot, setBookingsSnapshot } from "./snapshots";
 import type { BookingSlotId, ProjectBooking, ProjectBookingStatus } from "./types";
 import { BOOKINGS_STORAGE_KEY, OCCUPYING_BOOKING_STATUSES } from "./types";
 
@@ -30,7 +43,6 @@ const DOUBLE_BOOKING_ERROR = "Studio already booked.";
 
 function normalizeStatus(raw: unknown): ProjectBookingStatus {
   if (raw === "confirmed") {
-    // Legacy Sprint 3 data migrated to the new status model.
     return "booked";
   }
   if (raw === "draft" || raw === "booked" || raw === "completed" || raw === "cancelled") {
@@ -48,7 +60,7 @@ function normalizeBooking(raw: Partial<ProjectBooking> & { id: string }): Projec
     bookingFor: raw.bookingFor?.trim() || "Studio Session",
     notes: raw.notes?.trim() ?? "",
     date: String(raw.date),
-    slotId: raw.slotId ?? loadAllSlots()[0]?.id ?? "",
+    slotId: raw.slotId ?? "",
     status: normalizeStatus(raw.status),
     clientName: raw.clientName ?? "",
     projectName: raw.projectName ?? "",
@@ -62,42 +74,15 @@ function normalizeBooking(raw: Partial<ProjectBooking> & { id: string }): Projec
   };
 }
 
-function readBookingsFromStorage(): ProjectBooking[] {
-  if (typeof window === "undefined") {
-    return [];
+function ensureBookingsHydrated(): ProjectBooking[] {
+  if (getBookingsStoreSnapshot().length === 0) {
+    hydrateBookingsSnapshotFromCache();
   }
-
-  try {
-    const raw = localStorage.getItem(BOOKINGS_STORAGE_KEY);
-    if (!raw) {
-      return [];
-    }
-
-    const parsed = JSON.parse(raw) as Partial<ProjectBooking>[];
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed.map((entry) => normalizeBooking(entry as ProjectBooking));
-  } catch {
-    return [];
-  }
-}
-
-function persistBookings(bookings: ProjectBooking[]): ProjectBooking[] {
-  const sorted = [...bookings].sort(
-    (a, b) =>
-      new Date(`${a.date}T00:00:00`).getTime() - new Date(`${b.date}T00:00:00`).getTime() ||
-      a.slotId.localeCompare(b.slotId),
-  );
-  localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify(sorted));
-  setBookingsSnapshot(sorted);
-  notifyBookingsUpdated();
-  return sorted;
+  return getBookingsStoreSnapshot();
 }
 
 export function loadAllBookings(): ProjectBooking[] {
-  return readBookingsFromStorage();
+  return ensureBookingsHydrated();
 }
 
 export function listBookings(): ProjectBooking[] {
@@ -128,17 +113,11 @@ export function isSlotAvailable(
   slotId: BookingSlotId,
   excludeBookingId?: string,
 ): boolean {
-  return !loadAllBookings().some(
-    (booking) =>
-      OCCUPYING_BOOKING_STATUSES.includes(booking.status) &&
-      booking.studioId === studioId &&
-      booking.date === date &&
-      booking.slotId === slotId &&
-      booking.id !== excludeBookingId,
-  );
+  ensureBookingsHydrated();
+  return isSlotAvailableInSnapshot(studioId, date, slotId, excludeBookingId);
 }
 
-export function createBooking(input: CreateBookingInput): ProjectBooking {
+export async function createBooking(input: CreateBookingInput): Promise<ProjectBooking> {
   const project = getProject(input.projectId);
   if (!project) {
     throw new Error("Project not found.");
@@ -152,29 +131,29 @@ export function createBooking(input: CreateBookingInput): ProjectBooking {
     throw new Error(DOUBLE_BOOKING_ERROR);
   }
 
-  const now = new Date().toISOString();
-  const booking = normalizeBooking({
-    id: generateId("bkg"),
+  const payload = {
     projectId: project.id,
-    studioId: input.studioId,
-    bookingFor: input.bookingFor,
-    notes: input.notes,
+    roomStudioId: input.studioId,
+    bookingFor: input.bookingFor.trim() || "Studio Session",
+    notes: input.notes?.trim() ?? "",
     date: input.date,
     slotId: input.slotId,
     status,
     clientName: project.clientName,
     projectName: project.projectName,
     projectNumber: project.projectNumber,
-    createdAt: now,
-    updatedAt: now,
-  });
+  };
 
-  persistBookings([booking, ...loadAllBookings()]);
+  const booking = await createProjectBookingOfflineAware(payload);
 
   if (!project.bookingIds.includes(booking.id)) {
     updateProject(project.id, {
       bookingIds: [booking.id, ...project.bookingIds],
     });
+  }
+
+  if (isBrowserOnline()) {
+    void flushPendingProjectBookingCreates();
   }
 
   return booking;
@@ -211,8 +190,23 @@ export function updateBooking(id: string, patch: UpdateBookingInput): ProjectBoo
     updatedAt: new Date().toISOString(),
   });
 
-  bookings[index] = updated;
-  persistBookings(bookings);
+  upsertBookingInSnapshot(updated);
+  notifyBookingsUpdated();
+
+  if (!isLocalBookingId(id) && isBrowserOnline()) {
+    void projectBookingsApi
+      .updateProjectBooking(id, projectBookingToUpdateDto(patch))
+      .then((dto) => {
+        upsertBookingInSnapshot(dtoToProjectBooking(dto));
+        notifyBookingsUpdated();
+      })
+      .catch((error) => {
+        if (error instanceof ApiError && error.code === "SLOT_CONFLICT") {
+          throw new Error(DOUBLE_BOOKING_ERROR);
+        }
+      });
+  }
+
   return updated;
 }
 
@@ -241,8 +235,18 @@ export function rescheduleBooking(
   return updateBooking(id, studioId ? { date, slotId, studioId } : { date, slotId });
 }
 
-export function initializeBookingSnapshots(): void {
-  setBookingsSnapshot(loadAllBookings());
+export function deleteBooking(id: string): void {
+  removeBookingFromSnapshot(id);
+  notifyBookingsUpdated();
+
+  if (!isLocalBookingId(id) && isBrowserOnline()) {
+    void projectBookingsApi.deleteProjectBooking(id).catch(() => undefined);
+  }
 }
 
-export { getBookingsSnapshot } from "./snapshots";
+export function initializeBookingSnapshots(): void {
+  hydrateBookingsSnapshotFromCache();
+  setBookingsSnapshot(getBookingsStoreSnapshot());
+}
+
+export { getBookingsSnapshot, BOOKINGS_STORAGE_KEY, flushPendingProjectBookingCreates };

@@ -58,6 +58,22 @@ export { syncProjectsPullQuerySchema } from "./project/sync-projects-pull-query.
 export type { SyncProjectsPullQueryInput } from "./project/sync-projects-pull-query.schema";
 
 export {
+  createProjectBookingSchema,
+  updateProjectBookingSchema,
+} from "./project-booking/project-booking.schema";
+export type {
+  CreateProjectBookingInput,
+  UpdateProjectBookingInput,
+} from "./project-booking/project-booking.schema";
+export { serializeProjectBookingRequestBody } from "./project-booking/normalize-project-booking-fields";
+
+export { listProjectBookingsQuerySchema } from "./project-booking/list-project-bookings-query.schema";
+export type { ListProjectBookingsQueryInput } from "./project-booking/list-project-bookings-query.schema";
+
+export { syncProjectBookingsPullQuerySchema } from "./project-booking/sync-project-bookings-pull-query.schema";
+export type { SyncProjectBookingsPullQueryInput } from "./project-booking/sync-project-bookings-pull-query.schema";
+
+export {
   createBookingSchema,
   updateBookingSchema,
   listBookingsQuerySchema,

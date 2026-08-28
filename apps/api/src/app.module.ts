@@ -14,6 +14,7 @@ import { AiModule } from "./modules/ai/ai.module";
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
 import { ClientsModule } from "./modules/clients/clients.module";
 import { ProjectsModule } from "./modules/projects/projects.module";
+import { ProjectBookingsModule } from "./modules/project-bookings/project-bookings.module";
 import { BookingsModule } from "./modules/bookings/bookings.module";
 import { SessionsModule } from "./modules/sessions/sessions.module";
 import { InvoicesModule } from "./modules/invoices/invoices.module";
@@ -38,6 +39,7 @@ import { ClientPortalModule } from "./modules/client-portal/client-portal.module
     DashboardModule,
     ClientsModule,
     ProjectsModule,
+    ProjectBookingsModule,
     BookingsModule,
     SessionsModule,
     InvoicesModule,

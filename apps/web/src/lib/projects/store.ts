@@ -12,6 +12,8 @@ import {
 } from "@/lib/sync";
 
 import { dtoToStudioProject, studioProjectToResponseDto } from "./map-dto";
+import { runLegacyProjectBackfill } from "./backfill";
+import { cascadeProjectIdRemap } from "./cascade-ids";
 import {
   buildOptimisticProject,
   createLocalProjectId,
@@ -417,6 +419,7 @@ export async function reconcileProjectsFromApi(): Promise<StudioProject[]> {
     if (!cursor) {
       const full = await refreshProjectsSnapshot();
       await flushPendingProjectCreates();
+      await runLegacyProjectBackfill();
       notifyProjectsUpdated();
       return full;
     }
@@ -446,6 +449,7 @@ export async function reconcileProjectsFromApi(): Promise<StudioProject[]> {
     );
 
     await flushPendingProjectCreates();
+    await runLegacyProjectBackfill();
     notifyProjectsUpdated();
     return projectsSnapshot;
   })().finally(() => {
@@ -485,8 +489,9 @@ export function removeProjectFromSnapshot(projectId: string): void {
   writeTombstones(tombstones);
 }
 
-/** Remap offline local project id → server id in snapshot. */
+/** Remap offline local project id → server id in snapshot and dependent stores. */
 export function remapLocalProjectId(localId: string, serverProject: ProjectResponseDto): void {
+  cascadeProjectIdRemap(localId, serverProject.id);
   const serverStudioProject = dtoToStudioProject(serverProject);
   const withoutLocal = projectsSnapshot.filter(
     (project) => project.id !== localId && project.id !== serverProject.id,

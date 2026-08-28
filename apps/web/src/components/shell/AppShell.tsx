@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsClientMounted } from "@/hooks/useInquiryStorage";
 import { startClientPortalAutoSync } from "@/lib/client-portal/auto-sync";
 import { startClientApiSync } from "@/lib/clients/reconcile";
+import { startProjectBookingApiSync } from "@/lib/bookings/reconcile";
 import { startProjectApiSync } from "@/lib/projects/reconcile";
 
 import { Header } from "./Header";
@@ -36,10 +37,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     const stopPortal = startClientPortalAutoSync();
     const stopClientSync = startClientApiSync();
     const stopProjectSync = startProjectApiSync();
+    const stopProjectBookingSync = startProjectBookingApiSync();
     return () => {
       stopPortal();
       stopClientSync();
       stopProjectSync();
+      stopProjectBookingSync();
     };
   }, [mounted, isAuthenticated, isPlatformAdminRoute, isAuthRoute]);
 

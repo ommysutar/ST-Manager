@@ -1,8 +1,11 @@
 "use client";
 
 import { Badge, Button, Card, CardContent, Progress } from "@st-manager/ui";
+import { Trash2Icon } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import { ProjectOverviewSections } from "@/components/projects/ProjectOverviewSections";
 import { ProjectWhatsAppNotify } from "@/components/whatsapp/ProjectWhatsAppNotify";
@@ -10,6 +13,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProject } from "@/hooks/useProjects";
 import { layout } from "@st-manager/theme";
 import { PROJECT_STATUS_LABELS } from "@/lib/projects/constants";
+import { deleteProjectWithServerSync } from "@/lib/projects/delete-project";
+import { isLocalProjectId } from "@/lib/projects/offline-queue";
 import { calculateProjectProgress, getPrimaryEngineer } from "@/lib/projects/progress";
 
 function formatDate(value: string): string {
@@ -22,8 +27,33 @@ function formatDate(value: string): string {
 
 export function ProjectDetailPageClient() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const { isAuthenticated } = useAuth();
   const project = useProject(params.id);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  async function handleDelete() {
+    if (!project) return;
+    const label = project.projectNumber || project.projectName;
+    if (
+      !window.confirm(
+        `Delete project "${label}"? It will be removed on all devices. Local bookings and payments are not deleted automatically.`,
+      )
+    ) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deleteProjectWithServerSync(project);
+      toast.success("Project deleted");
+      router.push("/projects");
+    } catch {
+      toast.error("Failed to delete project");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
 
   if (!isAuthenticated) {
     return <p className="text-sm text-muted-foreground">Sign in to view projects.</p>;
@@ -104,6 +134,17 @@ export function ProjectDetailPageClient() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="flex justify-end">
+        <Button
+          variant="destructive"
+          disabled={isDeleting || isLocalProjectId(project.id)}
+          onClick={() => void handleDelete()}
+        >
+          <Trash2Icon className="size-4" />
+          {isDeleting ? "Deleting..." : "Delete project"}
+        </Button>
       </div>
 
       <ProjectOverviewSections project={project} />
