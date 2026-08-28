@@ -23,8 +23,17 @@ export type { ClientsApi } from "./clients/clients.api";
 export { createProjectsApi } from "./projects/projects.api";
 export type { ProjectsApi } from "./projects/projects.api";
 
+export { createInquiriesApi } from "./inquiries/inquiries.api";
+export type { InquiriesApi } from "./inquiries/inquiries.api";
+
 export { createProjectBookingsApi } from "./project-bookings/project-bookings.api";
 export type { ProjectBookingsApi } from "./project-bookings/project-bookings.api";
+
+export { createPaymentsApi } from "./payments/payments.api";
+export type { PaymentsApi } from "./payments/payments.api";
+
+export { createStudioDocumentsApi } from "./studio-documents/studio-documents.api";
+export type { StudioDocumentsApi } from "./studio-documents/studio-documents.api";
 
 export { createBookingsApi } from "./bookings/bookings.api";
 export type { BookingsApi } from "./bookings/bookings.api";
@@ -52,3 +61,15 @@ export type { StudioProfileApi } from "./profile/studio-profile.api";
 
 export { createClientPortalApi } from "./client-portal/client-portal.api";
 export type { ClientPortalApi } from "./client-portal/client-portal.api";
+
+export { createStudioServicesApi } from "./studio-services/studio-services.api";
+export type { StudioServicesApi } from "./studio-services/studio-services.api";
+
+export { createStudioRoomsApi } from "./studio-rooms/studio-rooms.api";
+export type { StudioRoomsApi } from "./studio-rooms/studio-rooms.api";
+
+export { createBookingSlotDefinitionsApi } from "./booking-slot-definitions/booking-slot-definitions.api";
+export type { BookingSlotDefinitionsApi } from "./booking-slot-definitions/booking-slot-definitions.api";
+
+export { createStudioSettingsApi } from "./studio-settings/studio-settings.api";
+export type { StudioSettingsApi } from "./studio-settings/studio-settings.api";

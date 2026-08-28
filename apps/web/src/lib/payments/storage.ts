@@ -1,9 +1,17 @@
 import type { QuotationBreakdown } from "@/lib/inquiry/types";
-import { generateId } from "@/lib/inquiry/services";
 import { evaluateProjectCompletion, getProject, updateProject } from "@/lib/projects/storage";
 import type { StudioProject } from "@/lib/projects/types";
+import { isBrowserOnline } from "@/lib/sync";
 
 import { notifyPaymentsUpdated } from "./events";
+import {
+  createPaymentOfflineAware,
+  flushPendingPaymentCreates,
+  getPaymentsStoreSnapshot,
+  hydratePaymentsSnapshotFromCache,
+  isLocalPaymentId,
+  upsertPaymentInSnapshot,
+} from "./store";
 import { getPaymentsSnapshot, setPaymentsSnapshot } from "./snapshots";
 import type { PaymentMethod, PaymentRecord, PaymentSource } from "./types";
 import { PAYMENTS_STORAGE_KEY } from "./types";
@@ -23,40 +31,15 @@ function normalizePayment(raw: Partial<PaymentRecord> & { id: string }): Payment
   };
 }
 
-function readPaymentsFromStorage(): PaymentRecord[] {
-  if (typeof window === "undefined") {
-    return [];
+function ensurePaymentsHydrated(): PaymentRecord[] {
+  if (getPaymentsStoreSnapshot().length === 0) {
+    hydratePaymentsSnapshotFromCache();
   }
-
-  try {
-    const raw = localStorage.getItem(PAYMENTS_STORAGE_KEY);
-    if (!raw) {
-      return [];
-    }
-
-    const parsed = JSON.parse(raw) as Partial<PaymentRecord>[];
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed.map((entry) => normalizePayment(entry as PaymentRecord));
-  } catch {
-    return [];
-  }
-}
-
-function persistPayments(payments: PaymentRecord[]): PaymentRecord[] {
-  const sorted = [...payments].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-  );
-  localStorage.setItem(PAYMENTS_STORAGE_KEY, JSON.stringify(sorted));
-  setPaymentsSnapshot(sorted);
-  notifyPaymentsUpdated();
-  return sorted;
+  return getPaymentsStoreSnapshot();
 }
 
 export function loadAllPayments(): PaymentRecord[] {
-  return readPaymentsFromStorage();
+  return ensurePaymentsHydrated();
 }
 
 export function listPayments(): PaymentRecord[] {
@@ -91,9 +74,14 @@ function syncProjectBalance(projectId: string, grandTotalOverride?: number): Stu
     remainingBalance: Math.max(0, grandTotal - received),
   });
 
-  // Full payment can complete a project on its own (tasks may already be done) — re-run the
-  // completion rule engine so status + the "Payment" task stay in sync with the ledger.
   return evaluateProjectCompletion(projectId) ?? updated;
+}
+
+export function syncProjectBalanceForProject(
+  projectId: string,
+  grandTotalOverride?: number,
+): StudioProject | null {
+  return syncProjectBalance(projectId, grandTotalOverride);
 }
 
 export interface ReceivePaymentInput {
@@ -105,26 +93,29 @@ export interface ReceivePaymentInput {
   source?: PaymentSource;
 }
 
-export function addPayment(input: ReceivePaymentInput): PaymentRecord {
+export async function addPayment(input: ReceivePaymentInput): Promise<PaymentRecord> {
   const project = getProject(input.projectId);
   if (!project) {
     throw new Error("Project not found.");
   }
 
-  const record = normalizePayment({
-    id: generateId("pay"),
+  const record = await createPaymentOfflineAware({
     projectId: input.projectId,
-    amount: input.amount,
+    amount: Math.max(0, Math.round(input.amount)),
     method: input.method,
     notes: input.notes,
     receivedBy: input.receivedBy,
     source: input.source ?? "manual",
-    createdAt: new Date().toISOString(),
+    status: "received",
   });
 
-  persistPayments([record, ...loadAllPayments()]);
   syncProjectBalance(input.projectId);
-  return record;
+
+  if (isBrowserOnline()) {
+    void flushPendingPaymentCreates();
+  }
+
+  return normalizePayment(record);
 }
 
 export type ServiceLineType = "service" | "custom" | "rent";
@@ -170,8 +161,16 @@ export function updateProjectServiceLineAmount(
   return getProject(projectId) ?? null;
 }
 
-export function initializePaymentSnapshots(): void {
-  setPaymentsSnapshot(loadAllPayments());
+export function syncAllProjectBalancesFromPayments(): void {
+  const projectIds = new Set(ensurePaymentsHydrated().map((payment) => payment.projectId));
+  for (const projectId of projectIds) {
+    syncProjectBalance(projectId);
+  }
 }
 
-export { getPaymentsSnapshot };
+export function initializePaymentSnapshots(): void {
+  hydratePaymentsSnapshotFromCache();
+  setPaymentsSnapshot(getPaymentsStoreSnapshot());
+}
+
+export { getPaymentsSnapshot, PAYMENTS_STORAGE_KEY, flushPendingPaymentCreates, isLocalPaymentId, upsertPaymentInSnapshot };

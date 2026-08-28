@@ -9,14 +9,24 @@ import {
   updatePendingProjectBookingCreate,
 } from "@/lib/bookings/offline-queue";
 import { notifyDocumentsUpdated } from "@/lib/documents/events";
-import { setDocumentsSnapshot } from "@/lib/documents/snapshots";
-import { loadAllDocuments } from "@/lib/documents/storage";
-import { DOCUMENTS_STORAGE_KEY } from "@/lib/documents/types";
+import {
+  getDocumentsStoreSnapshot,
+  hydrateDocumentsSnapshotFromCache,
+  listPendingDocumentCreates,
+  updatePendingDocumentCreate,
+  upsertDocumentInSnapshot,
+} from "@/lib/documents/store";
 import { remapInquiryProjectReferences } from "@/lib/inquiry/storage";
+import {
+  getPaymentsStoreSnapshot,
+  hydratePaymentsSnapshotFromCache,
+  upsertPaymentInSnapshot,
+} from "@/lib/payments/store";
+import {
+  listPendingPaymentCreates,
+  updatePendingPaymentCreate,
+} from "@/lib/payments/offline-queue";
 import { notifyPaymentsUpdated } from "@/lib/payments/events";
-import { setPaymentsSnapshot } from "@/lib/payments/snapshots";
-import { loadAllPayments } from "@/lib/payments/storage";
-import { PAYMENTS_STORAGE_KEY } from "@/lib/payments/types";
 
 /**
  * Rewrites persistent local references when a project id changes
@@ -52,30 +62,51 @@ export function cascadeProjectIdRemap(oldProjectId: string, newProjectId: string
   }
 
   let paymentsChanged = false;
-  const nextPayments = loadAllPayments().map((payment) => {
+  hydratePaymentsSnapshotFromCache();
+  const nextPayments = getPaymentsStoreSnapshot().map((payment) => {
     if (payment.projectId !== oldProjectId) {
       return payment;
     }
     paymentsChanged = true;
-    return { ...payment, projectId: newProjectId, updatedAt: new Date().toISOString() };
+    return { ...payment, projectId: newProjectId };
   });
   if (paymentsChanged) {
-    localStorage.setItem(PAYMENTS_STORAGE_KEY, JSON.stringify(nextPayments));
-    setPaymentsSnapshot(nextPayments);
+    for (const payment of nextPayments) {
+      upsertPaymentInSnapshot(payment);
+    }
     notifyPaymentsUpdated();
   }
 
+  for (const pending of listPendingPaymentCreates()) {
+    if (pending.payload.projectId === oldProjectId) {
+      updatePendingPaymentCreate(pending.localId, {
+        payload: { ...pending.payload, projectId: newProjectId },
+      });
+    }
+  }
+
   let documentsChanged = false;
-  const nextDocuments = loadAllDocuments().map((document) => {
+  hydrateDocumentsSnapshotFromCache();
+  const nextDocuments = getDocumentsStoreSnapshot().map((document) => {
     if (document.projectId !== oldProjectId) {
       return document;
     }
     documentsChanged = true;
-    return { ...document, projectId: newProjectId, updatedAt: new Date().toISOString() };
+    return { ...document, projectId: newProjectId };
   });
   if (documentsChanged) {
-    localStorage.setItem(DOCUMENTS_STORAGE_KEY, JSON.stringify(nextDocuments));
-    setDocumentsSnapshot(nextDocuments);
+    for (const document of nextDocuments) {
+      if (document.projectId === newProjectId) {
+        upsertDocumentInSnapshot(document);
+      }
+    }
+    for (const pending of listPendingDocumentCreates()) {
+      if (pending.payload.projectId === oldProjectId) {
+        updatePendingDocumentCreate(pending.localId, {
+          payload: { ...pending.payload, projectId: newProjectId },
+        });
+      }
+    }
     notifyDocumentsUpdated();
   }
 

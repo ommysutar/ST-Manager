@@ -1,93 +1,28 @@
-import { generateId } from "@/lib/inquiry/services";
 import { getProject } from "@/lib/projects/storage";
+import { getActiveStudioId, isBrowserOnline } from "@/lib/sync";
 
-import { buildDocumentSnapshot, mergeProjectIntoSnapshot } from "./snapshot";
 import { notifyDocumentsUpdated } from "./events";
-import { getDocumentsSnapshot, setDocumentsSnapshot } from "./snapshots";
-import type { DocumentSnapshot, DocumentType, StudioDocument } from "./types";
-import { DOCUMENTS_STORAGE_KEY } from "./types";
+import { buildDocumentSnapshot, mergeProjectIntoSnapshot } from "./snapshot";
+import { getDocumentsSnapshot } from "./snapshots";
+import {
+  buildOptimisticStudioDocument,
+  createLocalDocumentId,
+  enqueuePendingDocumentCreate,
+  flushPendingDocumentCreates,
+  getDocumentsStoreSnapshot,
+  hydrateDocumentsSnapshotFromCache,
+  isLocalDocumentId,
+  listPendingDocumentCreates,
+  updatePendingDocumentCreate,
+  upsertDocumentInSnapshot,
+} from "./store";
+import type { DocumentType, StudioDocument } from "./types";
 
-function normalizeSnapshot(raw: unknown): DocumentSnapshot | undefined {
-  if (!raw || typeof raw !== "object") {
-    return undefined;
+function ensureDocumentsHydrated(): StudioDocument[] {
+  if (getDocumentsStoreSnapshot().length === 0) {
+    hydrateDocumentsSnapshotFromCache();
   }
-
-  const snapshot = raw as Partial<DocumentSnapshot>;
-  if (!snapshot.clientName || !snapshot.projectName || !snapshot.projectNumber) {
-    return undefined;
-  }
-
-  return {
-    clientId: snapshot.clientId ?? "",
-    clientDisplayNumber: snapshot.clientDisplayNumber ?? "",
-    clientName: snapshot.clientName,
-    clientMobile: snapshot.clientMobile ?? "",
-    clientEmail: snapshot.clientEmail ?? "",
-    clientAddress: snapshot.clientAddress ?? "",
-    projectId: snapshot.projectId ?? "",
-    projectNumber: snapshot.projectNumber,
-    projectName: snapshot.projectName,
-    projectCategory: snapshot.projectCategory ?? "",
-    lineItems: Array.isArray(snapshot.lineItems) ? snapshot.lineItems : [],
-    subtotal: Number(snapshot.subtotal ?? 0),
-    discountAmount: Number(snapshot.discountAmount ?? 0),
-    grandTotal: Number(snapshot.grandTotal ?? 0),
-    paymentId: snapshot.paymentId,
-    paymentAmount: snapshot.paymentAmount,
-    paymentMethod: snapshot.paymentMethod,
-    paymentDate: snapshot.paymentDate,
-    paymentNotes: snapshot.paymentNotes,
-    paymentReceivedBy: snapshot.paymentReceivedBy,
-    capturedAt: snapshot.capturedAt ?? new Date().toISOString(),
-  };
-}
-
-function normalizeDocument(raw: Partial<StudioDocument> & { id: string }): StudioDocument {
-  const type: DocumentType =
-    raw.type === "invoice" ? "invoice" : raw.type === "receipt" ? "receipt" : "quotation";
-
-  return {
-    id: raw.id,
-    type,
-    documentNumber: raw.documentNumber ?? "",
-    inquiryId: raw.inquiryId || undefined,
-    projectId: raw.projectId || undefined,
-    paymentId: raw.paymentId || undefined,
-    snapshot: normalizeSnapshot(raw.snapshot),
-    createdAt: raw.createdAt ?? new Date().toISOString(),
-  };
-}
-
-function readDocumentsFromStorage(): StudioDocument[] {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
-  try {
-    const raw = localStorage.getItem(DOCUMENTS_STORAGE_KEY);
-    if (!raw) {
-      return [];
-    }
-
-    const parsed = JSON.parse(raw) as Partial<StudioDocument>[];
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed.map((entry) => normalizeDocument(entry as StudioDocument));
-  } catch {
-    return [];
-  }
-}
-
-function persistDocuments(documents: StudioDocument[]): StudioDocument[] {
-  const sorted = [...documents].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-  );
-  localStorage.setItem(DOCUMENTS_STORAGE_KEY, JSON.stringify(sorted));
-  setDocumentsSnapshot(sorted);
-  notifyDocumentsUpdated();
-  return sorted;
+  return getDocumentsStoreSnapshot();
 }
 
 function ensureSnapshot(document: StudioDocument): StudioDocument {
@@ -106,13 +41,8 @@ function ensureSnapshot(document: StudioDocument): StudioDocument {
   }
 
   const updated = { ...document, snapshot };
-  const documents = loadAllDocuments();
-  const index = documents.findIndex((entry) => entry.id === document.id);
-  if (index !== -1) {
-    documents[index] = updated;
-    persistDocuments(documents);
-  }
-
+  upsertDocumentInSnapshot(updated);
+  notifyDocumentsUpdated();
   return updated;
 }
 
@@ -131,8 +61,75 @@ function withSnapshot(document: StudioDocument): StudioDocument {
   return { ...document, snapshot };
 }
 
+function findExistingQuotation(input: {
+  inquiryId?: string;
+  projectId?: string;
+}): StudioDocument | undefined {
+  return ensureDocumentsHydrated().find(
+    (document) =>
+      document.type === "quotation" &&
+      ((input.inquiryId && document.inquiryId === input.inquiryId) ||
+        (input.projectId && document.projectId === input.projectId)),
+  );
+}
+
+function findExistingInvoice(projectId: string): StudioDocument | undefined {
+  return ensureDocumentsHydrated().find(
+    (document) => document.type === "invoice" && document.projectId === projectId,
+  );
+}
+
+function findExistingReceipt(paymentId: string): StudioDocument | undefined {
+  return ensureDocumentsHydrated().find(
+    (document) => document.type === "receipt" && document.paymentId === paymentId,
+  );
+}
+
+function createDocumentSync(payload: {
+  type: DocumentType;
+  inquiryId?: string;
+  projectId?: string;
+  paymentId?: string;
+}): StudioDocument {
+  const studioId = getActiveStudioId();
+  if (!studioId) {
+    throw new Error("Studio context required");
+  }
+
+  const snapshot = buildDocumentSnapshot({
+    projectId: payload.projectId,
+    inquiryId: payload.inquiryId,
+    paymentId: payload.paymentId,
+  });
+
+  const createPayload = {
+    type: payload.type,
+    inquiryId: payload.inquiryId ?? null,
+    projectId: payload.projectId ?? null,
+    paymentId: payload.paymentId ?? null,
+    snapshot: snapshot ?? null,
+  };
+
+  const localId = createLocalDocumentId();
+  const optimistic = withSnapshot(buildOptimisticStudioDocument(localId, createPayload));
+  enqueuePendingDocumentCreate({
+    localId,
+    studioId,
+    payload: createPayload,
+    enqueuedAt: new Date().toISOString(),
+  });
+  upsertDocumentInSnapshot(optimistic);
+  notifyDocumentsUpdated();
+
+  if (isBrowserOnline()) {
+    void flushPendingDocumentCreates();
+  }
+
+  return ensureSnapshot(optimistic);
+}
+
 export function loadAllDocuments(): StudioDocument[] {
-  return readDocumentsFromStorage();
+  return ensureDocumentsHydrated();
 }
 
 export function listDocuments(): StudioDocument[] {
@@ -152,107 +149,45 @@ export function listDocumentsForInquiry(inquiryId: string): StudioDocument[] {
   return loadAllDocuments().filter((document) => document.inquiryId === inquiryId);
 }
 
-function parseDocumentNumber(prefix: string, value: string | undefined): number {
-  if (!value) {
-    return 0;
-  }
-  const match = value.match(new RegExp(`^${prefix}-(\\d+)$`));
-  return match ? Number.parseInt(match[1], 10) : 0;
-}
-
-function documentPrefix(type: DocumentType): string {
-  if (type === "invoice") {
-    return "INV";
-  }
-  if (type === "receipt") {
-    return "RCP";
-  }
-  return "QTN";
-}
-
-function nextDocumentNumber(type: DocumentType, documents: StudioDocument[]): string {
-  const prefix = documentPrefix(type);
-  const max = documents
-    .filter((document) => document.type === type)
-    .reduce((acc, document) => Math.max(acc, parseDocumentNumber(prefix, document.documentNumber)), 0);
-  return `${prefix}-${String(max + 1).padStart(4, "0")}`;
-}
-
 /** Idempotent — returns the existing quotation for this inquiry/project if one was already generated. */
 export function getOrCreateQuotation(input: { inquiryId?: string; projectId?: string }): StudioDocument {
-  const existing = loadAllDocuments().find(
-    (document) =>
-      document.type === "quotation" &&
-      ((input.inquiryId && document.inquiryId === input.inquiryId) ||
-        (input.projectId && document.projectId === input.projectId)),
-  );
+  const existing = findExistingQuotation(input);
   if (existing) {
     return ensureSnapshot(existing);
   }
 
-  const documents = loadAllDocuments();
-  const document = withSnapshot(
-    normalizeDocument({
-      id: generateId("doc"),
-      type: "quotation",
-      documentNumber: nextDocumentNumber("quotation", documents),
-      inquiryId: input.inquiryId,
-      projectId: input.projectId,
-      createdAt: new Date().toISOString(),
-    }),
-  );
-
-  persistDocuments([document, ...documents]);
-  return document;
+  return createDocumentSync({
+    type: "quotation",
+    inquiryId: input.inquiryId,
+    projectId: input.projectId,
+  });
 }
 
 /** Idempotent — returns the existing invoice for this project if one was already generated. */
 export function getOrCreateInvoice(projectId: string): StudioDocument {
-  const existing = loadAllDocuments().find(
-    (document) => document.type === "invoice" && document.projectId === projectId,
-  );
+  const existing = findExistingInvoice(projectId);
   if (existing) {
     return ensureSnapshot(existing);
   }
 
-  const documents = loadAllDocuments();
-  const document = withSnapshot(
-    normalizeDocument({
-      id: generateId("doc"),
-      type: "invoice",
-      documentNumber: nextDocumentNumber("invoice", documents),
-      projectId,
-      createdAt: new Date().toISOString(),
-    }),
-  );
-
-  persistDocuments([document, ...documents]);
-  return document;
+  return createDocumentSync({
+    type: "invoice",
+    projectId,
+  });
 }
 
 /** Idempotent — returns the existing receipt for this payment if one was already generated. */
 export function getOrCreateReceipt(projectId: string, paymentId: string): StudioDocument {
-  const existing = loadAllDocuments().find(
-    (document) => document.type === "receipt" && document.paymentId === paymentId,
-  );
+  const existing = findExistingReceipt(paymentId);
   if (existing) {
     return ensureSnapshot(existing);
   }
 
-  const documents = loadAllDocuments();
-  const document = withSnapshot(
-    normalizeDocument({
-      id: generateId("doc"),
-      type: "receipt",
-      documentNumber: nextDocumentNumber("receipt", documents),
-      projectId,
-      paymentId,
-      createdAt: new Date().toISOString(),
-    }),
-  );
-
-  persistDocuments([document, ...documents]);
-  return document;
+  return createDocumentSync({
+    type: "receipt",
+    projectId,
+    paymentId,
+  });
 }
 
 /** Called when an inquiry converts to a project — backfills projectId on its quotation(s). */
@@ -275,12 +210,30 @@ export function linkDocumentsToProject(inquiryId: string, projectId: string): vo
   });
 
   if (changed) {
-    persistDocuments(next);
+    for (const document of next) {
+      if (document.inquiryId === inquiryId && document.projectId === projectId) {
+        upsertDocumentInSnapshot(document);
+      }
+    }
+
+    for (const pending of listPendingDocumentCreates()) {
+      if (pending.payload.inquiryId === inquiryId && !pending.payload.projectId) {
+        updatePendingDocumentCreate(pending.localId, {
+          payload: { ...pending.payload, projectId },
+        });
+      }
+    }
+
+    notifyDocumentsUpdated();
+
+    if (isBrowserOnline()) {
+      void flushPendingDocumentCreates();
+    }
   }
 }
 
 export function initializeDocumentSnapshots(): void {
-  setDocumentsSnapshot(loadAllDocuments());
+  hydrateDocumentsSnapshotFromCache();
 }
 
-export { getDocumentsSnapshot };
+export { getDocumentsSnapshot, flushPendingDocumentCreates, isLocalDocumentId };

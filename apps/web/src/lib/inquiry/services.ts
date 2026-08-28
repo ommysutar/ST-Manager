@@ -1,9 +1,19 @@
 import { DEFAULT_STUDIO_SERVICES } from "./constants";
 import { notifyServicePricingUpdated } from "./events";
 import { getServicePrice, normalizeServicePrices } from "./service-pricing";
+import { migrateLegacyServicesToStudioCache } from "@/lib/services/backfill";
+import { studioServiceToCreateDto } from "@/lib/services/map-dto";
+import {
+  createServiceOfflineAware,
+  deleteServiceOfflineAware,
+  flushPendingServiceMutations,
+  getServicesStoreSnapshot,
+  hydrateServicesSnapshotFromCache,
+  updateServiceOfflineAware,
+} from "@/lib/services/store";
 import { setAllServicesSnapshot } from "./snapshots";
 import type { StudioService } from "./types";
-import { SERVICE_PRICING_STORAGE_KEY } from "./types";
+import { isBrowserOnline } from "@/lib/sync";
 
 export { getServicePrice, normalizeServicePrices };
 
@@ -26,31 +36,50 @@ function normalizeService(raw: Partial<StudioService> & { id: string }): StudioS
   };
 }
 
+function ensureServicesHydrated(): StudioService[] {
+  if (getServicesStoreSnapshot().length === 0) {
+    migrateLegacyServicesToStudioCache();
+    hydrateServicesSnapshotFromCache();
+  }
+  return getServicesStoreSnapshot();
+}
+
 export function loadAllStudioServices(): StudioService[] {
-  return readServicesFromStorage();
+  return ensureServicesHydrated().map((service) => normalizeService(service));
 }
 
 export function getActiveStudioServices(): StudioService[] {
   return loadAllStudioServices().filter((service) => service.active);
 }
 
+function syncSnapshotFromStore(): StudioService[] {
+  const normalized = getServicesStoreSnapshot().map((service) => normalizeService(service));
+  setAllServicesSnapshot(normalized);
+  return normalized;
+}
+
 export function persistStudioServices(services: StudioService[]): StudioService[] {
   const normalized = services.map((service) => normalizeService(service));
-  localStorage.setItem(SERVICE_PRICING_STORAGE_KEY, JSON.stringify(normalized));
   setAllServicesSnapshot(normalized);
   notifyServicePricingUpdated();
   return normalized;
 }
 
-export function createStudioService(
-  input: Omit<StudioService, "id">,
-): StudioService {
-  const service = normalizeService({
+export function createStudioService(input: Omit<StudioService, "id">): StudioService {
+  const payload = studioServiceToCreateDto(input, loadAllStudioServices().length);
+  void createServiceOfflineAware(payload).then(() => {
+    syncSnapshotFromStore();
+    if (isBrowserOnline()) {
+      void flushPendingServiceMutations();
+    }
+  });
+
+  const optimistic = normalizeService({
     id: generateId("svc"),
     ...input,
   });
-  persistStudioServices([service, ...loadAllStudioServices()]);
-  return service;
+  persistStudioServices([optimistic, ...loadAllStudioServices()]);
+  return optimistic;
 }
 
 export function updateStudioService(
@@ -66,6 +95,14 @@ export function updateStudioService(
   const updated = normalizeService({ ...services[index], ...input, id });
   services[index] = updated;
   persistStudioServices(services);
+
+  void updateServiceOfflineAware(id, input).then(() => {
+    syncSnapshotFromStore();
+    if (isBrowserOnline()) {
+      void flushPendingServiceMutations();
+    }
+  });
+
   return updated;
 }
 
@@ -77,6 +114,14 @@ export function deleteStudioService(id: string): boolean {
   }
 
   persistStudioServices(next);
+
+  void deleteServiceOfflineAware(id).then(() => {
+    syncSnapshotFromStore();
+    if (isBrowserOnline()) {
+      void flushPendingServiceMutations();
+    }
+  });
+
   return true;
 }
 
@@ -124,27 +169,7 @@ export function getMandatoryServiceIds(): string[] {
 }
 
 export function initializeServiceSnapshots(): void {
-  setAllServicesSnapshot(readServicesFromStorage());
-}
-
-function readServicesFromStorage(): StudioService[] {
-  if (typeof window === "undefined") {
-    return DEFAULT_STUDIO_SERVICES;
-  }
-
-  try {
-    const raw = localStorage.getItem(SERVICE_PRICING_STORAGE_KEY);
-    if (!raw) {
-      return DEFAULT_STUDIO_SERVICES;
-    }
-
-    const parsed = JSON.parse(raw) as Partial<StudioService>[];
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      return DEFAULT_STUDIO_SERVICES;
-    }
-
-    return parsed.map((service) => normalizeService(service as StudioService));
-  } catch {
-    return DEFAULT_STUDIO_SERVICES;
-  }
+  migrateLegacyServicesToStudioCache();
+  hydrateServicesSnapshotFromCache();
+  syncSnapshotFromStore();
 }

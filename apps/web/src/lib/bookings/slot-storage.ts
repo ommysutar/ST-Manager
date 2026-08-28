@@ -1,11 +1,22 @@
 import { generateId } from "@/lib/inquiry/services";
+import { migrateLegacySlotsToStudioCache } from "@/lib/bookings/slots/backfill";
+import { bookingSlotToCreateDto } from "@/lib/bookings/slots/map-dto";
+import {
+  createSlotOfflineAware,
+  deleteSlotOfflineAware,
+  flushPendingSlotMutations,
+  getSlotsStoreSnapshot,
+  hydrateSlotsSnapshotFromCache,
+  updateSlotOfflineAware,
+} from "@/lib/bookings/slots/store";
+import { isBrowserOnline } from "@/lib/sync";
 
 import { DEFAULT_BOOKING_SLOTS } from "./constants";
 import { notifyBookingSlotsUpdated } from "./events";
 import { getBookingSlotsSnapshot, setBookingSlotsSnapshot } from "./snapshots";
 import { slotStartMinutes } from "./slot-utils";
 import type { BookingSlot, ProjectBookingStatus } from "./types";
-import { BOOKING_SLOTS_STORAGE_KEY, BOOKINGS_STORAGE_KEY, OCCUPYING_BOOKING_STATUSES } from "./types";
+import { BOOKINGS_STORAGE_KEY, OCCUPYING_BOOKING_STATUSES } from "./types";
 
 export interface CreateSlotInput {
   label: string;
@@ -43,28 +54,6 @@ function normalizeSlot(raw: Partial<BookingSlot> & { id: string }, index: number
   };
 }
 
-function readSlotsFromStorage(): BookingSlot[] {
-  if (typeof window === "undefined") {
-    return DEFAULT_BOOKING_SLOTS;
-  }
-
-  try {
-    const raw = localStorage.getItem(BOOKING_SLOTS_STORAGE_KEY);
-    if (!raw) {
-      return DEFAULT_BOOKING_SLOTS;
-    }
-
-    const parsed = JSON.parse(raw) as Partial<BookingSlot>[];
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      return DEFAULT_BOOKING_SLOTS;
-    }
-
-    return parsed.map((slot, index) => normalizeSlot(slot as BookingSlot, index));
-  } catch {
-    return DEFAULT_BOOKING_SLOTS;
-  }
-}
-
 function sortSlots(slots: BookingSlot[]): BookingSlot[] {
   return [...slots].sort((a, b) => {
     if (a.sortOrder !== b.sortOrder) {
@@ -74,9 +63,24 @@ function sortSlots(slots: BookingSlot[]): BookingSlot[] {
   });
 }
 
+function ensureSlotsHydrated(): BookingSlot[] {
+  if (getSlotsStoreSnapshot().length === 0) {
+    migrateLegacySlotsToStudioCache();
+    hydrateSlotsSnapshotFromCache();
+  }
+  return getSlotsStoreSnapshot();
+}
+
+function syncSnapshotFromStore(): BookingSlot[] {
+  const sorted = sortSlots(
+    getSlotsStoreSnapshot().map((slot, index) => normalizeSlot(slot, index)),
+  );
+  setBookingSlotsSnapshot(sorted);
+  return sorted;
+}
+
 function persistSlots(slots: BookingSlot[]): BookingSlot[] {
   const sorted = sortSlots(slots);
-  localStorage.setItem(BOOKING_SLOTS_STORAGE_KEY, JSON.stringify(sorted));
   setBookingSlotsSnapshot(sorted);
   notifyBookingSlotsUpdated();
   return sorted;
@@ -100,7 +104,7 @@ function findOverlappingSlot(
   candidate: Pick<BookingSlot, "startHour" | "startMinute" | "endHour" | "endMinute">,
   excludeId?: string,
 ): BookingSlot | undefined {
-  return readSlotsFromStorage().find(
+  return loadAllSlots().find(
     (existing) => existing.id !== excludeId && slotsOverlap(candidate, existing),
   );
 }
@@ -141,7 +145,11 @@ function slotIsInUse(id: string): boolean {
 }
 
 export function loadAllSlots(): BookingSlot[] {
-  return sortSlots(readSlotsFromStorage());
+  const hydrated = ensureSlotsHydrated();
+  if (hydrated.length === 0) {
+    return [];
+  }
+  return sortSlots(hydrated.map((slot, index) => normalizeSlot(slot, index)));
 }
 
 export function getSlot(id: string): BookingSlot | undefined {
@@ -158,6 +166,23 @@ export function createSlot(input: CreateSlotInput): BookingSlot {
 
   const now = new Date().toISOString();
   const existing = loadAllSlots();
+  const payload = bookingSlotToCreateDto({
+    label: input.label,
+    startHour: input.startHour,
+    startMinute: input.startMinute,
+    endHour: input.endHour,
+    endMinute: input.endMinute,
+    isCustom: input.isCustom ?? true,
+    sortOrder: existing.length,
+  });
+
+  void createSlotOfflineAware(payload).then(() => {
+    syncSnapshotFromStore();
+    if (isBrowserOnline()) {
+      void flushPendingSlotMutations();
+    }
+  });
+
   const slot = normalizeSlot(
     {
       id: generateId("slot"),
@@ -217,6 +242,14 @@ export function updateSlot(id: string, patch: UpdateSlotInput): BookingSlot {
 
   slots[index] = updated;
   persistSlots(slots);
+
+  void updateSlotOfflineAware(id, { ...patch, ...next }).then(() => {
+    syncSnapshotFromStore();
+    if (isBrowserOnline()) {
+      void flushPendingSlotMutations();
+    }
+  });
+
   return updated;
 }
 
@@ -235,6 +268,14 @@ export function deleteSlot(id: string): boolean {
     sortOrder: index,
   }));
   persistSlots(next);
+
+  void deleteSlotOfflineAware(id).then(() => {
+    syncSnapshotFromStore();
+    if (isBrowserOnline()) {
+      void flushPendingSlotMutations();
+    }
+  });
+
   return true;
 }
 
@@ -256,11 +297,22 @@ export function reorderSlots(orderedIds: string[]): BookingSlot[] {
     updatedAt: new Date().toISOString(),
   }));
 
-  return persistSlots(reordered);
+  persistSlots(reordered);
+
+  for (const slot of reordered) {
+    void updateSlotOfflineAware(slot.id, { sortOrder: slot.sortOrder });
+  }
+  if (isBrowserOnline()) {
+    void flushPendingSlotMutations();
+  }
+
+  return reordered;
 }
 
 export function initializeBookingSlotSnapshots(): void {
-  setBookingSlotsSnapshot(loadAllSlots());
+  migrateLegacySlotsToStudioCache();
+  hydrateSlotsSnapshotFromCache();
+  syncSnapshotFromStore();
 }
 
-export { getBookingSlotsSnapshot };
+export { getBookingSlotsSnapshot, DEFAULT_BOOKING_SLOTS };

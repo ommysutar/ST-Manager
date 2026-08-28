@@ -14,7 +14,10 @@ import { AiModule } from "./modules/ai/ai.module";
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
 import { ClientsModule } from "./modules/clients/clients.module";
 import { ProjectsModule } from "./modules/projects/projects.module";
+import { InquiriesModule } from "./modules/inquiries/inquiries.module";
 import { ProjectBookingsModule } from "./modules/project-bookings/project-bookings.module";
+import { PaymentsModule } from "./modules/payments/payments.module";
+import { StudioDocumentsModule } from "./modules/studio-documents/studio-documents.module";
 import { BookingsModule } from "./modules/bookings/bookings.module";
 import { SessionsModule } from "./modules/sessions/sessions.module";
 import { InvoicesModule } from "./modules/invoices/invoices.module";
@@ -23,6 +26,10 @@ import { TeamModule } from "./modules/team/team.module";
 import { PlatformAdminModule } from "./modules/platform-admin/platform-admin.module";
 import { ProfileModule } from "./modules/profile/profile.module";
 import { ClientPortalModule } from "./modules/client-portal/client-portal.module";
+import { StudioServicesModule } from "./modules/studio-services/studio-services.module";
+import { StudioRoomsModule } from "./modules/studio-rooms/studio-rooms.module";
+import { BookingSlotDefinitionsModule } from "./modules/booking-slot-definitions/booking-slot-definitions.module";
+import { StudioSettingsModule } from "./modules/studio-settings/studio-settings.module";
 
 @Module({
   imports: [
@@ -39,7 +46,10 @@ import { ClientPortalModule } from "./modules/client-portal/client-portal.module
     DashboardModule,
     ClientsModule,
     ProjectsModule,
+    InquiriesModule,
     ProjectBookingsModule,
+    PaymentsModule,
+    StudioDocumentsModule,
     BookingsModule,
     SessionsModule,
     InvoicesModule,
@@ -48,6 +58,10 @@ import { ClientPortalModule } from "./modules/client-portal/client-portal.module
     PlatformAdminModule,
     ProfileModule,
     ClientPortalModule,
+    StudioServicesModule,
+    StudioRoomsModule,
+    BookingSlotDefinitionsModule,
+    StudioSettingsModule,
   ],
   providers: [StManagerNestLoggerService, { provide: APP_FILTER, useClass: HttpExceptionFilter }],
 })

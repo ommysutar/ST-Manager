@@ -11,7 +11,11 @@ import { useIsClientMounted } from "@/hooks/useInquiryStorage";
 import { startClientPortalAutoSync } from "@/lib/client-portal/auto-sync";
 import { startClientApiSync } from "@/lib/clients/reconcile";
 import { startProjectBookingApiSync } from "@/lib/bookings/reconcile";
+import { startDocumentApiSync } from "@/lib/documents/reconcile";
+import { startInquiryApiSync } from "@/lib/inquiry/reconcile";
+import { startPaymentApiSync } from "@/lib/payments/reconcile";
 import { startProjectApiSync } from "@/lib/projects/reconcile";
+import { startStudioConfigApiSync } from "@/lib/studio-config/reconcile";
 
 import { Header } from "./Header";
 import { MobileNavDrawer } from "./MobileNavDrawer";
@@ -36,13 +40,21 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
     const stopPortal = startClientPortalAutoSync();
     const stopClientSync = startClientApiSync();
+    const stopInquirySync = startInquiryApiSync();
     const stopProjectSync = startProjectApiSync();
     const stopProjectBookingSync = startProjectBookingApiSync();
+    const stopPaymentSync = startPaymentApiSync();
+    const stopDocumentSync = startDocumentApiSync();
+    const stopStudioConfigSync = startStudioConfigApiSync();
     return () => {
       stopPortal();
       stopClientSync();
+      stopInquirySync();
       stopProjectSync();
       stopProjectBookingSync();
+      stopPaymentSync();
+      stopDocumentSync();
+      stopStudioConfigSync();
     };
   }, [mounted, isAuthenticated, isPlatformAdminRoute, isAuthRoute]);
 

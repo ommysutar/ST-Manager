@@ -58,6 +58,19 @@ export { syncProjectsPullQuerySchema } from "./project/sync-projects-pull-query.
 export type { SyncProjectsPullQueryInput } from "./project/sync-projects-pull-query.schema";
 
 export {
+  createInquirySchema,
+  updateInquirySchema,
+} from "./inquiry/inquiry.schema";
+export type { CreateInquiryInput, UpdateInquiryInput } from "./inquiry/inquiry.schema";
+export { serializeInquiryRequestBody } from "./inquiry/normalize-inquiry-fields";
+
+export { listInquiriesQuerySchema } from "./inquiry/list-inquiries-query.schema";
+export type { ListInquiriesQueryInput } from "./inquiry/list-inquiries-query.schema";
+
+export { syncInquiriesPullQuerySchema } from "./inquiry/sync-inquiries-pull-query.schema";
+export type { SyncInquiriesPullQueryInput } from "./inquiry/sync-inquiries-pull-query.schema";
+
+export {
   createProjectBookingSchema,
   updateProjectBookingSchema,
 } from "./project-booking/project-booking.schema";
@@ -72,6 +85,31 @@ export type { ListProjectBookingsQueryInput } from "./project-booking/list-proje
 
 export { syncProjectBookingsPullQuerySchema } from "./project-booking/sync-project-bookings-pull-query.schema";
 export type { SyncProjectBookingsPullQueryInput } from "./project-booking/sync-project-bookings-pull-query.schema";
+
+export { createPaymentSchema, updatePaymentSchema } from "./payment/payment.schema";
+export type { CreatePaymentInput, UpdatePaymentInput } from "./payment/payment.schema";
+
+export { listPaymentsQuerySchema } from "./payment/list-payments-query.schema";
+export type { ListPaymentsQueryInput } from "./payment/list-payments-query.schema";
+
+export { syncPaymentsPullQuerySchema } from "./payment/sync-payments-pull-query.schema";
+export type { SyncPaymentsPullQueryInput } from "./payment/sync-payments-pull-query.schema";
+
+export {
+  createStudioDocumentSchema,
+  updateStudioDocumentSchema,
+} from "./studio-document/studio-document.schema";
+export type {
+  CreateStudioDocumentInput,
+  UpdateStudioDocumentInput,
+} from "./studio-document/studio-document.schema";
+export { serializeStudioDocumentRequestBody } from "./studio-document/normalize-studio-document-fields";
+
+export { listStudioDocumentsQuerySchema } from "./studio-document/list-studio-documents-query.schema";
+export type { ListStudioDocumentsQueryInput } from "./studio-document/list-studio-documents-query.schema";
+
+export { syncStudioDocumentsPullQuerySchema } from "./studio-document/sync-studio-documents-pull-query.schema";
+export type { SyncStudioDocumentsPullQueryInput } from "./studio-document/sync-studio-documents-pull-query.schema";
 
 export {
   createBookingSchema,
@@ -161,3 +199,50 @@ export type {
   ClientPortalCreateOrSyncInput,
   ClientPortalEmailInput,
 } from "./client-portal/client-portal.schema";
+
+export {
+  createStudioServiceSchema,
+  updateStudioServiceSchema,
+} from "./studio-service/studio-service.schema";
+export type {
+  CreateStudioServiceInput,
+  UpdateStudioServiceInput,
+} from "./studio-service/studio-service.schema";
+export { serializeStudioServiceRequestBody } from "./studio-service/normalize-studio-service-fields";
+
+export { listStudioServicesQuerySchema } from "./studio-service/list-studio-services-query.schema";
+export type { ListStudioServicesQueryInput } from "./studio-service/list-studio-services-query.schema";
+
+export { syncStudioServicesPullQuerySchema } from "./studio-service/sync-studio-services-pull-query.schema";
+export type { SyncStudioServicesPullQueryInput } from "./studio-service/sync-studio-services-pull-query.schema";
+
+export { createStudioRoomSchema, updateStudioRoomSchema } from "./studio-room/studio-room.schema";
+export type { CreateStudioRoomInput, UpdateStudioRoomInput } from "./studio-room/studio-room.schema";
+export { serializeStudioRoomRequestBody } from "./studio-room/normalize-studio-room-fields";
+
+export { listStudioRoomsQuerySchema } from "./studio-room/list-studio-rooms-query.schema";
+export type { ListStudioRoomsQueryInput } from "./studio-room/list-studio-rooms-query.schema";
+
+export { syncStudioRoomsPullQuerySchema } from "./studio-room/sync-studio-rooms-pull-query.schema";
+export type { SyncStudioRoomsPullQueryInput } from "./studio-room/sync-studio-rooms-pull-query.schema";
+
+export {
+  createBookingSlotDefinitionSchema,
+  updateBookingSlotDefinitionSchema,
+} from "./booking-slot-definition/booking-slot-definition.schema";
+export type {
+  CreateBookingSlotDefinitionInput,
+  UpdateBookingSlotDefinitionInput,
+} from "./booking-slot-definition/booking-slot-definition.schema";
+
+export { listBookingSlotDefinitionsQuerySchema } from "./booking-slot-definition/list-booking-slot-definitions-query.schema";
+export type { ListBookingSlotDefinitionsQueryInput } from "./booking-slot-definition/list-booking-slot-definitions-query.schema";
+
+export { syncBookingSlotDefinitionsPullQuerySchema } from "./booking-slot-definition/sync-booking-slot-definitions-pull-query.schema";
+export type { SyncBookingSlotDefinitionsPullQueryInput } from "./booking-slot-definition/sync-booking-slot-definitions-pull-query.schema";
+
+export { updateStudioSettingsSchema } from "./studio-settings/studio-settings.schema";
+export type { UpdateStudioSettingsInput } from "./studio-settings/studio-settings.schema";
+
+export { syncStudioSettingsPullQuerySchema } from "./studio-settings/sync-studio-settings-pull-query.schema";
+export type { SyncStudioSettingsPullQueryInput } from "./studio-settings/sync-studio-settings-pull-query.schema";

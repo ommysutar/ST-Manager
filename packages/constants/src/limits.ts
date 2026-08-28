@@ -15,6 +15,20 @@ export const SYNC = {
   MAX_PROJECTS_PULL_BATCH: 500,
   /** Max records returned by one project bookings sync pull. */
   MAX_PROJECT_BOOKINGS_PULL_BATCH: 500,
+  /** Max records returned by one inquiries sync pull. */
+  MAX_INQUIRIES_PULL_BATCH: 500,
+  /** Max records returned by one payments sync pull. */
+  MAX_PAYMENTS_PULL_BATCH: 500,
+  /** Max records returned by one studio documents sync pull. */
+  MAX_STUDIO_DOCUMENTS_PULL_BATCH: 500,
+  /** Max records returned by one studio services sync pull. */
+  MAX_STUDIO_SERVICES_PULL_BATCH: 500,
+  /** Max records returned by one studio rooms sync pull. */
+  MAX_STUDIO_ROOMS_PULL_BATCH: 500,
+  /** Max records returned by one booking slot definitions sync pull. */
+  MAX_BOOKING_SLOT_DEFINITIONS_PULL_BATCH: 500,
+  /** Max records returned by one studio settings sync pull. */
+  MAX_STUDIO_SETTINGS_PULL_BATCH: 500,
 } as const;
 
 /** Studio-user password reset (forgot-password flow). */

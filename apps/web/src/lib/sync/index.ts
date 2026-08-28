@@ -14,3 +14,7 @@ export {
   isRetryableClientSyncFailure as isRetryableSyncFailure,
   withTimeout,
 } from "@/lib/clients/network";
+
+export { createSyncReconcileRunner } from "./reconcile-runner";
+export { createListEntitySyncStore } from "./list-entity-store";
+export { createOfflineQueue } from "./offline-queue";

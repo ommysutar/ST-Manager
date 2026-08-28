@@ -7,9 +7,31 @@ import {
   INQUIRIES_STORAGE_KEY,
   WIZARD_DRAFT_STORAGE_KEY,
 } from "./types";
-import { generateId } from "./services";
 import { notifyInquiriesUpdated } from "./events";
-import { setInquiriesSnapshot } from "./snapshots";
+import { isBrowserOnline } from "@/lib/sync";
+
+import {
+  createInquiryOptimistic,
+  flushPendingInquiryCreates,
+  getInquiriesStoreSnapshot,
+  getInquiryFromSnapshot,
+  hydrateInquiriesSnapshotFromCache,
+  pushInquiryDeleteToApi,
+  pushInquiryUpdateToApi,
+  removeInquiryFromSnapshot,
+  upsertInquiryInSnapshot,
+} from "./store";
+import {
+  getInquiriesSnapshot,
+  setInquiriesSnapshot,
+} from "./snapshots";
+import {
+  isLocalInquiryId,
+  removePendingInquiryCreate,
+  updatePendingInquiryCreate,
+  type PendingInquiryCreatePayload,
+} from "./offline-queue";
+import { savedInquiryPatchToUpdateDto, savedInquiryToCreateDto } from "./map-dto";
 
 export interface WizardDraft {
   step: number;
@@ -38,73 +60,56 @@ export function clearWizardDraft(): void {
   localStorage.removeItem(WIZARD_DRAFT_STORAGE_KEY);
 }
 
-function loadInquiries(): SavedInquiry[] {
-  if (typeof window === "undefined") {
-    return [];
+function ensureInquiriesHydrated(): SavedInquiry[] {
+  if (getInquiriesStoreSnapshot().length === 0) {
+    hydrateInquiriesSnapshotFromCache();
   }
+  return getInquiriesStoreSnapshot();
+}
 
-  try {
-    const raw = localStorage.getItem(INQUIRIES_STORAGE_KEY);
-    const parsed = raw ? (JSON.parse(raw) as SavedInquiry[]) : [];
-    return assignMissingInquiryNumbers(parsed);
-  } catch {
-    return [];
+function buildCreatePayload(input: {
+  form: InquiryWizardFormValues;
+  quotation: QuotationBreakdown;
+  status: SavedInquiry["status"];
+  projectId?: string;
+  advanceAmount?: number;
+  remainingBalance?: number;
+}): PendingInquiryCreatePayload {
+  return {
+    status: input.status,
+    projectId: input.projectId ?? null,
+    advanceAmount: input.advanceAmount ?? null,
+    remainingBalance: input.remainingBalance ?? null,
+    form: input.form,
+    quotation: input.quotation,
+  };
+}
+
+function buildPatchPayload(
+  patch: Partial<
+    Pick<SavedInquiry, "form" | "quotation" | "status" | "projectId" | "advanceAmount" | "remainingBalance">
+  >,
+): PendingInquiryCreatePayload | null {
+  const dto = savedInquiryPatchToUpdateDto(patch);
+  if (dto.form === undefined || dto.quotation === undefined) {
+    return null;
   }
-}
-
-function parseInquiryNumber(value: string | undefined): number {
-  if (!value) {
-    return 0;
-  }
-  const match = value.match(/^INQ-(\d+)$/);
-  return match ? Number.parseInt(match[1], 10) : 0;
-}
-
-function formatInquiryNumber(sequence: number): string {
-  return `INQ-${String(sequence).padStart(4, "0")}`;
-}
-
-function nextInquiryNumber(inquiries: SavedInquiry[]): string {
-  const max = inquiries.reduce(
-    (acc, inquiry) => Math.max(acc, parseInquiryNumber(inquiry.inquiryNumber)),
-    0,
-  );
-  return formatInquiryNumber(max + 1);
-}
-
-function assignMissingInquiryNumbers(inquiries: SavedInquiry[]): SavedInquiry[] {
-  let max = inquiries.reduce(
-    (acc, inquiry) => Math.max(acc, parseInquiryNumber(inquiry.inquiryNumber)),
-    0,
-  );
-
-  return inquiries.map((inquiry) => {
-    if (inquiry.inquiryNumber) {
-      return inquiry;
-    }
-    max += 1;
-    return { ...inquiry, inquiryNumber: formatInquiryNumber(max) };
-  });
-}
-
-function persistInquiries(inquiries: SavedInquiry[]): void {
-  localStorage.setItem(INQUIRIES_STORAGE_KEY, JSON.stringify(inquiries));
-  setInquiriesSnapshot(
-    [...inquiries].sort(
-      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-    ),
-  );
-  notifyInquiriesUpdated();
+  return {
+    status: dto.status ?? "inquiry",
+    projectId: dto.projectId ?? null,
+    advanceAmount: dto.advanceAmount ?? null,
+    remainingBalance: dto.remainingBalance ?? null,
+    form: dto.form,
+    quotation: dto.quotation,
+  };
 }
 
 export function listInquiries(): SavedInquiry[] {
-  return loadInquiries().sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-  );
+  return ensureInquiriesHydrated();
 }
 
 export function getInquiry(id: string): SavedInquiry | undefined {
-  return loadInquiries().find((inquiry) => inquiry.id === id);
+  return ensureInquiriesHydrated().find((inquiry) => inquiry.id === id);
 }
 
 export function saveInquiryRecord(input: {
@@ -116,24 +121,27 @@ export function saveInquiryRecord(input: {
   remainingBalance?: number;
   id?: string;
 }): SavedInquiry {
-  const now = new Date().toISOString();
-  const existing = input.id ? loadInquiries().find((entry) => entry.id === input.id) : undefined;
+  const existing = input.id ? getInquiry(input.id) : undefined;
 
-  const inquiry: SavedInquiry = {
-    id: existing?.id ?? generateId("inq"),
-    inquiryNumber: existing?.inquiryNumber ?? nextInquiryNumber(loadInquiries()),
-    status: input.status,
-    createdAt: existing?.createdAt ?? now,
-    updatedAt: now,
-    form: input.form,
-    quotation: input.quotation,
-    projectId: input.projectId ?? existing?.projectId,
-    advanceAmount: input.advanceAmount ?? existing?.advanceAmount,
-    remainingBalance: input.remainingBalance ?? existing?.remainingBalance,
-  };
+  if (existing) {
+    return (
+      updateInquiryRecord(existing.id, {
+        form: input.form,
+        quotation: input.quotation,
+        status: input.status,
+        projectId: input.projectId ?? existing.projectId,
+        advanceAmount: input.advanceAmount ?? existing.advanceAmount,
+        remainingBalance: input.remainingBalance ?? existing.remainingBalance,
+      }) ?? existing
+    );
+  }
 
-  const others = loadInquiries().filter((entry) => entry.id !== inquiry.id);
-  persistInquiries([inquiry, ...others]);
+  ensureInquiriesHydrated();
+  const payload = buildCreatePayload(input);
+  const inquiry = createInquiryOptimistic(payload);
+  if (isBrowserOnline()) {
+    void flushPendingInquiryCreates();
+  }
   return inquiry;
 }
 
@@ -143,7 +151,7 @@ export function updateInquiryRecord(
     Pick<SavedInquiry, "form" | "quotation" | "status" | "projectId" | "advanceAmount" | "remainingBalance">
   >,
 ): SavedInquiry | null {
-  const inquiries = loadInquiries();
+  const inquiries = ensureInquiriesHydrated();
   const index = inquiries.findIndex((entry) => entry.id === id);
   if (index === -1) {
     return null;
@@ -155,30 +163,64 @@ export function updateInquiryRecord(
     updatedAt: new Date().toISOString(),
   };
 
-  inquiries[index] = updated;
-  persistInquiries(inquiries);
+  upsertInquiryInSnapshot(updated);
+  notifyInquiriesUpdated();
+
+  if (isLocalInquiryId(id)) {
+    const nextPayload = buildPatchPayload({
+      form: updated.form,
+      quotation: updated.quotation,
+      status: updated.status,
+      projectId: updated.projectId,
+      advanceAmount: updated.advanceAmount,
+      remainingBalance: updated.remainingBalance,
+    });
+    if (nextPayload) {
+      updatePendingInquiryCreate(id, { payload: nextPayload });
+    } else {
+      const existingPayload = buildCreatePayload({
+        form: updated.form,
+        quotation: updated.quotation,
+        status: updated.status,
+        projectId: updated.projectId,
+        advanceAmount: updated.advanceAmount,
+        remainingBalance: updated.remainingBalance,
+      });
+      updatePendingInquiryCreate(id, { payload: existingPayload });
+    }
+  } else {
+    void pushInquiryUpdateToApi(id, patch);
+  }
+
+  if (isBrowserOnline()) {
+    void flushPendingInquiryCreates();
+  }
+
   return updated;
 }
 
 export function deleteInquiry(id: string): boolean {
-  const inquiries = loadInquiries();
-  const next = inquiries.filter((entry) => entry.id !== id);
-  if (next.length === inquiries.length) {
+  const inquiries = ensureInquiriesHydrated();
+  if (!inquiries.some((entry) => entry.id === id)) {
     return false;
   }
 
-  persistInquiries(next);
+  removeInquiryFromSnapshot(id);
+  notifyInquiriesUpdated();
+  void pushInquiryDeleteToApi(id);
+
+  if (isLocalInquiryId(id)) {
+    removePendingInquiryCreate(id);
+  }
+
   return true;
 }
 
 export function linkInquiryToProject(inquiryId: string, projectId: string): void {
-  persistInquiries(
-    loadInquiries().map((inquiry) =>
-      inquiry.id === inquiryId
-        ? { ...inquiry, projectId, status: "project" as const, updatedAt: new Date().toISOString() }
-        : inquiry,
-    ),
-  );
+  updateInquiryRecord(inquiryId, {
+    projectId,
+    status: "project",
+  });
 }
 
 /** Rewrites inquiry.projectId when a project id is remapped during sync/backfill. */
@@ -186,18 +228,28 @@ export function remapInquiryProjectReferences(oldProjectId: string, newProjectId
   if (oldProjectId === newProjectId) {
     return;
   }
-  persistInquiries(
-    loadInquiries().map((inquiry) =>
-      inquiry.projectId === oldProjectId
-        ? { ...inquiry, projectId: newProjectId, updatedAt: new Date().toISOString() }
-        : inquiry,
-    ),
-  );
+
+  for (const inquiry of ensureInquiriesHydrated()) {
+    if (inquiry.projectId !== oldProjectId) {
+      continue;
+    }
+    updateInquiryRecord(inquiry.id, { projectId: newProjectId });
+  }
 }
 
 export function initializeInquirySnapshots(): void {
-  setInquiriesSnapshot(listInquiries());
+  hydrateInquiriesSnapshotFromCache();
+  setInquiriesSnapshot(getInquiriesStoreSnapshot());
 }
+
+export {
+  getInquiryFromSnapshot,
+  getInquiriesSnapshot,
+  INQUIRIES_STORAGE_KEY,
+  flushPendingInquiryCreates,
+  isLocalInquiryId,
+  savedInquiryToCreateDto,
+};
 
 // Project CRUD moved to @/lib/projects — re-export for backward compatibility.
 export {
