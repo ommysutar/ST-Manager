@@ -31,8 +31,6 @@ export function ClientsPageClient() {
   const [deleteTarget, setDeleteTarget] = useState<ClientResponseDto | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const canFetch = isAuthenticated && isOnline;
-
   const visibleClients = useMemo(
     () => (search.trim() ? filterClientsBySearch(clients, search, clients.length || 100) : clients),
     [clients, search],
@@ -90,7 +88,7 @@ export function ClientsPageClient() {
             Manage client contacts for bookings, sessions, and billing.
           </p>
         </div>
-        {canFetch ? (
+        {isAuthenticated ? (
           <Button asChild>
             <Link href="/clients/new">Add Client</Link>
           </Button>
@@ -103,16 +101,13 @@ export function ClientsPageClient() {
             <p className="text-sm text-muted-foreground">Sign in to view and manage clients.</p>
           </CardContent>
         </Card>
-      ) : !isOnline ? (
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">
-              Clients require an internet connection to load from the API.
-            </p>
-          </CardContent>
-        </Card>
       ) : (
         <>
+          {!isOnline ? (
+            <p className="text-sm text-muted-foreground">
+              Offline — showing saved clients. New clients will sync when you reconnect.
+            </p>
+          ) : null}
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}

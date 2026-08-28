@@ -21,9 +21,15 @@ import {
 } from "@/lib/clients/delete-client";
 import { propagateClientDetailsToLocalRecords } from "@/lib/clients/sync";
 import { toClientUpdatePayload } from "@/lib/clients/normalize-client-payload";
+import { CLIENTS_UPDATED_EVENT, notifyClientsUpdated } from "@/lib/clients/events";
+import { isLocalClientId } from "@/lib/clients/offline-queue";
 import { isTestOrDemoClient } from "@/lib/clients/smoke-clients";
-import { notifyClientsUpdated } from "@/lib/clients/events";
-import { upsertClientInSnapshot } from "@/lib/clients/store";
+import {
+  getClientFromSnapshot,
+  getClientsSnapshot,
+  hydrateClientsSnapshotFromCache,
+  upsertClientInSnapshot,
+} from "@/lib/clients/store";
 import { formatINR } from "@/lib/currency";
 import { PAYMENT_STATUS_LABELS, getPaymentStatus } from "@/lib/payments/status";
 
@@ -60,6 +66,38 @@ export function ClientEditPageClient({ clientId }: { clientId: string }) {
     }
 
     let cancelled = false;
+    hydrateClientsSnapshotFromCache();
+    const cached = getClientFromSnapshot(clientId);
+    if (cached && !isTestOrDemoClient(cached)) {
+      setClient(cached);
+      setError(null);
+    }
+
+    if (isLocalClientId(clientId)) {
+      const onUpdate = () => {
+        if (cancelled) return;
+        const fromSnapshot = getClientFromSnapshot(clientId);
+        if (fromSnapshot) {
+          setClient(fromSnapshot);
+          return;
+        }
+        const remapped = getClientsSnapshot().find(
+          (entry) =>
+            !isLocalClientId(entry.id) &&
+            cached &&
+            ((cached.phone && entry.phone === cached.phone) ||
+              (cached.email && entry.email === cached.email)),
+        );
+        if (remapped) {
+          router.replace(`/clients/${remapped.id}`);
+        }
+      };
+      window.addEventListener(CLIENTS_UPDATED_EVENT, onUpdate);
+      return () => {
+        cancelled = true;
+        window.removeEventListener(CLIENTS_UPDATED_EVENT, onUpdate);
+      };
+    }
 
     clientsApi
       .getClient(clientId)
@@ -79,7 +117,7 @@ export function ClientEditPageClient({ clientId }: { clientId: string }) {
         }
       })
       .catch((err) => {
-        if (!cancelled) {
+        if (!cancelled && !getClientFromSnapshot(clientId)) {
           const message = err instanceof ApiError ? err.message : "Failed to load client";
           setError(message);
         }
@@ -141,6 +179,9 @@ export function ClientEditPageClient({ clientId }: { clientId: string }) {
           Back to clients
         </Link>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight">Edit client</h1>
+        {client?.displayNumber ? (
+          <p className="mt-1 text-sm font-medium text-muted-foreground">{client.displayNumber}</p>
+        ) : null}
       </div>
 
       {!isAuthenticated ? (

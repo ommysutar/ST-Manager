@@ -12,9 +12,11 @@ import { loadAllProjects, updateProject } from "@/lib/projects/storage";
 
 import { notifyClientsUpdated } from "./events";
 import { toClientCreatePayload } from "./normalize-client-payload";
+import { isBrowserOnline, withTimeout } from "./network";
 import {
   createClientOfflineAware,
   getClientsSnapshot,
+  hydrateClientsSnapshotFromCache,
   refreshClientsSnapshot,
   upsertClientInSnapshot,
 } from "./store";
@@ -24,7 +26,13 @@ export type { ClientSyncInput } from "./types";
 
 /** Master client resolver — reuses by ID, phone, or email; otherwise creates (offline-aware). */
 export async function resolveOrCreateClient(input: ClientSyncInput): Promise<ClientResponseDto> {
-  await refreshClientsSnapshot().catch(() => undefined);
+  if (isBrowserOnline()) {
+    await withTimeout(refreshClientsSnapshot(), 8_000).catch(() => {
+      hydrateClientsSnapshotFromCache();
+    });
+  } else {
+    hydrateClientsSnapshotFromCache();
+  }
   const clients = getClientsSnapshot();
   const payload = toClientCreatePayload(input);
 

@@ -15,12 +15,17 @@ import {
   updatePendingClientCreate,
   type PendingClientCreatePayload,
 } from "./offline-queue";
+import { isBrowserOnline, isRetryableClientSyncFailure, withTimeout } from "./network";
 import { filterProductionClients, isTestOrDemoClient } from "./smoke-clients";
 import {
   getActiveStudioId,
   readStudioScopedItem,
   writeStudioScopedItem,
 } from "./studio-scope";
+
+const EPOCH_ISO = "1970-01-01T00:00:00.000Z";
+const REFRESH_TIMEOUT_MS = 8_000;
+const CREATE_TIMEOUT_MS = 8_000;
 
 const CLIENTS_CACHE_KEY = "st-manager-clients-cache";
 const CLIENTS_CURSOR_KEY = "st-manager-clients-sync-cursor";
@@ -89,6 +94,10 @@ export function getClientsSnapshot(): ClientResponseDto[] {
   return clientsSnapshot;
 }
 
+export function getClientFromSnapshot(clientId: string): ClientResponseDto | undefined {
+  return clientsSnapshot.find((client) => client.id === clientId);
+}
+
 export function setClientsSnapshot(next: ClientResponseDto[]): ClientResponseDto[] {
   clientsSnapshot = next;
   return clientsSnapshot;
@@ -122,6 +131,20 @@ function writeTombstones(
 ): void {
   if (!studioId) return;
   writeStudioScopedItem(CLIENTS_TOMBSTONES_KEY, JSON.stringify(tombstones), studioId);
+}
+
+function latestTimestamp(values: Array<string | null | undefined>): string {
+  let max = 0;
+  let iso = EPOCH_ISO;
+  for (const value of values) {
+    if (!value) continue;
+    const ms = Date.parse(value);
+    if (!Number.isNaN(ms) && ms >= max) {
+      max = ms;
+      iso = value;
+    }
+  }
+  return iso;
 }
 
 function readCachedClients(studioId: string | null = getActiveStudioId()): ClientResponseDto[] {
@@ -158,13 +181,19 @@ export function writeClientsSyncCursor(
 }
 
 export function hydrateClientsSnapshotFromCache(): ClientResponseDto[] {
-  const cached = filterProductionClients(readCachedClients());
+  const tombstones = readTombstones();
+  const cached = filterProductionClients(readCachedClients()).filter(
+    (client) => !tombstones[client.id],
+  );
   // Keep pending offline creates visible after restart.
   const pending = listPendingClientCreates().map((entry) =>
     buildOptimisticClient(entry.localId, entry.studioId, entry.payload),
   );
   const byId = new Map<string, ClientResponseDto>();
   for (const client of [...cached, ...pending]) {
+    if (tombstones[client.id] && !isLocalClientId(client.id)) {
+      continue;
+    }
     byId.set(client.id, client);
   }
   setClientsSnapshot(sortClients([...byId.values()]));
@@ -259,27 +288,114 @@ export function applyClientChangeRecords(records: ClientResponseDto[]): ClientRe
   return next;
 }
 
+/**
+ * Any server-backed snapshot row missing from the authoritative active list is
+ * treated as deleted. This applies remote deletes even when /clients/changes
+ * was skipped by a too-new cursor.
+ *
+ * @param candidateIdsToTombstone Only these pre-existing server ids may be
+ *   tombstoned when absent from the list. Ids created while the list request
+ *   was in flight are left alone so a slow GET cannot hide a successful POST.
+ */
+export function applyAuthoritativeActiveList(
+  remoteActive: ClientResponseDto[],
+  candidateIdsToTombstone?: ReadonlySet<string>,
+): ClientResponseDto[] {
+  const tombstones = readTombstones();
+  const remoteIds = new Set(remoteActive.map((client) => client.id));
+  const now = new Date().toISOString();
+  const byId = new Map(clientsSnapshot.map((client) => [client.id, client]));
+  const mayTombstone = (id: string) =>
+    !candidateIdsToTombstone || candidateIdsToTombstone.has(id);
+
+  for (const client of [...byId.values()]) {
+    if (isLocalClientId(client.id) || isTestOrDemoClient(client)) {
+      continue;
+    }
+    if (!remoteIds.has(client.id) && mayTombstone(client.id)) {
+      tombstones[client.id] = tombstones[client.id] ?? now;
+      byId.delete(client.id);
+    }
+  }
+
+  for (const remote of remoteActive) {
+    if (isTestOrDemoClient(remote) || remote.deletedAt) {
+      continue;
+    }
+    // Active list membership is source of truth: a live server row always
+    // clears a local absence-tombstone (prevents permanent hide after a race).
+    delete tombstones[remote.id];
+    const local = byId.get(remote.id);
+    if (!local) {
+      byId.set(remote.id, remote);
+      continue;
+    }
+    const localMs = Date.parse(local.updatedAt);
+    const remoteMs = Date.parse(remote.updatedAt);
+    if (Number.isNaN(remoteMs) || remoteMs >= localMs || Number.isNaN(localMs)) {
+      byId.set(remote.id, remote);
+    }
+  }
+
+  writeTombstones(tombstones);
+  const next = sortClients(
+    activeOnly([...byId.values()]).filter(
+      (client) => isLocalClientId(client.id) || !tombstones[client.id],
+    ),
+  );
+  setClientsSnapshot(next);
+  writeCachedClients(next);
+  rememberDisplayNumbers(next);
+  return next;
+}
+
+function serverIdsInSnapshot(): Set<string> {
+  return new Set(
+    clientsSnapshot.filter((client) => !isLocalClientId(client.id)).map((client) => client.id),
+  );
+}
+
 export async function refreshClientsSnapshot(): Promise<ClientResponseDto[]> {
   if (refreshPromise) {
     return refreshPromise;
   }
 
-  refreshPromise = loadProductionClients()
+  const knownIdsBeforeFetch = serverIdsInSnapshot();
+
+  refreshPromise = withTimeout(loadProductionClients(), REFRESH_TIMEOUT_MS)
     .then((clients) => {
       const pendingLocals = clientsSnapshot.filter((client) => isLocalClientId(client.id));
       const byId = new Map(clients.map((client) => [client.id, client]));
       for (const local of pendingLocals) {
         byId.set(local.id, local);
       }
-      const next = sortClients([...byId.values()]);
-      setClientsSnapshot(next);
-      writeCachedClients(next);
-      writeClientsSyncCursor(new Date().toISOString());
+      for (const current of clientsSnapshot) {
+        if (!isLocalClientId(current.id) && !knownIdsBeforeFetch.has(current.id) && !byId.has(current.id)) {
+          byId.set(current.id, current);
+        }
+      }
+
       const tombstones = readTombstones();
+      const now = new Date().toISOString();
+      const remoteIds = new Set(clients.map((client) => client.id));
+      for (const priorId of knownIdsBeforeFetch) {
+        if (!remoteIds.has(priorId)) {
+          tombstones[priorId] = tombstones[priorId] ?? now;
+        }
+      }
       for (const client of clients) {
         delete tombstones[client.id];
       }
       writeTombstones(tombstones);
+
+      const next = sortClients(
+        [...byId.values()].filter(
+          (client) => isLocalClientId(client.id) || !tombstones[client.id],
+        ),
+      );
+      setClientsSnapshot(next);
+      writeCachedClients(next);
+      writeClientsSyncCursor(latestTimestamp(clients.map((client) => client.updatedAt)));
       rememberDisplayNumbers(next);
       return next;
     })
@@ -301,6 +417,11 @@ export async function reconcileClientsFromApi(): Promise<ClientResponseDto[]> {
       return clientsSnapshot;
     }
 
+    if (!isBrowserOnline()) {
+      hydrateClientsSnapshotFromCache();
+      return clientsSnapshot;
+    }
+
     if (clientsSnapshot.length === 0) {
       hydrateClientsSnapshotFromCache();
     }
@@ -316,14 +437,26 @@ export async function reconcileClientsFromApi(): Promise<ClientResponseDto[]> {
     let since = cursor;
     let hasMore = true;
     while (hasMore) {
-      const page = await clientsApi.pullClientChanges({ since });
+      const page = await withTimeout(clientsApi.pullClientChanges({ since }), REFRESH_TIMEOUT_MS);
       if (page.records.length > 0) {
         applyClientChangeRecords(page.records);
       }
-      writeClientsSyncCursor(page.serverTime, studioId);
-      since = page.serverTime;
+      const parsedServer = Date.parse(page.serverTime);
+      const parsedSince = Date.parse(since);
+      const nextCursor =
+        !Number.isNaN(parsedServer) && (Number.isNaN(parsedSince) || parsedServer >= parsedSince)
+          ? page.serverTime
+          : since;
+      writeClientsSyncCursor(nextCursor, studioId);
+      since = nextCursor;
       hasMore = page.hasMore;
     }
+
+    const knownIdsBeforeList = serverIdsInSnapshot();
+    applyAuthoritativeActiveList(
+      await withTimeout(loadProductionClients(), REFRESH_TIMEOUT_MS),
+      knownIdsBeforeList,
+    );
 
     await flushPendingClientCreates();
     notifyClientsUpdated();
@@ -338,6 +471,18 @@ export async function reconcileClientsFromApi(): Promise<ClientResponseDto[]> {
 export function upsertClientInSnapshot(client: ClientResponseDto): void {
   if (isTestOrDemoClient(client) || client.deletedAt) {
     return;
+  }
+
+  const tomb = readTombstones()[client.id];
+  if (tomb && !isLocalClientId(client.id)) {
+    const tombMs = Date.parse(tomb);
+    const clientMs = Date.parse(client.updatedAt);
+    if (!Number.isNaN(tombMs) && (Number.isNaN(clientMs) || clientMs <= tombMs)) {
+      return;
+    }
+    const tombstones = readTombstones();
+    delete tombstones[client.id];
+    writeTombstones(tombstones);
   }
 
   if (client.displayNumber) {
@@ -380,12 +525,35 @@ export function remapLocalClientId(localId: string, serverClient: ClientResponse
   setClientsSnapshot(sortClients([serverClient, ...withoutLocal]));
   writeCachedClients(clientsSnapshot);
   removePendingClientCreate(localId);
+  notifyClientsUpdated();
+}
+
+function enqueueOptimisticCreate(
+  studioId: string,
+  payload: PendingClientCreatePayload,
+): ClientResponseDto {
+  const duplicate = findDuplicateInSnapshot(payload);
+  if (duplicate) {
+    return duplicate;
+  }
+
+  const localId = createLocalClientId();
+  const optimistic = buildOptimisticClient(localId, studioId, payload);
+  enqueuePendingClientCreate({
+    localId,
+    studioId,
+    payload,
+    enqueuedAt: new Date().toISOString(),
+  });
+  upsertClientInSnapshot(optimistic);
+  notifyClientsUpdated();
+  return optimistic;
 }
 
 /**
  * Offline-safe create: appear immediately with a local id, enqueue for API flush.
- * Online path creates via API exactly once — never falls through to a second create
- * after a failed online request (that previously caused duplicate server records).
+ * Online success still creates via API exactly once. Retryable network failures
+ * stay queued instead of hanging the UI or dropping the record.
  */
 export async function createClientOfflineAware(
   payload: PendingClientCreatePayload,
@@ -400,20 +568,8 @@ export async function createClientOfflineAware(
     return existing;
   }
 
-  const online = typeof navigator === "undefined" ? true : navigator.onLine;
-
-  if (!online) {
-    const localId = createLocalClientId();
-    const optimistic = buildOptimisticClient(localId, studioId, payload);
-    enqueuePendingClientCreate({
-      localId,
-      studioId,
-      payload,
-      enqueuedAt: new Date().toISOString(),
-    });
-    upsertClientInSnapshot(optimistic);
-    notifyClientsUpdated();
-    return optimistic;
+  if (!isBrowserOnline()) {
+    return enqueueOptimisticCreate(studioId, payload);
   }
 
   const fingerprint = createPayloadFingerprint(payload);
@@ -422,16 +578,37 @@ export async function createClientOfflineAware(
     return inflight;
   }
 
+  const request = clientsApi.createClient(payload);
+  void request.catch(() => undefined);
+  inFlightCreates.set(fingerprint, request);
+
   const createPromise = (async () => {
-    const created = await clientsApi.createClient(payload);
-    upsertClientInSnapshot(created);
-    notifyClientsUpdated();
-    return created;
-  })().finally(() => {
+    try {
+      const created = await withTimeout(request, CREATE_TIMEOUT_MS);
+      upsertClientInSnapshot(created);
+      notifyClientsUpdated();
+      return created;
+    } catch (error) {
+      if (!isRetryableClientSyncFailure(error)) {
+        throw error;
+      }
+      const optimistic = enqueueOptimisticCreate(studioId, payload);
+      void request
+        .then((created) => {
+          updatePendingClientCreate(optimistic.id, { serverId: created.id }, studioId);
+          remapLocalClientId(optimistic.id, created);
+        })
+        .catch(() => {
+          // Leave queued for flush if the original POST never landed.
+        });
+      return optimistic;
+    }
+  })();
+
+  void request.finally(() => {
     inFlightCreates.delete(fingerprint);
   });
 
-  inFlightCreates.set(fingerprint, createPromise);
   return createPromise;
 }
 
@@ -454,6 +631,19 @@ export async function flushPendingClientCreates(): Promise<void> {
     const pending = listPendingClientCreates(studioId);
     for (const entry of pending) {
       try {
+        const fingerprint = createPayloadFingerprint(entry.payload);
+        const inflight = inFlightCreates.get(fingerprint);
+        if (inflight) {
+          try {
+            const created = await inflight;
+            updatePendingClientCreate(entry.localId, { serverId: created.id }, studioId);
+            remapLocalClientId(entry.localId, created);
+          } catch {
+            // Original POST still failing — keep queued.
+          }
+          continue;
+        }
+
         if (entry.serverId) {
           const existing = clientsSnapshot.find((client) => client.id === entry.serverId);
           if (existing) {
@@ -476,7 +666,7 @@ export async function flushPendingClientCreates(): Promise<void> {
           continue;
         }
 
-        const created = await clientsApi.createClient(entry.payload);
+        const created = await withTimeout(clientsApi.createClient(entry.payload), CREATE_TIMEOUT_MS);
         // Persist serverId BEFORE remap so a crash mid-remap still retries idempotently.
         updatePendingClientCreate(entry.localId, { serverId: created.id }, studioId);
         remapLocalClientId(entry.localId, created);
