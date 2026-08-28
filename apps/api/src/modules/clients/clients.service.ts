@@ -64,7 +64,16 @@ export class ClientsService {
     query: SyncClientsPullQueryInput,
   ): Promise<{ data: Client[]; serverTime: string; hasMore: boolean }> {
     const studioId = await this.requireStudioId(actor);
-    const since = query.since ? new Date(query.since) : undefined;
+    const serverNow = new Date();
+    let since = query.since ? new Date(query.since) : undefined;
+    if (since && Number.isNaN(since.getTime())) {
+      since = undefined;
+    }
+    // A client-stamped cursor ahead of the API/DB clock would skip deletes forever.
+    if (since && since.getTime() > serverNow.getTime()) {
+      since = undefined;
+    }
+
     const take = SYNC.MAX_CLIENTS_PULL_BATCH;
     const rows = await this.clientsRepository.findChangesSince({
       studioId,
@@ -73,10 +82,16 @@ export class ClientsService {
     });
     const hasMore = rows.length > take;
     const page = hasMore ? rows.slice(0, take) : rows;
+    const lastUpdatedAt = page.at(-1)?.updatedAt;
+    const serverTime = lastUpdatedAt
+      ? lastUpdatedAt.toISOString()
+      : since && since.getTime() <= serverNow.getTime()
+        ? since.toISOString()
+        : serverNow.toISOString();
 
     return {
       data: page,
-      serverTime: new Date().toISOString(),
+      serverTime,
       hasMore,
     };
   }

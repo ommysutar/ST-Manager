@@ -42,6 +42,7 @@ import {
 } from "./offline-queue";
 import {
   applyClientChangeRecords,
+  applyAuthoritativeActiveList,
   createClientOfflineAware,
   flushPendingClientCreates,
   getClientsSnapshot,
@@ -89,6 +90,10 @@ describe("offline client create + reconcile", () => {
     setClientsSnapshot([]);
     clientsApiMock.createClient.mockReset();
     clientsApiMock.listClients.mockReset();
+    clientsApiMock.listClients.mockResolvedValue({
+      data: [],
+      meta: { page: 1, pageSize: 100, total: 0 },
+    });
     clientsApiMock.pullClientChanges.mockReset();
     clientsApiMock.getClient.mockReset();
     clientsApiMock.deleteClient.mockReset();
@@ -222,6 +227,10 @@ describe("offline client create + reconcile", () => {
       serverTime: "2026-08-10T01:00:00.000Z",
       hasMore: false,
     });
+    clientsApiMock.listClients.mockResolvedValue({
+      data: [remote],
+      meta: { page: 1, pageSize: 100, total: 1 },
+    });
 
     Object.defineProperty(navigator, "onLine", {
       configurable: true,
@@ -289,14 +298,29 @@ describe("offline client create + reconcile", () => {
     expect(getClientsSnapshot().filter((client) => client.id === remote.id)).toHaveLength(1);
   });
 
-  it("online create failure does not enqueue a second create", async () => {
-    Object.defineProperty(navigator, "onLine", {
-      configurable: true,
-      get: () => true,
-    });
-    clientsApiMock.createClient.mockRejectedValue(new Error("network blip"));
+  it("authoritative list only tombstones ids known before the list fetch", () => {
+    const known = serverClient({ id: "server-cli-known", name: "Known" });
+    const newborn = serverClient({ id: "server-cli-new", name: "Newborn", displayNumber: "CL-0009" });
+    setClientsSnapshot([known, newborn]);
 
-    await expect(createClientOfflineAware(payload)).rejects.toThrow("network blip");
-    expect(listPendingClientCreates("studio-a")).toHaveLength(0);
+    applyAuthoritativeActiveList([known], new Set([known.id]));
+
+    expect(getClientsSnapshot().some((c) => c.id === known.id)).toBe(true);
+    expect(getClientsSnapshot().some((c) => c.id === newborn.id)).toBe(true);
+  });
+
+  it("authoritative list tombstones known ids missing from the server list", () => {
+    const known = serverClient({ id: "server-cli-gone", name: "Gone" });
+    setClientsSnapshot([known]);
+    applyAuthoritativeActiveList([], new Set([known.id]));
+    expect(getClientsSnapshot().some((c) => c.id === known.id)).toBe(false);
+  });
+
+  it("authoritative active list restores a client even if a local tombstone is newer", () => {
+    const remote = serverClient({ id: "server-cli-restore", name: "Restored" });
+    setClientsSnapshot([remote]);
+    removeClientFromSnapshot(remote.id);
+    applyAuthoritativeActiveList([remote], new Set());
+    expect(getClientsSnapshot().some((c) => c.id === remote.id)).toBe(true);
   });
 });

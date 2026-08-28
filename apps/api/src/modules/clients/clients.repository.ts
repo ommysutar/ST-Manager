@@ -138,9 +138,7 @@ export class ClientsRepository {
     return client.client.findMany({
       where: {
         studioId: params.studioId,
-        ...(params.since
-          ? { updatedAt: { gt: params.since } }
-          : { ...ACTIVE_CLIENT_FILTER }),
+        ...(params.since ? { updatedAt: { gt: params.since } } : {}),
       },
       orderBy: { updatedAt: "asc" },
       take,
@@ -227,7 +225,7 @@ export class ClientsRepository {
     }
     return client.client.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data: { deletedAt: new Date(), updatedAt: new Date() },
     });
   }
 }

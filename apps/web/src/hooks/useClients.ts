@@ -6,7 +6,9 @@ import { useSyncExternalStore } from "react";
 import { EMPTY_CLIENTS } from "@/hooks/empty-server-snapshots";
 import { CLIENTS_UPDATED_EVENT } from "@/lib/clients/events";
 import { requestClientApiReconcile } from "@/lib/clients/reconcile";
+import { isTestOrDemoClient } from "@/lib/clients/smoke-clients";
 import {
+  getClientFromSnapshot,
   getClientsSnapshot,
   hydrateClientsSnapshotFromCache,
 } from "@/lib/clients/store";
@@ -52,6 +54,36 @@ function readClientsSnapshot(): ClientResponseDto[] {
 
 export function useClients(): ClientResponseDto[] {
   return useSyncExternalStore(subscribeToClients, readClientsSnapshot, getServerClientsSnapshot);
+}
+
+function subscribeToClient(clientId: string, onStoreChange: () => void): () => void {
+  ensureClientsSnapshotLoaded();
+  onStoreChange();
+
+  const handler = () => {
+    onStoreChange();
+  };
+
+  window.addEventListener(CLIENTS_UPDATED_EVENT, handler);
+  return () => window.removeEventListener(CLIENTS_UPDATED_EVENT, handler);
+}
+
+function readClientFromSnapshot(clientId: string): ClientResponseDto | null {
+  ensureClientsSnapshotLoaded();
+  const cached = getClientFromSnapshot(clientId);
+  if (cached && !isTestOrDemoClient(cached)) {
+    return cached;
+  }
+  return null;
+}
+
+/** Subscribe to one client from the in-memory snapshot (cache + offline queue). */
+export function useClient(clientId: string): ClientResponseDto | null {
+  return useSyncExternalStore(
+    (onStoreChange) => subscribeToClient(clientId, onStoreChange),
+    () => readClientFromSnapshot(clientId),
+    () => null,
+  );
 }
 
 export async function refreshClients(): Promise<ClientResponseDto[]> {

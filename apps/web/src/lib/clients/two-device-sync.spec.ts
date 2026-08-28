@@ -305,4 +305,166 @@ describe("two-device client sync (independent storage namespaces)", () => {
 
     expect(onB.some((c) => c.name === "Studio A Only")).toBe(false);
   });
+
+  it("A/B/C: A delete → B tombstone via changes + presence; reload and repeated reconcile do not resurrect", async () => {
+    const createdOnA = await asDevice("A", async () => {
+      const created = await store.createClientOfflineAware({
+        name: "Tombstone Twin",
+        phone: "+19995550999",
+        whatsappNumber: "+19995550999",
+        whatsappSameAsPhone: true,
+        email: "tomb@qa.test",
+        company: "",
+        notes: "",
+      });
+      return created;
+    });
+
+    await asDevice("B", async () => {
+      store.writeClientsSyncCursor("2026-01-01T00:00:00.000Z");
+      const next = await store.reconcileClientsFromApi();
+      expect(next.some((c) => c.id === createdOnA.id)).toBe(true);
+    });
+
+    await asDevice("A", async () => {
+      await clientsApiMock.deleteClient(createdOnA.id);
+      store.removeClientFromSnapshot(createdOnA.id);
+    });
+
+    const onBAfterDelete = await asDevice("B", async () => {
+      // Future cursor would skip /changes; presence list must still drop the row.
+      store.writeClientsSyncCursor(new Date(Date.now() + 60_000).toISOString());
+      return store.reconcileClientsFromApi();
+    });
+    expect(onBAfterDelete.some((c) => c.id === createdOnA.id)).toBe(false);
+
+    const afterReload = await asDevice("B", async () => {
+      store.setClientsSnapshot([]);
+      return store.hydrateClientsSnapshotFromCache();
+    });
+    expect(afterReload.some((c) => c.id === createdOnA.id)).toBe(false);
+
+    for (let i = 0; i < 3; i += 1) {
+      const again = await asDevice("B", async () => store.reconcileClientsFromApi());
+      expect(again.some((c) => c.id === createdOnA.id)).toBe(false);
+    }
+    expect(serverState.clients.filter((c) => !c.deletedAt)).toHaveLength(0);
+  });
+
+  it("D/E/F/G: offline create → reconnect exactly once, remap temp id, keep server displayNumber, retry is idempotent", async () => {
+    Object.defineProperty(navigator, "onLine", {
+      configurable: true,
+      get: () => false,
+    });
+
+    const local = await asDevice("A", async () =>
+      store.createClientOfflineAware({
+        name: "Offline Twin",
+        phone: "+19995550888",
+        whatsappNumber: "",
+        whatsappSameAsPhone: false,
+        email: "off@qa.test",
+        company: "",
+        notes: "",
+      }),
+    );
+    expect(local.id.startsWith("local_cli_")).toBe(true);
+    expect(local.displayNumber).toBe("");
+    expect(clientsApiMock.createClient).not.toHaveBeenCalled();
+
+    Object.defineProperty(navigator, "onLine", {
+      configurable: true,
+      get: () => true,
+    });
+
+    const afterFlush = await asDevice("A", async () => {
+      await store.flushPendingClientCreates();
+      await store.flushPendingClientCreates();
+      return store.getClientsSnapshot();
+    });
+
+    expect(clientsApiMock.createClient).toHaveBeenCalledTimes(1);
+    expect(afterFlush.some((c) => c.id === local.id)).toBe(false);
+    expect(afterFlush).toHaveLength(1);
+    expect(afterFlush[0]?.displayNumber).toBe("CL-0001");
+    expect(afterFlush[0]?.id.startsWith("srv_")).toBe(true);
+    expect(serverState.clients.filter((c) => !c.deletedAt)).toHaveLength(1);
+  });
+
+  it("H: two isolated storage namespaces never leak cache rows", async () => {
+    await asDevice("A", async () => {
+      await store.createClientOfflineAware({
+        name: "Only On A",
+        phone: "+12222222222",
+        whatsappNumber: "",
+        whatsappSameAsPhone: false,
+        email: "only-a@test",
+        company: "",
+        notes: "",
+      });
+    });
+
+    const onB = await asDevice("B", async () => {
+      store.setClientsSnapshot([]);
+      return store.hydrateClientsSnapshotFromCache();
+    });
+    expect(onB.some((c) => c.name === "Only On A")).toBe(false);
+  });
+
+  it("I: LWW still prefers the newer updatedAt across devices", async () => {
+    const created = await asDevice("A", async () =>
+      store.createClientOfflineAware({
+        name: "LWW Twin",
+        phone: "+13333333333",
+        whatsappNumber: "",
+        whatsappSameAsPhone: false,
+        email: "lww@test",
+        company: "Old",
+        notes: "",
+      }),
+    );
+
+    await asDevice("B", async () => {
+      store.writeClientsSyncCursor("2026-01-01T00:00:00.000Z");
+      await store.reconcileClientsFromApi();
+      const newer = await clientsApiMock.updateClient(created.id, { company: "From B" });
+      store.upsertClientInSnapshot(newer);
+    });
+
+    const onA = await asDevice("A", async () => {
+      store.writeClientsSyncCursor("2026-01-01T00:00:00.000Z");
+      return store.reconcileClientsFromApi();
+    });
+    expect(onA.find((c) => c.id === created.id)?.company).toBe("From B");
+  });
+
+  it("J: studio isolation still holds after reconcile", async () => {
+    await asDevice("A", async () => {
+      authState.studioId = "studio-a";
+      await store.createClientOfflineAware({
+        name: "Studio A Client",
+        phone: "+14444444444",
+        whatsappNumber: "",
+        whatsappSameAsPhone: false,
+        email: "sa@test",
+        company: "",
+        notes: "",
+      });
+    });
+
+    authState.studioId = "studio-b";
+    const onB = await asDevice("B", async () => {
+      clientsApiMock.listClients.mockResolvedValueOnce({
+        data: [],
+        meta: { page: 1, pageSize: 100, total: 0 },
+      });
+      clientsApiMock.pullClientChanges.mockResolvedValueOnce({
+        records: [],
+        serverTime: "2026-01-01T00:00:00.000Z",
+        hasMore: false,
+      });
+      return store.reconcileClientsFromApi();
+    });
+    expect(onB.some((c) => c.name === "Studio A Client")).toBe(false);
+  });
 });

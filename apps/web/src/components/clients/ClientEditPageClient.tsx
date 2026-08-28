@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { ClientDeleteDialog } from "@/components/clients/ClientDeleteDialog";
 import { ClientForm, type ClientFormValues } from "@/components/clients/ClientForm";
 import { useAuth } from "@/hooks/useAuth";
+import { useClient } from "@/hooks/useClients";
 import { useClientPaymentsSummary } from "@/hooks/useClientPaymentsSummary";
 import { clientsApi } from "@/lib/api-client";
 import {
@@ -21,9 +22,14 @@ import {
 } from "@/lib/clients/delete-client";
 import { propagateClientDetailsToLocalRecords } from "@/lib/clients/sync";
 import { toClientUpdatePayload } from "@/lib/clients/normalize-client-payload";
+import { CLIENTS_UPDATED_EVENT, notifyClientsUpdated } from "@/lib/clients/events";
+import { isLocalClientId } from "@/lib/clients/offline-queue";
 import { isTestOrDemoClient } from "@/lib/clients/smoke-clients";
-import { notifyClientsUpdated } from "@/lib/clients/events";
-import { upsertClientInSnapshot } from "@/lib/clients/store";
+import {
+  getClientFromSnapshot,
+  getClientsSnapshot,
+  upsertClientInSnapshot,
+} from "@/lib/clients/store";
 import { formatINR } from "@/lib/currency";
 import { PAYMENT_STATUS_LABELS, getPaymentStatus } from "@/lib/payments/status";
 
@@ -46,7 +52,7 @@ function toPayload(values: ClientFormValues) {
 export function ClientEditPageClient({ clientId }: { clientId: string }) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
-  const [client, setClient] = useState<ClientResponseDto | null>(null);
+  const client = useClient(clientId);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -61,6 +67,31 @@ export function ClientEditPageClient({ clientId }: { clientId: string }) {
 
     let cancelled = false;
 
+    if (isLocalClientId(clientId)) {
+      const initialCached = getClientFromSnapshot(clientId);
+      const onUpdate = () => {
+        if (cancelled) return;
+        if (getClientFromSnapshot(clientId)) {
+          return;
+        }
+        const remapped = getClientsSnapshot().find(
+          (entry) =>
+            !isLocalClientId(entry.id) &&
+            initialCached &&
+            ((initialCached.phone && entry.phone === initialCached.phone) ||
+              (initialCached.email && entry.email === initialCached.email)),
+        );
+        if (remapped) {
+          router.replace(`/clients/${remapped.id}`);
+        }
+      };
+      window.addEventListener(CLIENTS_UPDATED_EVENT, onUpdate);
+      return () => {
+        cancelled = true;
+        window.removeEventListener(CLIENTS_UPDATED_EVENT, onUpdate);
+      };
+    }
+
     clientsApi
       .getClient(clientId)
       .then((data) => {
@@ -74,12 +105,13 @@ export function ClientEditPageClient({ clientId }: { clientId: string }) {
             return;
           }
 
-          setClient(data);
+          upsertClientInSnapshot(data);
+          notifyClientsUpdated();
           setError(null);
         }
       })
       .catch((err) => {
-        if (!cancelled) {
+        if (!cancelled && !getClientFromSnapshot(clientId)) {
           const message = err instanceof ApiError ? err.message : "Failed to load client";
           setError(message);
         }
@@ -99,7 +131,6 @@ export function ClientEditPageClient({ clientId }: { clientId: string }) {
       propagateClientDetailsToLocalRecords(updated);
       upsertClientInSnapshot(updated);
       notifyClientsUpdated();
-      setClient(updated);
       toast.success("Client updated");
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Failed to update client";
@@ -141,6 +172,9 @@ export function ClientEditPageClient({ clientId }: { clientId: string }) {
           Back to clients
         </Link>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight">Edit client</h1>
+        {client?.displayNumber ? (
+          <p className="mt-1 text-sm font-medium text-muted-foreground">{client.displayNumber}</p>
+        ) : null}
       </div>
 
       {!isAuthenticated ? (
