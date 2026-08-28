@@ -1,6 +1,6 @@
 "use client";
 
-import { createAuthApi, createAiApi, createBookingsApi, createClientsApi, createClientPortalApi, createDashboardApi, createHttpClient, createInvoicesApi, createProjectBookingsApi, createProjectsApi, createReportsApi, createSessionsApi, createStudiosApi, createStudioLicenseApi, createStudioProfileApi, createTeamMembersApi, type AuthApi } from "@st-manager/api-sdk";
+import { createAuthApi, createAiApi, createBookingsApi, createBookingSlotDefinitionsApi, createClientsApi, createClientPortalApi, createDashboardApi, createHttpClient, createInquiriesApi, createInvoicesApi, createPaymentsApi, createProjectBookingsApi, createProjectsApi, createReportsApi, createSessionsApi, createStudioDocumentsApi, createStudiosApi, createStudioLicenseApi, createStudioProfileApi, createStudioRoomsApi, createStudioServicesApi, createStudioSettingsApi, createTeamMembersApi, type AuthApi } from "@st-manager/api-sdk";
 
 import { tokenStore } from "./token-store";
 
@@ -49,10 +49,17 @@ export const clientPortalApi = createClientPortalApi(httpClient);
 export const aiApi = createAiApi(httpClient);
 export const dashboardApi = createDashboardApi(httpClient);
 export const clientsApi = createClientsApi(httpClient);
+export const inquiriesApi = createInquiriesApi(httpClient);
 export const projectsApi = createProjectsApi(httpClient);
 export const projectBookingsApi = createProjectBookingsApi(httpClient);
+export const paymentsApi = createPaymentsApi(httpClient);
+export const studioDocumentsApi = createStudioDocumentsApi(httpClient);
 export const bookingsApi = createBookingsApi(httpClient);
 export const sessionsApi = createSessionsApi(httpClient);
 export const invoicesApi = createInvoicesApi(httpClient);
 export const reportsApi = createReportsApi(httpClient);
 export const teamMembersApi = createTeamMembersApi(httpClient);
+export const studioServicesApi = createStudioServicesApi(httpClient);
+export const studioRoomsApi = createStudioRoomsApi(httpClient);
+export const bookingSlotDefinitionsApi = createBookingSlotDefinitionsApi(httpClient);
+export const studioSettingsApi = createStudioSettingsApi(httpClient);

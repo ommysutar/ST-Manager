@@ -1,35 +1,21 @@
 import type { AuthUserDto } from "@st-manager/contracts";
 
+import {
+  flushPendingStudioSettingsUpdates,
+  getProfileFromStore,
+  hydrateStudioSettingsFromCache,
+  updateStudioSettingsOfflineAware,
+} from "@/lib/studio-settings/store";
+import { profileFromSettingsJson } from "@/lib/studio-settings/map-dto";
+import { isBrowserOnline } from "@/lib/sync";
+
 import { notifyProfileUpdated } from "./events";
 import { getProfileSnapshot, setProfileSnapshot } from "./snapshots";
 import type { StudioProfile, UserRole } from "./types";
 import { PROFILE_STORAGE_KEY } from "./types";
 
 function defaultProfile(user: AuthUserDto): StudioProfile {
-  return {
-    userId: user.id,
-    role: normalizeRole(user.role),
-    profilePhotoDataUrl: "",
-    fullName: user.fullName?.trim() || "",
-    studioName: "",
-    mobile: "",
-    email: user.email,
-    address: "",
-    website: "",
-    facebook: "",
-    instagram: "",
-    youtube: "",
-    upiQrDataUrl: "",
-    signatureDataUrl: "",
-    logoDataUrl: "",
-    gstNumber: "",
-    bankDetails: { accountName: "", accountNumber: "", ifsc: "", bankName: "" },
-    upiId: "",
-    footerText: "",
-    termsAndConditions: "",
-    thankYouMessage: "Thank you for choosing us!",
-    updatedAt: new Date().toISOString(),
-  };
+  return profileFromSettingsJson(user, null);
 }
 
 export function normalizeRole(role: string): UserRole {
@@ -47,6 +33,12 @@ export function loadProfile(user: AuthUserDto): StudioProfile {
     return defaultProfile(user);
   }
 
+  hydrateStudioSettingsFromCache();
+  const cached = getProfileFromStore() ?? getProfileSnapshot();
+  if (cached && cached.userId === user.id) {
+    return cached;
+  }
+
   try {
     const raw = localStorage.getItem(PROFILE_STORAGE_KEY);
     if (!raw) {
@@ -58,15 +50,7 @@ export function loadProfile(user: AuthUserDto): StudioProfile {
       return defaultProfile(user);
     }
 
-    const fallback = defaultProfile(user);
-    return {
-      ...fallback,
-      ...parsed,
-      bankDetails: { ...fallback.bankDetails, ...parsed.bankDetails },
-      userId: user.id,
-      fullName: parsed.fullName?.trim() || fallback.fullName,
-      email: parsed.email?.trim() || fallback.email,
-    };
+    return profileFromSettingsJson(user, parsed);
   } catch {
     return defaultProfile(user);
   }
@@ -78,9 +62,15 @@ export function saveProfile(profile: StudioProfile): StudioProfile {
     updatedAt: new Date().toISOString(),
   };
 
-  localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(updated));
   setProfileSnapshot(updated);
   notifyProfileUpdated();
+
+  void updateStudioSettingsOfflineAware({ profile: updated }).then(() => {
+    if (isBrowserOnline()) {
+      void flushPendingStudioSettingsUpdates();
+    }
+  });
+
   return updated;
 }
 
@@ -110,9 +100,10 @@ export function initializeProfileSnapshot(user: AuthUserDto | null): StudioProfi
     return null;
   }
 
+  hydrateStudioSettingsFromCache();
   const profile = loadProfile(user);
   setProfileSnapshot(profile);
   return profile;
 }
 
-export { getProfileSnapshot };
+export { getProfileSnapshot, PROFILE_STORAGE_KEY };

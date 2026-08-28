@@ -89,6 +89,51 @@ export type {
   UpdateProjectBookingResponseDto,
 } from "./project-booking/list-project-bookings.dto";
 
+export type { InquiryResponseDto } from "./inquiry/inquiry-response.dto";
+export type { CreateInquiryDto } from "./inquiry/create-inquiry.dto";
+export type { UpdateInquiryDto } from "./inquiry/update-inquiry.dto";
+export type {
+  CreateInquiryResponseDto,
+  DeleteInquiryResponseDto,
+  GetInquiryResponseDto,
+  ListInquiriesQueryDto,
+  ListInquiriesResponseDto,
+  SyncInquiriesPullQueryDto,
+  SyncInquiriesPullResponseDataDto,
+  SyncInquiriesPullResponseDto,
+  UpdateInquiryResponseDto,
+} from "./inquiry/list-inquiries.dto";
+
+export type { PaymentResponseDto } from "./payment/payment-response.dto";
+export type { CreatePaymentDto } from "./payment/create-payment.dto";
+export type { UpdatePaymentDto } from "./payment/update-payment.dto";
+export type {
+  CreatePaymentResponseDto,
+  DeletePaymentResponseDto,
+  GetPaymentResponseDto,
+  ListPaymentsQueryDto,
+  ListPaymentsResponseDto,
+  SyncPaymentsPullQueryDto,
+  SyncPaymentsPullResponseDataDto,
+  SyncPaymentsPullResponseDto,
+  UpdatePaymentResponseDto,
+} from "./payment/list-payments.dto";
+
+export type { StudioDocumentResponseDto } from "./studio-document/studio-document-response.dto";
+export type { CreateStudioDocumentDto } from "./studio-document/create-studio-document.dto";
+export type { UpdateStudioDocumentDto } from "./studio-document/update-studio-document.dto";
+export type {
+  CreateStudioDocumentResponseDto,
+  DeleteStudioDocumentResponseDto,
+  GetStudioDocumentResponseDto,
+  ListStudioDocumentsQueryDto,
+  ListStudioDocumentsResponseDto,
+  SyncStudioDocumentsPullQueryDto,
+  SyncStudioDocumentsPullResponseDataDto,
+  SyncStudioDocumentsPullResponseDto,
+  UpdateStudioDocumentResponseDto,
+} from "./studio-document/list-studio-documents.dto";
+
 export type { BookingResponseDto } from "./booking/booking-response.dto";
 export type { CreateBookingDto } from "./booking/create-booking.dto";
 export type { UpdateBookingDto } from "./booking/update-booking.dto";
@@ -253,3 +298,58 @@ export type {
   ClientPortalAccessResponseDto,
   ClientPortalEmailRequestDto,
 } from "./client-portal/client-portal.dto";
+
+export type { StudioServiceResponseDto } from "./studio-service/studio-service-response.dto";
+export type { CreateStudioServiceDto } from "./studio-service/create-studio-service.dto";
+export type { UpdateStudioServiceDto } from "./studio-service/update-studio-service.dto";
+export type {
+  CreateStudioServiceResponseDto,
+  DeleteStudioServiceResponseDto,
+  GetStudioServiceResponseDto,
+  ListStudioServicesQueryDto,
+  ListStudioServicesResponseDto,
+  SyncStudioServicesPullQueryDto,
+  SyncStudioServicesPullResponseDataDto,
+  SyncStudioServicesPullResponseDto,
+  UpdateStudioServiceResponseDto,
+} from "./studio-service/list-studio-services.dto";
+
+export type { StudioRoomResponseDto } from "./studio-room/studio-room-response.dto";
+export type { CreateStudioRoomDto } from "./studio-room/create-studio-room.dto";
+export type { UpdateStudioRoomDto } from "./studio-room/update-studio-room.dto";
+export type {
+  CreateStudioRoomResponseDto,
+  DeleteStudioRoomResponseDto,
+  GetStudioRoomResponseDto,
+  ListStudioRoomsQueryDto,
+  ListStudioRoomsResponseDto,
+  SyncStudioRoomsPullQueryDto,
+  SyncStudioRoomsPullResponseDataDto,
+  SyncStudioRoomsPullResponseDto,
+  UpdateStudioRoomResponseDto,
+} from "./studio-room/list-studio-rooms.dto";
+
+export type { BookingSlotDefinitionResponseDto } from "./booking-slot-definition/booking-slot-definition-response.dto";
+export type { CreateBookingSlotDefinitionDto } from "./booking-slot-definition/create-booking-slot-definition.dto";
+export type { UpdateBookingSlotDefinitionDto } from "./booking-slot-definition/update-booking-slot-definition.dto";
+export type {
+  CreateBookingSlotDefinitionResponseDto,
+  DeleteBookingSlotDefinitionResponseDto,
+  GetBookingSlotDefinitionResponseDto,
+  ListBookingSlotDefinitionsQueryDto,
+  ListBookingSlotDefinitionsResponseDto,
+  SyncBookingSlotDefinitionsPullQueryDto,
+  SyncBookingSlotDefinitionsPullResponseDataDto,
+  SyncBookingSlotDefinitionsPullResponseDto,
+  UpdateBookingSlotDefinitionResponseDto,
+} from "./booking-slot-definition/list-booking-slot-definitions.dto";
+
+export type { StudioSettingsResponseDto } from "./studio-settings/studio-settings-response.dto";
+export type { UpdateStudioSettingsDto } from "./studio-settings/update-studio-settings.dto";
+export type {
+  GetStudioSettingsResponseDto,
+  SyncStudioSettingsPullQueryDto,
+  SyncStudioSettingsPullResponseDataDto,
+  SyncStudioSettingsPullResponseDto,
+  UpdateStudioSettingsResponseDto,
+} from "./studio-settings/studio-settings.dto";

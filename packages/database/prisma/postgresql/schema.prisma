@@ -29,9 +29,16 @@ model Studio {
   roleDefs        RoleDefinition[]
   activationCodes ActivationCode[]
   clientPortalLinks ClientPortalLink[]
-  clients          Client[]
-  projects         Project[]
-  projectBookings  ProjectBooking[]
+  clients               Client[]
+  projects              Project[]
+  projectBookings       ProjectBooking[]
+  inquiries             Inquiry[]
+  payments              Payment[]
+  studioDocuments       StudioDocument[]
+  studioServices        StudioService[]
+  studioRooms           StudioRoom[]
+  bookingSlotDefinitions BookingSlotDefinition[]
+  studioSettings        StudioSettings?
 
   @@index([status])
   @@map("studios")
@@ -249,6 +256,8 @@ model Project {
   studio           Studio           @relation(fields: [studioId], references: [id])
   client           Client?          @relation(fields: [clientId], references: [id])
   projectBookings  ProjectBooking[]
+  payments         Payment[]
+  studioDocuments  StudioDocument[]
 
   @@unique([studioId, projectNumber])
   @@index([studioId, updatedAt])
@@ -372,4 +381,143 @@ model ClientPortalLink {
   @@unique([studioId, projectKey])
   @@index([studioId, status])
   @@map("client_portal_links")
+}
+
+model Inquiry {
+  id               String    @id @default(cuid())
+  studioId         String
+  inquiryNumber    String    @db.VarChar(16)
+  status           String    @default("inquiry") @db.VarChar(32)
+  projectId        String?   @db.VarChar(64)
+  advanceAmount    Float?
+  remainingBalance Float?
+  form             Json
+  quotation        Json
+  deletedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  studio           Studio    @relation(fields: [studioId], references: [id])
+
+  @@unique([studioId, inquiryNumber])
+  @@index([studioId, updatedAt])
+  @@index([studioId, deletedAt])
+  @@map("inquiries")
+}
+
+model Payment {
+  id         String    @id @default(cuid())
+  studioId   String
+  projectId  String
+  amount     Float     @default(0)
+  method     String    @default("cash") @db.VarChar(16)
+  notes      String    @default("") @db.VarChar(2000)
+  receivedBy String    @default("") @db.VarChar(120)
+  source     String    @default("manual") @db.VarChar(16)
+  status     String    @default("received") @db.VarChar(32)
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  studio     Studio    @relation(fields: [studioId], references: [id])
+  project    Project   @relation(fields: [projectId], references: [id])
+
+  @@index([studioId, updatedAt])
+  @@index([studioId, projectId])
+  @@index([studioId, deletedAt])
+  @@map("payments")
+}
+
+model StudioDocument {
+  id             String    @id @default(cuid())
+  studioId       String
+  type           String    @db.VarChar(16)
+  documentNumber String    @db.VarChar(16)
+  inquiryId      String?   @db.VarChar(64)
+  projectId      String?
+  paymentId      String?   @db.VarChar(64)
+  snapshot       Json?
+  deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  studio         Studio    @relation(fields: [studioId], references: [id])
+  project        Project?  @relation(fields: [projectId], references: [id])
+
+  @@unique([studioId, type, documentNumber])
+  @@index([studioId, updatedAt])
+  @@index([studioId, deletedAt])
+  @@index([studioId, projectId])
+  @@map("studio_documents")
+}
+
+model StudioService {
+  id           String    @id @default(cuid())
+  studioId     String
+  name         String    @db.VarChar(120)
+  category     String    @default("") @db.VarChar(120)
+  description  String    @default("") @db.VarChar(2000)
+  active       Boolean   @default(true)
+  mandatory    Boolean   @default(false)
+  isStudioRent Boolean   @default(false)
+  sortOrder    Int       @default(0)
+  legacyPrice  Float     @default(0)
+  prices       Json
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  studio       Studio    @relation(fields: [studioId], references: [id])
+
+  @@index([studioId, updatedAt])
+  @@index([studioId, deletedAt])
+  @@map("studio_services")
+}
+
+model StudioRoom {
+  id          String    @id @default(cuid())
+  studioId    String
+  name        String    @db.VarChar(120)
+  roomName    String?   @db.VarChar(120)
+  description String    @default("") @db.VarChar(2000)
+  color       String    @default("#6366f1") @db.VarChar(16)
+  active      Boolean   @default(true)
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  studio      Studio    @relation(fields: [studioId], references: [id])
+
+  @@index([studioId, updatedAt])
+  @@index([studioId, deletedAt])
+  @@map("studio_rooms")
+}
+
+model BookingSlotDefinition {
+  id          String    @id @default(cuid())
+  studioId    String
+  label       String    @db.VarChar(120)
+  startHour   Int
+  startMinute Int       @default(0)
+  endHour     Int
+  endMinute   Int       @default(0)
+  isCustom    Boolean   @default(false)
+  sortOrder   Int       @default(0)
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  studio      Studio    @relation(fields: [studioId], references: [id])
+
+  @@index([studioId, updatedAt])
+  @@index([studioId, deletedAt])
+  @@map("booking_slot_definitions")
+}
+
+model StudioSettings {
+  id        String    @id @default(cuid())
+  studioId  String    @unique
+  profile   Json
+  whatsapp  Json
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  studio    Studio    @relation(fields: [studioId], references: [id])
+
+  @@index([studioId, updatedAt])
+  @@map("studio_settings")
 }

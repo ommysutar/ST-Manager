@@ -1,10 +1,21 @@
 import { generateId } from "@/lib/inquiry/services";
+import { migrateLegacyRoomsToStudioCache } from "@/lib/studios/backfill";
+import { studioRoomToCreateDto } from "@/lib/studios/map-dto";
+import {
+  createRoomOfflineAware,
+  deleteRoomOfflineAware,
+  flushPendingRoomMutations,
+  getRoomsStoreSnapshot,
+  hydrateRoomsSnapshotFromCache,
+  updateRoomOfflineAware,
+} from "@/lib/studios/store";
+import { isBrowserOnline } from "@/lib/sync";
 
 import { DEFAULT_STUDIOS } from "./constants";
 import { notifyStudiosUpdated } from "./events";
 import { getStudiosSnapshot, setStudiosSnapshot } from "./snapshots";
 import type { StudioRoom } from "./types";
-import { DEFAULT_STUDIO_COLOR, STUDIOS_STORAGE_KEY } from "./types";
+import { DEFAULT_STUDIO_COLOR } from "./types";
 
 function normalizeStudio(raw: Partial<StudioRoom> & { id: string }): StudioRoom {
   const now = new Date().toISOString();
@@ -21,43 +32,36 @@ function normalizeStudio(raw: Partial<StudioRoom> & { id: string }): StudioRoom 
   };
 }
 
-/** Display label combining studio name and optional room name. */
-export function formatStudioLabel(studio: StudioRoom): string {
-  return studio.roomName ? `${studio.name} · ${studio.roomName}` : studio.name;
+function ensureRoomsHydrated(): StudioRoom[] {
+  if (getRoomsStoreSnapshot().length === 0) {
+    migrateLegacyRoomsToStudioCache();
+    hydrateRoomsSnapshotFromCache();
+  }
+  return getRoomsStoreSnapshot();
 }
 
-function readStudiosFromStorage(): StudioRoom[] {
-  if (typeof window === "undefined") {
-    return DEFAULT_STUDIOS;
-  }
-
-  try {
-    const raw = localStorage.getItem(STUDIOS_STORAGE_KEY);
-    if (!raw) {
-      return DEFAULT_STUDIOS;
-    }
-
-    const parsed = JSON.parse(raw) as Partial<StudioRoom>[];
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      return DEFAULT_STUDIOS;
-    }
-
-    return parsed.map((studio) => normalizeStudio(studio as StudioRoom));
-  } catch {
-    return DEFAULT_STUDIOS;
-  }
+function syncSnapshotFromStore(): StudioRoom[] {
+  const sorted = [...getRoomsStoreSnapshot()]
+    .map((studio) => normalizeStudio(studio))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  setStudiosSnapshot(sorted);
+  return sorted;
 }
 
 function persistStudios(studios: StudioRoom[]): StudioRoom[] {
   const sorted = [...studios].sort((a, b) => a.name.localeCompare(b.name));
-  localStorage.setItem(STUDIOS_STORAGE_KEY, JSON.stringify(sorted));
   setStudiosSnapshot(sorted);
   notifyStudiosUpdated();
   return sorted;
 }
 
+/** Display label combining studio name and optional room name. */
+export function formatStudioLabel(studio: StudioRoom): string {
+  return studio.roomName ? `${studio.name} · ${studio.roomName}` : studio.name;
+}
+
 export function loadAllStudios(): StudioRoom[] {
-  return readStudiosFromStorage();
+  return ensureRoomsHydrated().map((studio) => normalizeStudio(studio));
 }
 
 export function getStudio(id: string): StudioRoom | undefined {
@@ -70,6 +74,14 @@ export function getActiveStudios(): StudioRoom[] {
 
 export function createStudio(input: Omit<StudioRoom, "id" | "createdAt" | "updatedAt">): StudioRoom {
   const now = new Date().toISOString();
+  const payload = studioRoomToCreateDto(input);
+  void createRoomOfflineAware(payload).then(() => {
+    syncSnapshotFromStore();
+    if (isBrowserOnline()) {
+      void flushPendingRoomMutations();
+    }
+  });
+
   const studio = normalizeStudio({
     id: generateId("std"),
     ...input,
@@ -100,6 +112,14 @@ export function updateStudio(
 
   studios[index] = updated;
   persistStudios(studios);
+
+  void updateRoomOfflineAware(id, patch).then(() => {
+    syncSnapshotFromStore();
+    if (isBrowserOnline()) {
+      void flushPendingRoomMutations();
+    }
+  });
+
   return updated;
 }
 
@@ -111,11 +131,21 @@ export function deleteStudio(id: string): boolean {
   }
 
   persistStudios(next);
+
+  void deleteRoomOfflineAware(id).then(() => {
+    syncSnapshotFromStore();
+    if (isBrowserOnline()) {
+      void flushPendingRoomMutations();
+    }
+  });
+
   return true;
 }
 
 export function initializeStudioSnapshots(): void {
-  setStudiosSnapshot(loadAllStudios());
+  migrateLegacyRoomsToStudioCache();
+  hydrateRoomsSnapshotFromCache();
+  syncSnapshotFromStore();
 }
 
 export { getStudiosSnapshot };

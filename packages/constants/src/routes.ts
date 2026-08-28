@@ -10,7 +10,10 @@ export const ROUTES = {
   REPORTS: "reports",
   CLIENTS: "clients",
   PROJECTS: "projects",
+  INQUIRIES: "inquiries",
   PROJECT_BOOKINGS: "project-bookings",
+  PAYMENTS: "payments",
+  STUDIO_DOCUMENTS: "studio-documents",
   DASHBOARD: "dashboard",
   STUDIOS: "studios",
   SYNC: "sync",
@@ -21,6 +24,10 @@ export const ROUTES = {
   PLATFORM_ADMIN: "platform-admin",
   PROFILE: "profile",
   CLIENT_PORTAL: "client-portal",
+  STUDIO_SERVICES: "studio-services",
+  STUDIO_ROOMS: "studio-rooms",
+  BOOKING_SLOT_DEFINITIONS: "booking-slot-definitions",
+  STUDIO_SETTINGS: "studio-settings",
 } as const;
 
 export type RouteKey = (typeof ROUTES)[keyof typeof ROUTES];

@@ -1,0 +1,76 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { CreateStudioRoomInput } from "@st-manager/validation";
+
+import type { AuthenticatedUser } from "../auth/auth.types";
+import { AuthRepository } from "../auth/auth.repository";
+import { StudioRoomsRepository } from "./studio-rooms.repository";
+import { StudioRoomsService } from "./studio-rooms.service";
+
+const actor: AuthenticatedUser = {
+  userId: "user-1",
+  email: "owner@studio.test",
+  role: "owner",
+};
+
+describe("StudioRoomsService", () => {
+  let service: StudioRoomsService;
+  let repository: {
+    create: ReturnType<typeof vi.fn>;
+    findMany: ReturnType<typeof vi.fn>;
+    count: ReturnType<typeof vi.fn>;
+    findById: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+    softDelete: ReturnType<typeof vi.fn>;
+    findChangesSince: ReturnType<typeof vi.fn>;
+  };
+  let authRepository: {
+    findById: ReturnType<typeof vi.fn>;
+  };
+
+  beforeEach(() => {
+    repository = {
+      create: vi.fn(),
+      findMany: vi.fn(),
+      count: vi.fn(),
+      findById: vi.fn(),
+      update: vi.fn(),
+      softDelete: vi.fn(),
+      findChangesSince: vi.fn(),
+    };
+    authRepository = {
+      findById: vi.fn().mockResolvedValue({ id: "user-1", studioId: "studio-1" }),
+    };
+
+    service = new StudioRoomsService(
+      repository as unknown as StudioRoomsRepository,
+      authRepository as unknown as AuthRepository,
+    );
+  });
+
+  it("creates a studio room scoped to the actor studio", async () => {
+    const row = {
+      id: "room-1",
+      studioId: "studio-1",
+      name: "Studio A",
+      roomName: null,
+      description: "",
+      color: "#6366f1",
+      active: true,
+      deletedAt: null,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+    repository.create.mockResolvedValue(row);
+
+    const result = await service.create(actor, { name: "Studio A" } as CreateStudioRoomInput);
+
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        studioId: "studio-1",
+        name: "Studio A",
+      }),
+    );
+    expect(result).toEqual(row);
+  });
+});

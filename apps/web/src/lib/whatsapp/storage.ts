@@ -1,10 +1,18 @@
 import { createDefaultWhatsAppSettings } from "./constants";
 import { notifyWhatsAppSettingsUpdated } from "./events";
 import { getWhatsAppSettingsSnapshot, setWhatsAppSettingsSnapshot } from "./snapshots";
+import {
+  flushPendingStudioSettingsUpdates,
+  getWhatsAppFromStore,
+  hydrateStudioSettingsFromCache,
+  updateStudioSettingsOfflineAware,
+} from "@/lib/studio-settings/store";
+import { whatsappFromSettingsJson } from "@/lib/studio-settings/map-dto";
+import { isBrowserOnline } from "@/lib/sync";
 import type { WhatsAppNotificationType, WhatsAppSettings, WhatsAppTemplate } from "./types";
 import { WHATSAPP_STORAGE_KEY } from "./types";
 
-function readFromStorage(): WhatsAppSettings {
+function readLegacyFromStorage(): WhatsAppSettings {
   if (typeof window === "undefined") {
     return createDefaultWhatsAppSettings();
   }
@@ -15,24 +23,7 @@ function readFromStorage(): WhatsAppSettings {
       return createDefaultWhatsAppSettings();
     }
 
-    const parsed = JSON.parse(raw) as WhatsAppSettings;
-    const defaults = createDefaultWhatsAppSettings();
-    const templateMap = new Map(parsed.templates.map((template) => [template.id, template]));
-
-    return {
-      ...defaults,
-      ...parsed,
-      templates: defaults.templates.map((defaultTemplate) => {
-        const saved = templateMap.get(defaultTemplate.id);
-        return saved
-          ? {
-              ...defaultTemplate,
-              ...saved,
-              label: defaultTemplate.label,
-            }
-          : defaultTemplate;
-      }),
-    };
+    return whatsappFromSettingsJson(JSON.parse(raw));
   } catch {
     return createDefaultWhatsAppSettings();
   }
@@ -44,27 +35,32 @@ function persist(settings: WhatsAppSettings): WhatsAppSettings {
     updatedAt: new Date().toISOString(),
   };
 
-  if (typeof window !== "undefined") {
-    localStorage.setItem(WHATSAPP_STORAGE_KEY, JSON.stringify(updated));
-  }
-
   setWhatsAppSettingsSnapshot(updated);
   notifyWhatsAppSettingsUpdated();
+
+  void updateStudioSettingsOfflineAware({ whatsapp: updated }).then(() => {
+    if (isBrowserOnline()) {
+      void flushPendingStudioSettingsUpdates();
+    }
+  });
+
   return updated;
 }
 
 export function initializeWhatsAppSettingsSnapshots(): void {
-  const settings = readFromStorage();
+  hydrateStudioSettingsFromCache();
+  const settings = getWhatsAppFromStore() ?? readLegacyFromStorage();
   setWhatsAppSettingsSnapshot(settings);
 }
 
 export function loadWhatsAppSettings(): WhatsAppSettings {
-  const cached = getWhatsAppSettingsSnapshot();
+  hydrateStudioSettingsFromCache();
+  const cached = getWhatsAppFromStore() ?? getWhatsAppSettingsSnapshot();
   if (cached) {
     return cached;
   }
 
-  const settings = readFromStorage();
+  const settings = readLegacyFromStorage();
   setWhatsAppSettingsSnapshot(settings);
   return settings;
 }
